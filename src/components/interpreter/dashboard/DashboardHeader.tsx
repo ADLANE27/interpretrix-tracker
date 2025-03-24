@@ -8,7 +8,6 @@ import { StatusButtonsBar } from "../StatusButtonsBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -25,7 +24,6 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
-  const { toast } = useToast();
   
   // Use an effect to update the isInChatTab state whenever data-in-chat attribute changes
   useEffect(() => {
@@ -64,20 +62,6 @@ export const DashboardHeader = ({
     if (profile.name) return profile.name;
     
     return `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || "Interprète";
-  };
-
-  // Handle status change with error handling
-  const handleStatusChange = async (newStatus: Profile['status']) => {
-    try {
-      await onStatusChange(newStatus);
-    } catch (error) {
-      console.error('[DashboardHeader] Error in status change:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
-        variant: "destructive",
-      });
-    }
   };
 
   return (

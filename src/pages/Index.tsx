@@ -18,12 +18,8 @@ const Index = () => {
 
   // Reset circuit breaker state when the index page loads
   useEffect(() => {
-    try {
-      resetCircuitBreaker();
-      console.log('[Index] Reset circuit breaker for realtime subscriptions');
-    } catch (error) {
-      console.error('[Index] Error resetting circuit breaker:', error);
-    }
+    resetCircuitBreaker();
+    console.log('[Index] Reset circuit breaker for realtime subscriptions');
   }, []);
 
   useEffect(() => {

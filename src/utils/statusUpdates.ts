@@ -10,7 +10,6 @@ type Status = Profile['status'];
  * This function:
  * 1. Calls the RPC function to update the status
  * 2. Emits the status update event
- * 3. Provides robust error handling
  * 
  * @param interpreterId - The ID of the interpreter
  * @param newStatus - The new status to set
@@ -23,12 +22,7 @@ export const updateInterpreterStatus = async (
   previousStatus?: Status
 ): Promise<{ success: boolean; error?: any }> => {
   try {
-    console.log(`[statusUpdates] Updating status for ${interpreterId} to ${newStatus}`, { previousStatus });
-    
-    if (!interpreterId) {
-      console.error('[statusUpdates] Missing interpreter ID');
-      return { success: false, error: 'Missing interpreter ID' };
-    }
+    console.log(`[statusUpdates] Updating status for ${interpreterId} to ${newStatus}`);
     
     // Call the standardized RPC function
     const { error } = await supabase.rpc('update_interpreter_status', {
@@ -38,7 +32,7 @@ export const updateInterpreterStatus = async (
 
     if (error) {
       console.error('[statusUpdates] Error updating status:', error);
-      return { success: false, error };
+      throw error;
     }
     
     // Emit the status update event
@@ -48,7 +42,6 @@ export const updateInterpreterStatus = async (
       previousStatus
     });
     
-    console.log(`[statusUpdates] Status successfully updated to ${newStatus} for ${interpreterId}`);
     return { success: true };
   } catch (error) {
     console.error('[statusUpdates] Error in updateInterpreterStatus:', error);

@@ -7,12 +7,8 @@ import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Reset the circuit breaker when the hook is mounted
   useEffect(() => {
-    try {
-      resetCircuitBreaker();
-      console.log('[useMissionUpdates] Reset circuit breaker for realtime subscriptions');
-    } catch (error) {
-      console.error('[useMissionUpdates] Error resetting circuit breaker:', error);
-    }
+    resetCircuitBreaker();
+    console.log('[useMissionUpdates] Reset circuit breaker for realtime subscriptions');
   }, []);
 
   // Setup visibility change event listeners
@@ -23,28 +19,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
         onUpdate();
-        
-        // Also reset circuit breaker when app becomes visible
-        try {
-          resetCircuitBreaker();
-          console.log('[useMissionUpdates] Reset circuit breaker on visibility change');
-        } catch (error) {
-          console.error('[useMissionUpdates] Error resetting circuit breaker:', error);
-        }
       }
     };
 
     const handleOnline = () => {
       console.log('[useMissionUpdates] App is online, triggering update');
       onUpdate();
-      
-      // Reset circuit breaker when coming back online
-      try {
-        resetCircuitBreaker();
-        console.log('[useMissionUpdates] Reset circuit breaker on online event');
-      } catch (error) {
-        console.error('[useMissionUpdates] Error resetting circuit breaker:', error);
-      }
     };
 
     window.addEventListener("online", handleOnline);
