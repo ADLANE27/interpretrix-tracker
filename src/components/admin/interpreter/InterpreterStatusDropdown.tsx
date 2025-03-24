@@ -71,91 +71,17 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const isSubscribedRef = useRef(false);
+  const lastUpdateRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (isSubscribedRef.current || !interpreterId) return;
-    
-    console.log(`[InterpreterStatusDropdown] Setting up real-time status handler for interpreter ${interpreterId}`);
-    
-    // Initial fetch of current status
-    const fetchCurrentStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', interpreterId)
-          .single();
-        
-        if (!error && data && data.status) {
-          console.log(`[InterpreterStatusDropdown] Initial status fetch for ${interpreterId}:`, data.status);
-          setLocalStatus(data.status as Status);
-          
-          if (onStatusChange) {
-            onStatusChange(data.status as Status);
-          }
-        }
-      } catch (err) {
-        console.error('[InterpreterStatusDropdown] Error fetching initial status:', err);
-      }
-    };
-    
-    fetchCurrentStatus();
-    
-    const handleStatusUpdate = (event: CustomEvent<{
-      interpreter_id: string, 
-      status: Status, 
-      timestamp?: number
-    }>) => {
-      const detail = event.detail;
-      if (!detail || detail.interpreter_id !== interpreterId) return;
-      
-      console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, detail);
-      
-      if (!detail.status || detail.status === localStatus) return;
-      
-      console.log(`[InterpreterStatusDropdown] Updating local status to ${detail.status}`);
-      setLocalStatus(detail.status);
-      
-      if (onStatusChange) {
-        onStatusChange(detail.status);
-      }
-    };
-    
-    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-    isSubscribedRef.current = true;
-    
-    // Setup a direct subscription to interpreter_profiles table for this interpreter
-    const channel = supabase.channel(`interpreter-status-${interpreterId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${interpreterId}`
-      }, (payload) => {
-        if (payload.new && payload.new.status && payload.new.status !== localStatus) {
-          console.log(`[InterpreterStatusDropdown] Database change for ${interpreterId}:`, payload.new.status);
-          setLocalStatus(payload.new.status as Status);
-          
-          if (onStatusChange) {
-            onStatusChange(payload.new.status as Status);
-          }
-        }
-      })
-      .subscribe((status) => {
-        console.log(`[InterpreterStatusDropdown] Subscription status: ${status}`);
-      });
-    
-    return () => {
-      console.log(`[InterpreterStatusDropdown] Cleaning up status handler for interpreter ${interpreterId}`);
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-      supabase.removeChannel(channel);
-      isSubscribedRef.current = false;
-    };
-  }, [interpreterId, localStatus, onStatusChange]);
-
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
+      const updateId = `${currentStatus}-${Date.now()}`;
+      
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
+      
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
@@ -172,53 +98,43 @@ export const InterpreterStatusDropdown = ({
   };
 
   const handleConfirm = async () => {
-    if (!pendingStatus || isUpdating) return;
+    if (!pendingStatus) return;
     
     try {
       setIsUpdating(true);
+      console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
-      // Update local state for instant feedback
+      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
+      // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Direct database update instead of RPC
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({ status: pendingStatus })
-        .eq('id', interpreterId);
-        
+      // Update interpreter status using RPC function
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: pendingStatus
+      });
+
       if (error) {
+        console.error('[InterpreterStatusDropdown] RPC error:', error);
+        // Revert on error
+        setLocalStatus(currentStatus);
         throw error;
       }
-      
-      // Manually dispatch event for other components
-      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
-        detail: { 
-          interpreter_id: interpreterId,
-          status: pendingStatus,
-          timestamp: Date.now()
-        }
-      }));
-      
+
       toast({
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
-        duration: 3000,
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
-      
-      // Revert local status on error
-      setLocalStatus(currentStatus);
-      
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
+        description: "Impossible de mettre à jour le statut",
         variant: "destructive",
-        duration: 3000,
       });
     } finally {
       setIsConfirmDialogOpen(false);
@@ -232,6 +148,7 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
+  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
@@ -266,7 +183,6 @@ export const InterpreterStatusDropdown = ({
                 key={status}
                 onClick={() => handleStatusSelect(status as Status)}
                 className={`flex items-center gap-2 ${localStatus === status ? 'bg-muted' : ''}`}
-                disabled={isUpdating}
               >
                 <StatusIcon className="h-4 w-4" />
                 <span>{config.label}</span>

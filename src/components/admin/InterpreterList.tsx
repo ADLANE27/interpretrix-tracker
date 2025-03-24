@@ -71,69 +71,28 @@ export const InterpreterList = ({
   const [interpreters, setInterpreters] = useState<InterpreterData[]>(initialInterpreters);
 
   useEffect(() => {
-    console.log("[InterpreterList] Setting up status update event listener");
-    
-    const handleStatusUpdate = (event: CustomEvent<{
-      interpreter_id: string, 
-      status: string,
-      transaction_id?: string,
-      timestamp?: number
-    }>) => {
-      if (!event.detail || !event.detail.interpreter_id || !event.detail.status) return;
-      
-      const { interpreter_id, status } = event.detail;
-      console.log(`[InterpreterList] Received status update for interpreter ${interpreter_id}: ${status}`);
-      
-      setInterpreters(currentInterpreters => 
-        currentInterpreters.map(interpreter => 
-          interpreter.id === interpreter_id
-            ? { ...interpreter, status: status as any }
-            : interpreter
-        )
-      );
-    };
-
-    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-
-    return () => {
-      console.log("[InterpreterList] Cleaning up status update event listener");
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log("[InterpreterList] Setting up real-time database subscription");
+    console.log("[InterpreterList] Setting up real-time subscription");
     
     const channel = supabase
       .channel('interpreter-profiles-changes')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'interpreter_profiles'
         },
         (payload: any) => {
-          console.log("[InterpreterList] Received database update:", payload);
+          console.log("[InterpreterList] Received update:", payload);
+          const updatedProfile = payload.new;
           
-          if (payload.eventType === 'UPDATE' && payload.new) {
-            const updatedProfile = payload.new;
-            
-            setInterpreters(currentInterpreters => 
-              currentInterpreters.map(interpreter => 
-                interpreter.id === updatedProfile.id
-                  ? { 
-                      ...interpreter, 
-                      ...updatedProfile,
-                      first_name: updatedProfile.first_name || interpreter.first_name,
-                      last_name: updatedProfile.last_name || interpreter.last_name,
-                      email: updatedProfile.email || interpreter.email,
-                      languages: updatedProfile.languages || interpreter.languages
-                    }
-                  : interpreter
-              )
-            );
-          }
+          setInterpreters(currentInterpreters => 
+            currentInterpreters.map(interpreter => 
+              interpreter.id === updatedProfile.id
+                ? { ...interpreter, ...updatedProfile }
+                : interpreter
+            )
+          );
         }
       )
       .subscribe((status) => {
@@ -141,7 +100,7 @@ export const InterpreterList = ({
       });
 
     return () => {
-      console.log("[InterpreterList] Cleaning up database subscription");
+      console.log("[InterpreterList] Cleaning up subscription");
       supabase.removeChannel(channel);
     };
   }, []);
