@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
-import { Globe, Home, Building, Phone, Clock, User, PhoneCall } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
@@ -49,32 +48,6 @@ const workLocationConfig = {
 };
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
-  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
-  
-  // Update local state when props change
-  useEffect(() => {
-    if (interpreter.status !== interpreterStatus) {
-      console.log(`[InterpreterCard] Status updated from props for ${interpreter.id}:`, interpreter.status);
-      setInterpreterStatus(interpreter.status);
-    }
-  }, [interpreter.status, interpreter.id, interpreterStatus]);
-  
-  // Listen for direct status update events
-  useEffect(() => {
-    const handleStatusUpdate = (event: CustomEvent) => {
-      if (event.detail && event.detail.interpreterId === interpreter.id) {
-        console.log(`[InterpreterCard] Received direct status update event for ${interpreter.id}:`, event.detail.status);
-        setInterpreterStatus(event.detail.status);
-      }
-    };
-    
-    window.addEventListener('update-interpreter-status', handleStatusUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('update-interpreter-status', handleStatusUpdate as EventListener);
-    };
-  }, [interpreter.id]);
-
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -93,8 +66,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const LocationIcon = workLocationConfig[workLocation].icon;
 
   const handleStatusChange = (newStatus: Profile['status']) => {
-    console.log(`[InterpreterCard] Status change requested for ${interpreter.id}:`, newStatus);
-    setInterpreterStatus(newStatus);
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
     }
@@ -107,7 +78,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
           <CardTitle className="text-gradient-primary">{interpreter.name}</CardTitle>
           <InterpreterStatusDropdown 
             interpreterId={interpreter.id}
-            currentStatus={interpreterStatus}
+            currentStatus={interpreter.status}
             displayFormat="badge"
             onStatusChange={handleStatusChange}
           />

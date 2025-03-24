@@ -10,39 +10,11 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Add the useMissionUpdates hook with a more robust handler
+  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
-    console.log('[Admin] Mission or interpreter update received, dispatching refresh events');
-    
-    // Dispatch a custom event that components will listen for
-    window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
+    // Dispatch a custom event that the AdminDashboard will listen for
+    window.dispatchEvent(new CustomEvent('interpreter-status-update'));
   });
-
-  // Listen for status update events from the interpreter space
-  useEffect(() => {
-    const handleInterpreterStatusUpdate = (event: CustomEvent) => {
-      console.log('[Admin] Received interpreter status update event:', event.detail);
-      
-      if (event.detail && event.detail.interpreterId) {
-        // Update the interpreter card for this specific interpreter
-        window.dispatchEvent(new CustomEvent('update-interpreter-status', {
-          detail: {
-            interpreterId: event.detail.interpreterId,
-            status: event.detail.status
-          }
-        }));
-        
-        // Also trigger a full refresh to make sure everything is in sync
-        window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
-      }
-    };
-
-    window.addEventListener('interpreter-status-update', handleInterpreterStatusUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('interpreter-status-update', handleInterpreterStatusUpdate as EventListener);
-    };
-  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -80,35 +52,12 @@ const Admin = () => {
       }
     });
 
-    // For better reliability, set up a periodic check for session validity
-    const sessionCheckInterval = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log('Session expired, redirecting to login');
-        navigate('/admin/login');
-      }
-    }, 300000); // Check every 5 minutes
-
     // Initial auth check
     checkAuth();
-
-    // Setup connection recovery on network/visibility changes
-    const handleConnectionRecovery = () => {
-      if (document.visibilityState === 'visible' || navigator.onLine) {
-        console.log('[Admin] Connection recovered, triggering refresh');
-        window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
-      }
-    };
-
-    window.addEventListener('online', handleConnectionRecovery);
-    document.addEventListener('visibilitychange', handleConnectionRecovery);
 
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
-      clearInterval(sessionCheckInterval);
-      window.removeEventListener('online', handleConnectionRecovery);
-      document.addEventListener('visibilitychange', handleConnectionRecovery);
     };
   }, [navigate]);
 

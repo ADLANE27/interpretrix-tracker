@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -71,12 +72,13 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
-  const transactionIdRef = useRef<string>(`admin-txn-${Date.now()}`);
 
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       const updateId = `${currentStatus}-${Date.now()}`;
       
+      // Prevent duplicate updates
       if (updateId === lastUpdateRef.current) return;
       lastUpdateRef.current = updateId;
       
@@ -102,23 +104,23 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
-      const transactionId = `admin-txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      transactionIdRef.current = transactionId;
-      
+      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
+      // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
+      // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
-        p_status: pendingStatus,
-        p_transaction_id: transactionId
+        p_status: pendingStatus
       });
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
+        // Revert on error
         setLocalStatus(currentStatus);
         throw error;
       }
@@ -146,6 +148,7 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
+  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
