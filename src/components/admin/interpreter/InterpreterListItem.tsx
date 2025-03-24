@@ -20,7 +20,7 @@ interface InterpreterListItemProps {
     next_mission_duration?: number | null;
     work_location?: WorkLocation;
   };
-  onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
+  onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => Promise<void> | void;
 }
 
 const workLocationConfig = {
@@ -67,20 +67,36 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         });
       }
       
-      onStatusChange(interpreter.id, newStatus)
-        .catch(error => {
-          console.error(`[InterpreterListItem] Error updating status:`, error);
-          // Toast is displayed by the parent component that handles onStatusChange
-          
-          // If there have been multiple failed attempts, show guidance
-          if (statusUpdateAttempts >= 2) {
-            toast({
-              title: "Problème de connexion",
-              description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
-              duration: 5000,
-            });
-          }
-        });
+      try {
+        const result = onStatusChange(interpreter.id, newStatus);
+        
+        // Check if the result is a Promise
+        if (result && typeof result.catch === 'function') {
+          result.catch(error => {
+            console.error(`[InterpreterListItem] Error updating status:`, error);
+            // Toast is displayed by the parent component that handles onStatusChange
+            
+            // If there have been multiple failed attempts, show guidance
+            if (statusUpdateAttempts >= 2) {
+              toast({
+                title: "Problème de connexion",
+                description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
+                duration: 5000,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[InterpreterListItem] Error in status update:`, error);
+        // Handle synchronous errors
+        if (statusUpdateAttempts >= 2) {
+          toast({
+            title: "Problème de connexion",
+            description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
+            duration: 5000,
+          });
+        }
+      }
     }
   };
 
