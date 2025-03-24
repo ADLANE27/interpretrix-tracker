@@ -11,11 +11,11 @@ export const useStatusEventListener = (onUpdate: () => void) => {
     console.log('[useStatusEventListener] Setting up interpreter status event listener');
     
     // Listen for status update events with improved de-duplication
-    const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: string, timestamp?: number}>) => {
+    const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: string, timestamp?: number, transaction_id?: string}>) => {
       console.log('[useStatusEventListener] Status update event received, triggering refresh');
       
       // Create a unique update identifier to prevent duplicate processing
-      const updateId = `${event.detail.status}-${event.detail.timestamp || Date.now()}-${event.detail.interpreter_id}`;
+      const updateId = event.detail.transaction_id || `${event.detail.status}-${event.detail.timestamp || Date.now()}-${event.detail.interpreter_id}`;
       
       // Skip if this is a duplicate of our last update
       if (updateId === updateIdRef.current) {

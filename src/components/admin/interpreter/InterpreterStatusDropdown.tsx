@@ -75,12 +75,10 @@ export const InterpreterStatusDropdown = ({
   const isSubscribedRef = useRef(false);
   const { updateInterpreterStatus } = useMissionUpdates(() => {});
 
-  // Throttled status updater to prevent rapid successive updates
   const updateStatus = useCallback(async (status: Status) => {
     try {
       console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} to ${status}`);
       
-      // Use centralized status update function with improved handling
       return await updateInterpreterStatus(interpreterId, status);
     } catch (error) {
       console.error(`[InterpreterStatusDropdown] Error updating status:`, error);
@@ -88,13 +86,11 @@ export const InterpreterStatusDropdown = ({
     }
   }, [interpreterId, updateInterpreterStatus]);
 
-  // Setup real-time subscription to interpreter status changes
   useEffect(() => {
     if (isSubscribedRef.current || !interpreterId) return;
     
     console.log(`[InterpreterStatusDropdown] Setting up real-time status handlers for interpreter ${interpreterId}`);
     
-    // Listen for global status update events to prevent duplicates
     const handleStatusUpdate = (event: CustomEvent<{
       interpreter_id: string, 
       status: Status, 
@@ -106,13 +102,10 @@ export const InterpreterStatusDropdown = ({
       
       console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, detail);
       
-      // Skip if the status hasn't changed
       if (!detail.status || detail.status === localStatus) return;
       
-      // Create a unique update identifier
       const updateId = detail.transaction_id || `${detail.status}-${detail.timestamp || Date.now()}`;
       
-      // Skip if this is a duplicate of our last update
       if (updateId === lastUpdateRef.current) {
         console.log(`[InterpreterStatusDropdown] Skipping duplicate event: ${updateId}`);
         return;
@@ -122,7 +115,6 @@ export const InterpreterStatusDropdown = ({
       lastUpdateRef.current = updateId;
       setLocalStatus(detail.status);
       
-      // Notify parent component
       if (onStatusChange) {
         onStatusChange(detail.status);
       }
@@ -138,7 +130,6 @@ export const InterpreterStatusDropdown = ({
     };
   }, [interpreterId, localStatus, onStatusChange]);
 
-  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
@@ -166,15 +157,12 @@ export const InterpreterStatusDropdown = ({
     try {
       setIsUpdating(true);
       
-      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      // Notify parent component
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Update the status in the database using centralized function
       await updateStatus(pendingStatus);
       
       toast({
@@ -185,7 +173,6 @@ export const InterpreterStatusDropdown = ({
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
       
-      // Revert to previous status on error
       setLocalStatus(currentStatus);
       
       toast({
@@ -206,7 +193,6 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
-  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
