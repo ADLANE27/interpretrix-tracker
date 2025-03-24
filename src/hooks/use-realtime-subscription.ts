@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -198,6 +199,7 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
+        // Fix: The correct type for the first parameter is just a string (not "system")
         channel.on(
           'postgres_changes', 
           { 
