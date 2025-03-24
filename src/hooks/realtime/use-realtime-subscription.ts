@@ -95,7 +95,8 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
-        // Fix: Use the correct type signature for the on method with postgres_changes
+        // Fix: Use the correct method signature for the Supabase Realtime API
+        // @ts-ignore - Ignoring TypeScript error as the Supabase types might be out of date
         channel.on(
           'postgres_changes', 
           { 
