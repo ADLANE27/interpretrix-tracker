@@ -75,13 +75,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   );
   
   // Use a more specific subscription for interpreter profile status changes
-  // Critical fix: Use proper filter syntax for Supabase realtime
+  // Fixed: Use proper filter syntax for Supabase realtime
   useRealtimeSubscription(
     {
       event: 'UPDATE',
       schema: 'public',
-      table: 'interpreter_profiles',
-      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+      table: 'interpreter_profiles'
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
@@ -89,12 +88,14 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
       
       // Dispatch a global event that other components can listen to
-      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
-        detail: { 
-          interpreter_id: payload.new?.id,
-          status: payload.new?.status
-        }
-      }));
+      if (payload.new?.id && payload.new?.status) {
+        window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+          detail: { 
+            interpreter_id: payload.new.id,
+            status: payload.new.status
+          }
+        }));
+      }
     },
     {
       debugMode: true,

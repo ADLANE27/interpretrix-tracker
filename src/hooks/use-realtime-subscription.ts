@@ -26,7 +26,7 @@ const circuitBreakerState = {
   isOpen: false,
   failureCount: 0,
   lastFailureTime: 0,
-  resetTimeout: 30000, // 30 seconds before trying again (reduced from 60s)
+  resetTimeout: 30000, // 30 seconds before trying again
   failureThreshold: 3
 };
 
@@ -37,8 +37,8 @@ export function useRealtimeSubscription(
 ) {
   const {
     enabled = true,
-    retryInterval = 3000, // Reduced from 5000ms
-    maxRetries = 5, // Increased from 3
+    retryInterval = 3000,
+    maxRetries = 5,
     onError,
     debugMode = false,
     enableRealtimeConfig = true
@@ -50,6 +50,7 @@ export function useRealtimeSubscription(
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProcessedEventRef = useRef<string | null>(null);
 
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
@@ -96,7 +97,7 @@ export function useRealtimeSubscription(
     try {
       log(`Enabling realtime for table ${tableName}`);
       
-      // First check if table is already enabled to avoid unnecessary calls
+      // Check if table is already enabled to avoid unnecessary calls
       const { data: isEnabledData, error: checkError } = await supabase.rpc('is_table_realtime_enabled', {
         table_name: tableName
       });
@@ -170,33 +171,47 @@ export function useRealtimeSubscription(
         await enableRealtimeForTable(config.table);
 
         // Generate specific channel name to avoid conflicts
-        // Include filter info in the channel name if it exists
-        const filterKey = config.filter ? `-${config.filter.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '')}` : '';
-        const channelName = `${config.table}-${config.event}${filterKey}-${instanceIdRef.current}`;
+        const channelName = `${config.table}-${config.event}-${instanceIdRef.current}`;
         log(`Setting up new channel with name: ${channelName}`);
         
         const channel = supabase.channel(channelName);
         
+        // Create subscription configuration object based on provided config
+        const subscriptionConfig: any = { 
+          event: config.event, 
+          schema: config.schema || 'public', 
+          table: config.table
+        };
+        
+        // Only add filter if it's provided
+        if (config.filter) {
+          subscriptionConfig.filter = config.filter;
+        }
+        
         channel.on(
-          'postgres_changes' as any, 
-          { 
-            event: config.event, 
-            schema: config.schema || 'public', 
-            table: config.table, 
-            filter: config.filter 
-          }, 
+          'postgres_changes' as any,
+          subscriptionConfig,
           (payload: RealtimePostgresChangesPayload<any>) => {
+            // Create a unique identifier for this event
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
               (payload.old as any)?.id : 
               (payload.new as any)?.id
             }-${payload.commit_timestamp}`;
             
+            // Skip duplicate events
             if (seenEvents.current.has(eventId)) {
               log(`Skipping duplicate event: ${eventId}`);
               return;
             }
             
+            // Skip if this is the same as the last processed event
+            if (eventId === lastProcessedEventRef.current) {
+              log(`Skipping repeated event: ${eventId}`);
+              return;
+            }
+            
+            lastProcessedEventRef.current = eventId;
             seenEvents.current.add(eventId);
             
             // Limit cache size to prevent memory leaks
@@ -205,19 +220,22 @@ export function useRealtimeSubscription(
               seenEvents.current = new Set(eventsArray.slice(-50));
             }
             
-            log(`Received ${config.event} event for ${config.table}:`, payload);
+            log(`Received ${payload.eventType} event for ${config.table}:`, payload);
             
-            // Dispatch event globally so other components can react
-            if (payload.new && payload.new.id && config.table === 'interpreter_profiles' && payload.eventType === 'UPDATE') {
+            // Dispatch status update globally if applicable
+            if (config.table === 'interpreter_profiles' && payload.eventType === 'UPDATE' &&
+                payload.new && payload.new.id && payload.new.status) {
               log(`Dispatching global interpreter status update event for interpreter ${payload.new.id}`);
               window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
                 detail: { 
                   interpreter_id: payload.new.id,
-                  status: payload.new.status
+                  status: payload.new.status,
+                  timestamp: Date.now() // Add timestamp to help with deduplication
                 }
               }));
             }
             
+            // Execute the provided callback with the payload
             callback(payload);
           }
         );

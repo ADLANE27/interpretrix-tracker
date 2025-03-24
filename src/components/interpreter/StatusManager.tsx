@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,14 +21,16 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const isProcessingRef = useRef(false);
+  const lastStatusUpdateRef = useRef<string | null>(null);
 
   // Update local state when prop changes
   useEffect(() => {
-    if (currentStatus && currentStatus !== status) {
+    if (currentStatus && currentStatus !== status && isValidStatus(currentStatus)) {
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
-  }, [currentStatus]);
+  }, [currentStatus, status]);
 
   // Get current user ID and set up real-time subscription
   useEffect(() => {
@@ -47,7 +49,40 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     };
 
     getCurrentUserId();
-  }, []);
+    
+    // Listen for status update events
+    const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: Status, timestamp?: number}>) => {
+      const detail = event.detail;
+      if (!detail || !detail.interpreter_id || !detail.status) return;
+      
+      // Skip if user ID doesn't match
+      if (userId && detail.interpreter_id !== userId) return;
+      
+      console.log('[StatusManager] Received status update event:', detail);
+      
+      // Skip if the status hasn't changed
+      if (detail.status === status || !isValidStatus(detail.status)) return;
+      
+      // Create a unique update identifier
+      const updateId = `${detail.status}-${detail.timestamp || Date.now()}`;
+      
+      // Skip if this is a duplicate of our last update
+      if (updateId === lastStatusUpdateRef.current) {
+        console.log('[StatusManager] Skipping duplicate event:', updateId);
+        return;
+      }
+      
+      console.log('[StatusManager] Updating status to', detail.status);
+      lastStatusUpdateRef.current = updateId;
+      setStatus(detail.status);
+    };
+    
+    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
+    };
+  }, [status, userId]);
 
   // Set up realtime subscription for status updates
   useRealtimeSubscription(
@@ -57,9 +92,23 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       filter: userId ? `id=eq.${userId}` : undefined
     },
     (payload) => {
+      if (!payload.new || !payload.new.status) return;
+      
       console.log('[StatusManager] Status update received:', payload);
       const newStatus = payload.new.status;
-      if (isValidStatus(newStatus)) {
+      
+      if (isValidStatus(newStatus) && newStatus !== status) {
+        // Create a unique update identifier
+        const updateId = `${newStatus}-${Date.now()}`;
+        
+        // Skip if this is a duplicate of our last update
+        if (updateId === lastStatusUpdateRef.current) {
+          console.log('[StatusManager] Skipping duplicate update:', updateId);
+          return;
+        }
+        
+        console.log('[StatusManager] Updating status to', newStatus);
+        lastStatusUpdateRef.current = updateId;
         setStatus(newStatus);
       }
     },
@@ -104,31 +153,48 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (status === newStatus || !userId) return;
+    if (status === newStatus || !userId || isLoading || isProcessingRef.current) return;
     
+    // Set processing flag to prevent concurrent updates
+    isProcessingRef.current = true;
     setIsLoading(true);
+    
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
       // Optimistically update local state
       setStatus(newStatus);
       
-      const { error } = await supabase.rpc('update_interpreter_status', {
+      // First try direct database update for reliability
+      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
-        p_status: newStatus as string
+        p_status: newStatus
       });
 
-      if (error) {
-        console.error('[StatusManager] Database error:', error);
-        // Revert on error
-        setStatus(status);
-        throw error;
+      if (dbError) {
+        console.error('[StatusManager] Database error:', dbError);
+        throw dbError;
       }
 
       console.log('[StatusManager] Status update successful');
+      
+      // Dispatch an event that other components can listen to
+      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+        detail: { 
+          interpreter_id: userId,
+          status: newStatus,
+          timestamp: Date.now()
+        }
+      }));
 
+      // Call the parent handler if provided
       if (onStatusChange) {
-        await onStatusChange(newStatus);
+        try {
+          await onStatusChange(newStatus);
+        } catch (handlerError) {
+          console.error('[StatusManager] Error in parent handler:', handlerError);
+          // We already updated the DB directly, so continue
+        }
       }
 
       toast({
@@ -137,6 +203,10 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       });
     } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
+      
+      // Revert on error
+      setStatus(currentStatus || 'available');
+      
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour votre statut",
@@ -144,6 +214,11 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       });
     } finally {
       setIsLoading(false);
+      
+      // Release the processing lock after a short delay to prevent rapid clicks
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 300);
     }
   };
 
@@ -167,7 +242,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               variant={status === statusKey ? "default" : "outline"}
               size="default"
               onClick={() => handleStatusChange(statusKey)}
-              disabled={isLoading}
+              disabled={isLoading || isProcessingRef.current}
               className={`
                 w-full transition-all duration-200
                 h-12 text-xs sm:text-sm font-medium px-1 sm:px-3

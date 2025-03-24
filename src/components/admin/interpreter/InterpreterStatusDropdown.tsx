@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -79,12 +79,41 @@ export const InterpreterStatusDropdown = ({
   const circuitBreakerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCircuitBrokenRef = useRef(false);
 
+  // Throttled status updater to prevent rapid successive updates
+  const updateStatus = useCallback(async (status: Status) => {
+    try {
+      console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} to ${status}`);
+      
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: status
+      });
+
+      if (error) throw error;
+      
+      // Dispatch a status update event
+      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+        detail: { 
+          interpreter_id: interpreterId,
+          status: status,
+          timestamp: Date.now()
+        }
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error(`[InterpreterStatusDropdown] Error updating status:`, error);
+      throw error;
+    }
+  }, [interpreterId]);
+
   // Setup real-time subscription to interpreter status changes
   useEffect(() => {
     if (isSubscribedRef.current || !interpreterId) return;
     
     console.log(`[InterpreterStatusDropdown] Setting up real-time subscription for interpreter ${interpreterId}`);
     
+    // Subscribe to interpreter profile updates
     const channel = supabase.channel(`interpreter-status-${interpreterId}`)
       .on(
         'postgres_changes',
@@ -95,28 +124,41 @@ export const InterpreterStatusDropdown = ({
           filter: `id=eq.${interpreterId}`
         },
         (payload) => {
+          if (!payload.new) return;
+          
           console.log(`[InterpreterStatusDropdown] Received update for interpreter ${interpreterId}:`, payload);
           
-          if (payload.new && payload.new.status && 
-              payload.new.status !== localStatus && 
-              isValidStatus(payload.new.status)) {
+          const newStatus = payload.new.status as Status;
+          if (!isValidStatus(newStatus) || newStatus === localStatus) return;
+          
+          // Create a unique identifier for this update
+          const updateId = `${newStatus}-${Date.now()}`;
+          
+          // Skip if this is a duplicate of our last update
+          if (updateId === lastUpdateRef.current) {
+            console.log(`[InterpreterStatusDropdown] Skipping duplicate update: ${updateId}`);
+            return;
+          }
+          
+          console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} from ${localStatus} to ${newStatus}`);
+          lastUpdateRef.current = updateId;
+          setLocalStatus(newStatus);
+          
+          // Reset circuit breaker on successful update reception
+          if (isCircuitBrokenRef.current) {
+            console.log(`[InterpreterStatusDropdown] Resetting circuit breaker for ${interpreterId}`);
+            isCircuitBrokenRef.current = false;
+            failedAttemptsRef.current = 0;
             
-            const newStatus = payload.new.status as Status;
-            console.log(`[InterpreterStatusDropdown] Updated status for ${interpreterId} from ${localStatus} to ${newStatus}`);
-            
-            // Create a unique update ID
-            const updateId = `${newStatus}-${Date.now()}`;
-            
-            // Prevent duplicate updates
-            if (updateId === lastUpdateRef.current) return;
-            lastUpdateRef.current = updateId;
-            
-            setLocalStatus(newStatus);
-            
-            // Notify parent component if callback is provided
-            if (onStatusChange) {
-              onStatusChange(newStatus);
+            if (circuitBreakerTimeoutRef.current) {
+              clearTimeout(circuitBreakerTimeoutRef.current);
+              circuitBreakerTimeoutRef.current = null;
             }
+          }
+          
+          // Notify parent component
+          if (onStatusChange) {
+            onStatusChange(newStatus);
           }
         }
       )
@@ -129,33 +171,55 @@ export const InterpreterStatusDropdown = ({
         }
       });
       
-    // Listen for global status updates
-    const handleStatusUpdate = (event: CustomEvent) => {
+    // Listen for global status update events
+    const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: Status, timestamp?: number}>) => {
       const detail = event.detail;
-      if (detail && detail.interpreter_id === interpreterId) {
-        console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, detail.status);
+      if (!detail || detail.interpreter_id !== interpreterId) return;
+      
+      console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, detail);
+      
+      // Skip if the status hasn't changed
+      if (!detail.status || detail.status === localStatus || !isValidStatus(detail.status)) return;
+      
+      // Create a unique update identifier
+      const updateId = `${detail.status}-${detail.timestamp || Date.now()}`;
+      
+      // Skip if this is a duplicate of our last update
+      if (updateId === lastUpdateRef.current) {
+        console.log(`[InterpreterStatusDropdown] Skipping duplicate event: ${updateId}`);
+        return;
+      }
+      
+      console.log(`[InterpreterStatusDropdown] Updating local status to ${detail.status}`);
+      lastUpdateRef.current = updateId;
+      setLocalStatus(detail.status);
+      
+      // Reset circuit breaker on successful update
+      if (isCircuitBrokenRef.current) {
+        isCircuitBrokenRef.current = false;
+        failedAttemptsRef.current = 0;
         
-        // Only update if the new status is different from local state
-        if (detail.status && detail.status !== localStatus && isValidStatus(detail.status)) {
-          setLocalStatus(detail.status as Status);
-          
-          // Notify parent component if callback is provided
-          if (onStatusChange) {
-            onStatusChange(detail.status as Status);
-          }
+        if (circuitBreakerTimeoutRef.current) {
+          clearTimeout(circuitBreakerTimeoutRef.current);
+          circuitBreakerTimeoutRef.current = null;
         }
+      }
+      
+      // Notify parent component
+      if (onStatusChange) {
+        onStatusChange(detail.status);
       }
     };
     
-    window.addEventListener('interpreter-status-update' as any, handleStatusUpdate as EventListener);
+    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
     
     return () => {
-      console.log(`[InterpreterStatusDropdown] Removing channel for interpreter ${interpreterId}`);
+      console.log(`[InterpreterStatusDropdown] Cleaning up subscription for interpreter ${interpreterId}`);
       supabase.removeChannel(channel);
-      window.removeEventListener('interpreter-status-update' as any, handleStatusUpdate as EventListener);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
       isSubscribedRef.current = false;
       
-      // Clear any pending timeouts
+      // Clean up any pending timeouts
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
@@ -168,22 +232,9 @@ export const InterpreterStatusDropdown = ({
 
   // Update local state when prop changes
   useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
-      const updateId = `${currentStatus}-${Date.now()}`;
-      
-      // Prevent duplicate updates
-      if (updateId === lastUpdateRef.current) return;
-      lastUpdateRef.current = updateId;
-      
+    if (currentStatus && currentStatus !== localStatus && isValidStatus(currentStatus)) {
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
-      
-      // Reset circuit breaker on prop update
-      if (isCircuitBrokenRef.current) {
-        console.log(`[InterpreterStatusDropdown] Resetting circuit breaker for ${interpreterId}`);
-        isCircuitBrokenRef.current = false;
-        failedAttemptsRef.current = 0;
-      }
     }
   }, [currentStatus, interpreterId, localStatus]);
 
@@ -202,52 +253,38 @@ export const InterpreterStatusDropdown = ({
   };
 
   const handleConfirm = async () => {
-    if (!pendingStatus || isCircuitBrokenRef.current) return;
+    if (!pendingStatus || isCircuitBrokenRef.current || isUpdating) return;
     
     try {
       setIsUpdating(true);
-      console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
       // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      // Notify parent component of the status change if callback is provided
+      // Notify parent component
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using RPC function
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: pendingStatus
-      });
-
-      if (error) {
-        console.error('[InterpreterStatusDropdown] RPC error:', error);
-        throw error;
-      }
-
+      // Update the status in the database
+      await updateStatus(pendingStatus);
+      
       // Reset failed attempts on success
       failedAttemptsRef.current = 0;
       
-      // Dispatch an event for other components to update
-      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
-        detail: { 
-          interpreter_id: interpreterId,
-          status: pendingStatus
-        }
-      }));
-
       toast({
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
-        duration: 3000, // Shorter duration
+        duration: 3000,
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
       
       failedAttemptsRef.current += 1;
       console.log(`[InterpreterStatusDropdown] Failed attempts: ${failedAttemptsRef.current}/${maxFailedAttempts}`);
+      
+      // Revert to previous status on error
+      setLocalStatus(currentStatus);
       
       // Implement circuit breaker pattern
       if (failedAttemptsRef.current >= maxFailedAttempts) {
@@ -268,12 +305,9 @@ export const InterpreterStatusDropdown = ({
           duration: 5000,
         });
       } else {
-        // Revert on error
-        setLocalStatus(currentStatus);
-        
         toast({
           title: "Erreur",
-          description: "Impossible de mettre à jour le statut",
+          description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
           variant: "destructive",
           duration: 3000,
         });
@@ -325,7 +359,7 @@ export const InterpreterStatusDropdown = ({
                 key={status}
                 onClick={() => handleStatusSelect(status as Status)}
                 className={`flex items-center gap-2 ${localStatus === status ? 'bg-muted' : ''}`}
-                disabled={isCircuitBrokenRef.current}
+                disabled={isCircuitBrokenRef.current || isUpdating}
               >
                 <StatusIcon className="h-4 w-4" />
                 <span>{config.label}</span>
