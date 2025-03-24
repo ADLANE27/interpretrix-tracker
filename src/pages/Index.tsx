@@ -20,6 +20,18 @@ const Index = () => {
   useEffect(() => {
     resetCircuitBreaker();
     console.log('[Index] Reset circuit breaker for realtime subscriptions');
+    
+    // Set up online/offline handlers to reset circuit breaker
+    const handleOnline = () => {
+      console.log('[Index] App came online, resetting circuit breaker');
+      resetCircuitBreaker();
+    };
+    
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   useEffect(() => {

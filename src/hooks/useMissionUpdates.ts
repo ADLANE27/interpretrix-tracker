@@ -1,8 +1,10 @@
 
 import { useEffect } from 'react';
-import { useRealtimeSubscription } from './use-realtime-subscription';
+import { useRealtimeSubscription, resetCircuitBreaker } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
-import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
+
+// Track which tables have been subscribed to for better deduplication
+const subscribedTables = new Set<string>();
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Reset the circuit breaker when the hook is mounted
@@ -24,6 +26,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     const handleOnline = () => {
       console.log('[useMissionUpdates] App is online, triggering update');
+      // Reset circuit breaker when we come back online
+      resetCircuitBreaker();
       onUpdate();
     };
 
@@ -49,8 +53,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      maxRetries: 3,
-      retryInterval: 5000,
+      maxRetries: 5,
+      retryInterval: 3000,
+      debugMode: true,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -69,8 +74,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      maxRetries: 3,
-      retryInterval: 5000,
+      maxRetries: 5,
+      retryInterval: 3000,
+      debugMode: true,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -101,8 +107,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      maxRetries: 3,
-      retryInterval: 3000, // Shorter retry for status updates
+      maxRetries: 5,
+      retryInterval: 3000,
+      debugMode: true,
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }
