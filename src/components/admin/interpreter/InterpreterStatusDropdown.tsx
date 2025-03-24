@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -72,51 +72,17 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const lastUpdateRef = useRef<string | null>(null);
   const isSubscribedRef = useRef(false);
   const { updateInterpreterStatus } = useMissionUpdates(() => {});
-
-  const updateStatus = useCallback(async (status: Status) => {
-    try {
-      setIsUpdating(true);
-      console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} to ${status}`);
-      
-      // Use RPC function for direct database update
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: status
-      });
-      
-      if (error) {
-        console.error('[InterpreterStatusDropdown] RPC error:', error);
-        throw new Error(error.message);
-      }
-      
-      // Use the helper to publish an event for all components to react to
-      const success = await updateInterpreterStatus(interpreterId, status);
-      
-      if (!success) {
-        console.error('[InterpreterStatusDropdown] Event dispatch failed');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error(`[InterpreterStatusDropdown] Error updating status:`, error);
-      throw error;
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [interpreterId, updateInterpreterStatus]);
 
   useEffect(() => {
     if (isSubscribedRef.current || !interpreterId) return;
     
-    console.log(`[InterpreterStatusDropdown] Setting up real-time status handlers for interpreter ${interpreterId}`);
+    console.log(`[InterpreterStatusDropdown] Setting up real-time status handler for interpreter ${interpreterId}`);
     
     const handleStatusUpdate = (event: CustomEvent<{
       interpreter_id: string, 
       status: Status, 
-      transaction_id?: string,
       timestamp?: number
     }>) => {
       const detail = event.detail;
@@ -126,15 +92,7 @@ export const InterpreterStatusDropdown = ({
       
       if (!detail.status || detail.status === localStatus) return;
       
-      const updateId = detail.transaction_id || `${detail.status}-${detail.timestamp || Date.now()}`;
-      
-      if (updateId === lastUpdateRef.current) {
-        console.log(`[InterpreterStatusDropdown] Skipping duplicate event: ${updateId}`);
-        return;
-      }
-      
       console.log(`[InterpreterStatusDropdown] Updating local status to ${detail.status}`);
-      lastUpdateRef.current = updateId;
       setLocalStatus(detail.status);
       
       if (onStatusChange) {
@@ -167,7 +125,7 @@ export const InterpreterStatusDropdown = ({
       });
     
     return () => {
-      console.log(`[InterpreterStatusDropdown] Cleaning up status handlers for interpreter ${interpreterId}`);
+      console.log(`[InterpreterStatusDropdown] Cleaning up status handler for interpreter ${interpreterId}`);
       window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
       supabase.removeChannel(channel);
       isSubscribedRef.current = false;
@@ -180,10 +138,6 @@ export const InterpreterStatusDropdown = ({
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, interpreterId, localStatus]);
-
-  const isValidStatus = (status: string): status is Status => {
-    return ['available', 'unavailable', 'pause', 'busy'].includes(status);
-  };
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
@@ -208,8 +162,8 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update in database and dispatch event
-      await updateStatus(pendingStatus);
+      // Update in database
+      await updateInterpreterStatus(interpreterId, pendingStatus);
       
       toast({
         title: "Statut mis à jour",

@@ -2,7 +2,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { StatusConfig } from '@/components/interpreter/StatusButton';
-import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { Status } from '@/components/interpreter/StatusButton';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,14 +23,11 @@ export const useStatusUpdater = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
-  const lastUpdateRef = useRef<string | null>(null);
-  const userId = useRef<string | null>(null);
   const failedAttemptsRef = useRef(0);
   const circuitBreakerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isCircuitBrokenRef = useRef(false);
   const isProcessingRef = useRef(false);
-  
-  const { updateInterpreterStatus } = useMissionUpdates(() => {});
+  const userId = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -62,49 +58,6 @@ export const useStatusUpdater = ({
     }
   }, [currentStatus, localStatus]);
 
-  useEffect(() => {
-    const handleStatusUpdate = (event: CustomEvent<{
-      interpreter_id: string, 
-      status: Status, 
-      transaction_id?: string,
-      timestamp?: number
-    }>) => {
-      const detail = event.detail;
-      if (!detail || !userId.current || detail.interpreter_id !== userId.current) return;
-      
-      console.log('[useStatusUpdater] Received status update event:', detail);
-      
-      if (!detail.status || detail.status === localStatus || !isValidStatus(detail.status)) return;
-      
-      const updateId = detail.transaction_id || `${detail.status}-${detail.timestamp || Date.now()}`;
-      
-      if (updateId === lastUpdateRef.current) {
-        console.log('[useStatusUpdater] Skipping duplicate event:', updateId);
-        return;
-      }
-      
-      console.log('[useStatusUpdater] Updating local status to', detail.status);
-      lastUpdateRef.current = updateId;
-      setLocalStatus(detail.status);
-      
-      if (isCircuitBrokenRef.current) {
-        isCircuitBrokenRef.current = false;
-        failedAttemptsRef.current = 0;
-        
-        if (circuitBreakerTimeoutRef.current) {
-          clearTimeout(circuitBreakerTimeoutRef.current);
-          circuitBreakerTimeoutRef.current = null;
-        }
-      }
-    };
-    
-    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
-    };
-  }, [localStatus]);
-
   const isValidStatus = (status: string): status is Status => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);
   };
@@ -132,13 +85,6 @@ export const useStatusUpdater = ({
       if (error) {
         console.error('[useStatusUpdater] RPC error:', error);
         throw new Error(`RPC failed: ${error.message}`);
-      }
-      
-      // Now use our helper from useMissionUpdates for the event dispatch
-      const success = await updateInterpreterStatus(userId.current, newStatus);
-      
-      if (!success) {
-        throw new Error('Failed to dispatch status update event');
       }
       
       if (onStatusChange) {

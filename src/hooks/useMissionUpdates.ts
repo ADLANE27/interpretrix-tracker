@@ -18,10 +18,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   useRealtimeMissionUpdates(onUpdate);
   
   // Get status update functionality
-  const { updateInterpreterStatus, isProcessing } = useInterpreterStatus();
+  const { updateInterpreterStatus } = useInterpreterStatus();
   
   return {
-    updateInterpreterStatus,
-    isProcessing: () => isProcessing
+    updateInterpreterStatus
   };
 };
