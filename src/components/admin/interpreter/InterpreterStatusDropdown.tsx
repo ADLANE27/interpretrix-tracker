@@ -12,7 +12,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 
 type Status = Profile['status'];
 
@@ -73,12 +72,35 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const isSubscribedRef = useRef(false);
-  const { updateInterpreterStatus } = useMissionUpdates(() => {});
 
   useEffect(() => {
     if (isSubscribedRef.current || !interpreterId) return;
     
     console.log(`[InterpreterStatusDropdown] Setting up real-time status handler for interpreter ${interpreterId}`);
+    
+    // Initial fetch of current status
+    const fetchCurrentStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', interpreterId)
+          .single();
+        
+        if (!error && data && data.status) {
+          console.log(`[InterpreterStatusDropdown] Initial status fetch for ${interpreterId}:`, data.status);
+          setLocalStatus(data.status as Status);
+          
+          if (onStatusChange) {
+            onStatusChange(data.status as Status);
+          }
+        }
+      } catch (err) {
+        console.error('[InterpreterStatusDropdown] Error fetching initial status:', err);
+      }
+    };
+    
+    fetchCurrentStatus();
     
     const handleStatusUpdate = (event: CustomEvent<{
       interpreter_id: string, 
@@ -103,7 +125,7 @@ export const InterpreterStatusDropdown = ({
     window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
     isSubscribedRef.current = true;
     
-    // Setup a realtime subscription to interpreter_profiles table for this interpreter
+    // Setup a direct subscription to interpreter_profiles table for this interpreter
     const channel = supabase.channel(`interpreter-status-${interpreterId}`)
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -162,8 +184,24 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update in database
-      await updateInterpreterStatus(interpreterId, pendingStatus);
+      // Direct database update instead of RPC
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: pendingStatus })
+        .eq('id', interpreterId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Manually dispatch event for other components
+      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+        detail: { 
+          interpreter_id: interpreterId,
+          status: pendingStatus,
+          timestamp: Date.now()
+        }
+      }));
       
       toast({
         title: "Statut mis à jour",

@@ -7,8 +7,8 @@ const circuitBreakerState: CircuitBreakerState = {
   isOpen: false,
   failureCount: 0,
   lastFailureTime: 0,
-  resetTimeout: 30000, // 30 seconds before trying again
-  failureThreshold: 3
+  resetTimeout: 60000, // Increase to 60 seconds before trying again
+  failureThreshold: 5  // Increased threshold to avoid early tripping
 };
 
 export const useCircuitBreaker = (debugMode: boolean = false) => {

@@ -36,9 +36,21 @@ export const useStatusUpdater = ({
         if (user) {
           userId.current = user.id;
           console.log('[useStatusUpdater] User ID set:', user.id);
+          
+          // Initial fetch of user status to ensure we have the correct state
+          const { data, error } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', user.id)
+            .single();
+            
+          if (!error && data && data.status && isValidStatus(data.status)) {
+            console.log('[useStatusUpdater] Initial status from database:', data.status);
+            setLocalStatus(data.status as Status);
+          }
         }
       } catch (error) {
-        console.error('[useStatusUpdater] Error fetching user ID:', error);
+        console.error('[useStatusUpdater] Error fetching user ID or status:', error);
       }
     };
     
@@ -76,15 +88,15 @@ export const useStatusUpdater = ({
       // Update local state immediately for better UX
       setLocalStatus(newStatus);
       
-      // Use the direct RPC function for reliable updates
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId.current,
-        p_status: newStatus
-      });
+      // Direct database update is more reliable than RPC
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: newStatus })
+        .eq('id', userId.current);
       
       if (error) {
-        console.error('[useStatusUpdater] RPC error:', error);
-        throw new Error(`RPC failed: ${error.message}`);
+        console.error('[useStatusUpdater] Update error:', error);
+        throw new Error(`Database update failed: ${error.message}`);
       }
       
       if (onStatusChange) {

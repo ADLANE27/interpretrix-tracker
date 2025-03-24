@@ -14,11 +14,11 @@ export const useInterpreterStatus = () => {
     try {
       console.log(`[useInterpreterStatus] Updating interpreter ${interpreterId} status to: ${status}`);
       
-      // Use RPC function for reliable status updates
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: status
-      });
+      // Direct update via SQL for guaranteed success rather than RPC
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: status })
+        .eq('id', interpreterId);
 
       if (error) {
         console.error('[useInterpreterStatus] Status update error:', error);

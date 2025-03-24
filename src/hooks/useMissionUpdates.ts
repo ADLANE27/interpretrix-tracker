@@ -14,9 +14,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup status update event listener
   useStatusEventListener(onUpdate);
   
-  // Setup realtime database subscriptions
-  useRealtimeMissionUpdates(onUpdate);
-  
   // Get status update functionality
   const { updateInterpreterStatus } = useInterpreterStatus();
   

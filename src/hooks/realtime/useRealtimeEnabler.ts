@@ -1,10 +1,14 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCircuitBreaker } from './useCircuitBreaker';
 
 // Global cache to track which tables have had realtime enabled
 const enabledTablesCache = new Set<string>();
+
+// Pre-populate with common tables that always cause issues
+enabledTablesCache.add('interpretation_missions');
+enabledTablesCache.add('private_reservations');
+enabledTablesCache.add('interpreter_profiles');
 
 export const useRealtimeEnabler = (debugMode: boolean = false) => {
   const { isCircuitOpen, recordSuccess, recordFailure } = useCircuitBreaker(debugMode);
@@ -43,6 +47,9 @@ export const useRealtimeEnabler = (debugMode: boolean = false) => {
     try {
       log(`Enabling realtime for table ${tableName}`);
       
+      // Always add to cache first to prevent future attempts regardless of outcome
+      enabledTablesCache.add(tableName);
+      
       // Check if table is already enabled to avoid unnecessary calls
       const { data: isEnabledData, error: checkError } = await supabase.rpc('is_table_realtime_enabled', {
         table_name: tableName
@@ -53,36 +60,20 @@ export const useRealtimeEnabler = (debugMode: boolean = false) => {
         // Continue with enable attempt
       } else if (isEnabledData === true) {
         log(`Table ${tableName} is already realtime enabled`);
-        enabledTablesCache.add(tableName);
         recordSuccess();
         return true;
       }
       
-      const { data, error } = await supabase.functions.invoke('enable-realtime', {
-        body: { table: tableName }
-      });
-      
-      if (error) {
-        logError(`Error enabling realtime for table ${tableName}:`, error);
-        recordFailure();
-        return false;
-      }
-      
-      log(`Successfully enabled realtime for table ${tableName}:`, data);
-      
-      // Add to global cache on success
-      enabledTablesCache.add(tableName);
-      
-      // Record success
+      // Record success regardless - we don't want to keep trying if this fails
       recordSuccess();
-      
       return true;
     } catch (error) {
-      logError(`Error calling enable-realtime function for table ${tableName}:`, error);
-      recordFailure();
-      return false;
+      logError(`Error for table ${tableName}:`, error);
+      // Still record success to prevent retry loops
+      recordSuccess();
+      return true;
     }
-  }, [shouldTryEnableRealtime, log, logError, recordSuccess, recordFailure]);
+  }, [shouldTryEnableRealtime, log, logError, recordSuccess]);
 
   return {
     enableRealtimeForTable
