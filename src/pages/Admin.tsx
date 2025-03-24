@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -14,21 +15,26 @@ const Admin = () => {
     console.log('[Admin] Mission or interpreter update received, dispatching refresh events');
     
     // Dispatch a custom event that components will listen for
-    window.dispatchEvent(new CustomEvent('interpreter-status-update'));
-    
-    // As a backup, trigger a manual refresh after a delay
-    setTimeout(() => {
-      console.log('[Admin] Executing delayed refresh');
-      window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
-    }, 1500);
+    window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
   });
 
   // Listen for status update events from the interpreter space
   useEffect(() => {
     const handleInterpreterStatusUpdate = (event: CustomEvent) => {
       console.log('[Admin] Received interpreter status update event:', event.detail);
-      // Dispatch a refresh event for all components
-      window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
+      
+      if (event.detail && event.detail.interpreterId) {
+        // Update the interpreter card for this specific interpreter
+        window.dispatchEvent(new CustomEvent('update-interpreter-status', {
+          detail: {
+            interpreterId: event.detail.interpreterId,
+            status: event.detail.status
+          }
+        }));
+        
+        // Also trigger a full refresh to make sure everything is in sync
+        window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
+      }
     };
 
     window.addEventListener('interpreter-status-update', handleInterpreterStatusUpdate as EventListener);
@@ -90,7 +96,7 @@ const Admin = () => {
     const handleConnectionRecovery = () => {
       if (document.visibilityState === 'visible' || navigator.onLine) {
         console.log('[Admin] Connection recovered, triggering refresh');
-        window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+        window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
       }
     };
 

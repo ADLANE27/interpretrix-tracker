@@ -58,6 +58,22 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
       setInterpreterStatus(interpreter.status);
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
+  
+  // Listen for direct status update events
+  useEffect(() => {
+    const handleStatusUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.interpreterId === interpreter.id) {
+        console.log(`[InterpreterCard] Received direct status update event for ${interpreter.id}:`, event.detail.status);
+        setInterpreterStatus(event.detail.status);
+      }
+    };
+    
+    window.addEventListener('update-interpreter-status', handleStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('update-interpreter-status', handleStatusUpdate as EventListener);
+    };
+  }, [interpreter.id]);
 
   const parsedLanguages = interpreter.languages
     .map(lang => {

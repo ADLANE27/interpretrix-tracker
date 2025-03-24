@@ -1,9 +1,14 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { debounce } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from './use-toast';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
+  const { toast } = useToast();
+  const lastInterpreterUpdateRef = useRef<Record<string, string>>({});
+  
   // Create a debounced version of the update callback to prevent too many updates
   const debouncedUpdate = debounce(() => {
     console.log('[useMissionUpdates] Executing debounced update callback');
@@ -30,20 +35,20 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
 
     // Custom event listener for interpreter status updates
-    const handleStatusUpdate = () => {
-      console.log('[useMissionUpdates] Interpreter status update event received, triggering update');
+    const handleStatusUpdate = (event: CustomEvent) => {
+      console.log('[useMissionUpdates] Interpreter status update event received:', event.detail);
       debouncedUpdate();
     };
 
     window.addEventListener("online", handleConnectionChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('interpreter-status-update', handleStatusUpdate);
+    window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
       window.removeEventListener("online", handleConnectionChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
     };
   }, [debouncedUpdate]);
 
@@ -64,6 +69,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
+        // Manual fallback if realtime subscription fails
+        setTimeout(() => {
+          console.log('[useMissionUpdates] Falling back to manual refresh after subscription error');
+          debouncedUpdate();
+        }, 5000);
       }
     }
   );
@@ -85,9 +95,66 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
+        // Manual fallback if realtime subscription fails
+        setTimeout(() => {
+          console.log('[useMissionUpdates] Falling back to manual refresh after subscription error');
+          debouncedUpdate();
+        }, 5000);
       }
     }
   );
+  
+  // Direct poll for interpreter profiles with improved error handling
+  useEffect(() => {
+    const pollInterpreterProfiles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('id, status')
+          .order('updated_at', { ascending: false })
+          .limit(30);
+        
+        if (error) throw error;
+        
+        if (data) {
+          let hasUpdates = false;
+          
+          data.forEach(profile => {
+            if (
+              !lastInterpreterUpdateRef.current[profile.id] || 
+              lastInterpreterUpdateRef.current[profile.id] !== profile.status
+            ) {
+              hasUpdates = true;
+              lastInterpreterUpdateRef.current[profile.id] = profile.status;
+              
+              // Dispatch status update event
+              window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+                detail: { 
+                  interpreterId: profile.id,
+                  status: profile.status 
+                }
+              }));
+            }
+          });
+          
+          if (hasUpdates) {
+            console.log('[useMissionUpdates] Detected interpreter status changes from polling');
+            debouncedUpdate();
+          }
+        }
+      } catch (err) {
+        console.error('[useMissionUpdates] Error polling interpreter profiles:', err);
+      }
+    };
+    
+    // Poll every 10 seconds as a backup mechanism
+    const intervalId = setInterval(pollInterpreterProfiles, 10000);
+    
+    // Initial poll
+    pollInterpreterProfiles();
+    
+    return () => clearInterval(intervalId);
+  }, [debouncedUpdate]);
   
   // Use a more specific subscription for interpreter profile status changes
   useRealtimeSubscription(
@@ -100,16 +167,25 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       
-      // Dispatch a custom event to notify other components about the status change
-      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
-        detail: { 
-          interpreterId: payload.new?.id,
-          status: payload.new?.status 
+      if (payload.new && payload.new.id && payload.new.status) {
+        const { id, status } = payload.new;
+        
+        // Check if this is a new update
+        if (!lastInterpreterUpdateRef.current[id] || lastInterpreterUpdateRef.current[id] !== status) {
+          lastInterpreterUpdateRef.current[id] = status;
+          
+          // Dispatch a custom event to notify other components about the status change
+          window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+            detail: { 
+              interpreterId: id,
+              status: status 
+            }
+          }));
+          
+          // This is a status update, trigger the refresh
+          debouncedUpdate();
         }
-      }));
-      
-      // This is a status update, trigger the refresh
-      debouncedUpdate();
+      }
     },
     {
       debugMode: true, // Enable debug mode for troubleshooting
@@ -117,6 +193,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       retryInterval: 2000, // Shorter retry for status updates
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
+        // If subscription fails, rely on polling as fallback
       }
     }
   );
