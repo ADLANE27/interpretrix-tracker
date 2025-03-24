@@ -112,7 +112,7 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using RPC function
+      // Update interpreter status using RPC function with correct parameters
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus

@@ -1,6 +1,7 @@
 
 import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup visibility change event listeners
@@ -17,10 +18,18 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Listen for interpreter status update events
+    const handleStatusUpdate = () => {
+      console.log('[useMissionUpdates] Received manual status update event');
+      onUpdate();
+    };
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
       window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
   }, [onUpdate]);
 

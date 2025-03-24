@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -6,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -94,7 +94,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Update status directly in database as a backup
+      // Update status via RPC function
       if (userId.current) {
         const { error: dbError } = await supabase.rpc('update_interpreter_status', {
           p_interpreter_id: userId.current,
@@ -103,7 +103,12 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         
         if (dbError) {
           console.error('[StatusButtonsBar] Database error:', dbError);
+          throw dbError;
         }
+        
+        // Emit event to notify components of status change
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+        console.log('[StatusButtonsBar] Status update event emitted');
       }
       
       // Call the parent handler
