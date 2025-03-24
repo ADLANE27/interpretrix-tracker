@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -7,9 +6,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { eventEmitter, EVENT_STATUS_UPDATE } from '@/lib/events';
-
-// Define status update event in lib/events.ts if not already there
-export const EVENT_STATUS_UPDATE = 'status_update';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -34,7 +30,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const retryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -47,13 +42,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     fetchUserId();
   }, []);
 
-  // Update local state when prop changes with de-duplication
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       const now = Date.now();
       const updateId = `${currentStatus}-${now}`;
       
-      // Prevent duplicate rapid updates (within 500ms)
       if (lastUpdateRef.current && 
           now - lastUpdateRef.current.timestamp < 500 &&
           lastUpdateRef.current.id.startsWith(currentStatus)) {
@@ -67,17 +60,14 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     }
   }, [currentStatus, localStatus]);
 
-  // Listen for status updates from other components
   useEffect(() => {
     const handleExternalStatusUpdate = (data: { status: Status, userId: string }) => {
-      // Only update if it's for this user
       if (data.userId === userId.current) {
         console.log('[StatusButtonsBar] Received external status update:', data.status);
         
         const now = Date.now();
         const updateId = `${data.status}-${now}-external`;
         
-        // Prevent duplicate rapid updates
         if (lastUpdateRef.current && 
             now - lastUpdateRef.current.timestamp < 500 &&
             lastUpdateRef.current.id.includes(data.status)) {
@@ -87,7 +77,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         
         lastUpdateRef.current = { id: updateId, timestamp: now };
         
-        // Clear any pending updates
         if (statusUpdateTimeoutRef.current) {
           clearTimeout(statusUpdateTimeoutRef.current);
           statusUpdateTimeoutRef.current = null;
@@ -175,19 +164,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     try {
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
-      // Cancel any pending updates
       if (statusUpdateTimeoutRef.current) {
         clearTimeout(statusUpdateTimeoutRef.current);
         statusUpdateTimeoutRef.current = null;
       }
       
-      // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Update status directly in database as a backup
       const dbUpdateSuccess = await updateStatusInDatabase(newStatus);
       
-      // Broadcast the status change to other components
       if (userId.current) {
         eventEmitter.emit(EVENT_STATUS_UPDATE, { 
           status: newStatus, 
@@ -195,11 +180,9 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         });
       }
       
-      // Call the parent handler
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
-      // Show success toast
       toast({
         title: "Statut mis à jour",
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
@@ -207,7 +190,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     } catch (error: any) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       
-      // Implement retry logic for failed updates
       const attemptRetry = async () => {
         if (retryCountRef.current < maxRetries) {
           retryCountRef.current++;
@@ -219,7 +201,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
             if (dbUpdateSuccess) {
               console.log('[StatusButtonsBar] Retry successful');
               
-              // No need to revert the optimistic update if retry succeeds
               if (userId.current) {
                 eventEmitter.emit(EVENT_STATUS_UPDATE, { 
                   status: newStatus, 
@@ -238,16 +219,13 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
             console.error('[StatusButtonsBar] Retry failed:', retryError);
           }
           
-          // Schedule another retry with exponential backoff
           const backoffDelay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000);
           statusUpdateTimeoutRef.current = setTimeout(attemptRetry, backoffDelay);
         } else {
           console.error('[StatusButtonsBar] Max retries exceeded, reverting to previous status');
           
-          // Revert to previous status on error after max retries
           setLocalStatus(currentStatus);
           
-          // Show error toast
           toast({
             title: "Erreur",
             description: "Impossible de mettre à jour votre statut après plusieurs tentatives. Veuillez réessayer.",
@@ -256,7 +234,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         }
       };
       
-      // Start retry process
       attemptRetry();
     } finally {
       setIsUpdating(false);

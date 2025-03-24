@@ -188,7 +188,7 @@ export function useRealtimeSubscription(
             schema: config.schema || 'public', 
             table: config.table, 
             ...parsedFilter
-          }, 
+          } as any, // Use type assertion to bypass strict type checking
           (payload: RealtimePostgresChangesPayload<any>) => {
             // Generate a unique event ID
             const eventId = generateEventId(payload);

@@ -149,13 +149,28 @@ export const InterpreterDashboard = () => {
         data.work_hours = null;
       }
 
-      setProfile(data as Profile);
+      // Convert the languages from string[] to {source: string, target: string}[]
+      const formattedLanguages = (data.languages || []).map((langStr: string) => {
+        const parts = langStr.split(' → ');
+        return {
+          source: parts[0] || '',
+          target: parts[1] || ''
+        };
+      });
+
+      // Construct a valid Profile object from the data
+      const profileData: Profile = {
+        ...data as any,
+        languages: formattedLanguages
+      };
+
+      setProfile(profileData);
       
       if (!data.password_changed) {
         setIsPasswordDialogOpen(true);
       }
       
-      console.log('[InterpreterDashboard] Profile loaded:', data);
+      console.log('[InterpreterDashboard] Profile loaded:', profileData);
     } catch (error) {
       console.error('[InterpreterDashboard] Error in fetchProfile:', error);
       
@@ -280,7 +295,7 @@ export const InterpreterDashboard = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <LoadingSpinner size="large" />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -314,18 +329,18 @@ export const InterpreterDashboard = () => {
         
         <div className="flex flex-1">
           <Sidebar
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
+            open={isSidebarOpen}
+            onOpenChange={open => setIsSidebarOpen(open)}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            showHelpButton={() => setIsGuideOpen(true)}
+            onShowHelp={() => setIsGuideOpen(true)}
           />
           
           <DashboardContent
             activeTab={activeTab}
             profile={profile}
-            onProfileUpdated={fetchProfile}
-            onMissionsUpdated={fetchScheduledMissions}
+            onProfileUpdate={fetchProfile}
+            onMissionsUpdate={fetchScheduledMissions}
             scheduledMissions={scheduledMissions}
           />
         </div>
@@ -334,18 +349,21 @@ export const InterpreterDashboard = () => {
           <MobileNavigationBar
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            showHelpButton={() => setIsGuideOpen(true)}
+            onShowHelp={() => setIsGuideOpen(true)}
           />
         )}
       </div>
       
       <PasswordChangeDialog
-        isOpen={isPasswordDialogOpen}
-        onClose={() => setIsPasswordDialogOpen(false)}
+        open={isPasswordDialogOpen}
+        onOpenChange={open => setIsPasswordDialogOpen(open)}
         onPasswordChange={fetchProfile}
       />
       
-      <HowToUseGuide isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+      <HowToUseGuide 
+        open={isGuideOpen} 
+        onOpenChange={open => setIsGuideOpen(open)} 
+      />
     </>
   );
 };
