@@ -225,9 +225,11 @@ export function useRealtimeSubscription(
           } else {
             logError(`Max retries reached for ${config.table}`);
             // Call onError but continue attempting to reconnect
-            onError?.({
-              message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
-            });
+            if (onError) {
+              onError({
+                message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
+              });
+            }
             
             // Reset retry count and try again after a longer delay
             retryCountRef.current = 0;
@@ -241,7 +243,7 @@ export function useRealtimeSubscription(
 
     } catch (error) {
       logError(`Error setting up channel for ${config.table}:`, error);
-      onError?.(error);
+      if (onError) onError(error);
       
       // Try again after error
       reconnectTimeoutRef.current = setTimeout(() => {

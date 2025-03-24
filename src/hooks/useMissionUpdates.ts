@@ -45,12 +45,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     {
       debugMode: true,
       maxRetries: 5,
-      retryInterval: 2000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
-        // Trigger update on error as a fallback
-        onUpdate();
-      }
+      retryInterval: 2000
     }
   );
 
@@ -68,37 +63,30 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     {
       debugMode: true,
       maxRetries: 5,
-      retryInterval: 2000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
-        // Trigger update on error as a fallback
-        onUpdate();
-      }
+      retryInterval: 2000
     }
   );
   
-  // Fix the filter syntax for interpreter profile status changes
+  // Subscribe to interpreter profile status changes - using the correct filter syntax
   useRealtimeSubscription(
     {
       event: 'UPDATE',
       schema: 'public',
       table: 'interpreter_profiles',
-      // Fixed filter - correct format is column=filter_type.value
       filter: 'status=in.(available,busy,pause,unavailable)'
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       onUpdate();
+      
+      // Dispatch an event that other components can listen to
+      const statusUpdateEvent = new CustomEvent('interpreter-status-update', { detail: payload });
+      window.dispatchEvent(statusUpdateEvent);
     },
     {
       debugMode: true,
       maxRetries: 5,
-      retryInterval: 2000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Status subscription error:', error);
-        // Trigger update on error as a fallback
-        onUpdate();
-      }
+      retryInterval: 2000
     }
   );
 };

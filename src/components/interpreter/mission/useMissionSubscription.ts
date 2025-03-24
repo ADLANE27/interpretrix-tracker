@@ -1,6 +1,5 @@
 
 import { useRef, useEffect } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,7 +12,6 @@ export const useMissionSubscription = (
   currentUserId: string | null,
   onMissionUpdate: () => void
 ) => {
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -76,10 +74,7 @@ export const useMissionSubscription = (
     {
       debugMode: false,
       maxRetries: 3,
-      retryInterval: 5000,
-      onError: (error) => {
-        console.error('[useMissionSubscription] Subscription error:', error);
-      }
+      retryInterval: 5000
     }
   );
 

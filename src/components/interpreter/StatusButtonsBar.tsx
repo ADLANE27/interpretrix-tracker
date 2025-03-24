@@ -108,7 +108,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus) return;
+    if (!userId.current || localStatus === newStatus) return;
     
     // If already updating, queue this change
     if (isUpdating) {
@@ -125,29 +125,28 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setLocalStatus(newStatus);
       
       // Update status directly in database as the primary method
-      if (userId.current) {
-        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-          p_interpreter_id: userId.current,
-          p_status: newStatus as string
-        });
-        
-        if (dbError) {
-          console.error('[StatusButtonsBar] Database error:', dbError);
-          throw dbError;
-        }
-
-        // Call the parent handler after successful database update
-        await onStatusChange(newStatus);
-        console.log('[StatusButtonsBar] Status changed to:', newStatus);
-        
-        // Show success toast
-        toast({
-          title: "Statut mis à jour",
-          description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
-        });
-      } else {
-        throw new Error("User ID not available");
+      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId.current,
+        p_status: newStatus as string
+      });
+      
+      if (dbError) {
+        console.error('[StatusButtonsBar] Database error:', dbError);
+        throw dbError;
       }
+
+      // Call the parent handler after successful database update
+      if (onStatusChange) {
+        await onStatusChange(newStatus);
+      }
+      
+      console.log('[StatusButtonsBar] Status changed to:', newStatus);
+      
+      // Show success toast
+      toast({
+        title: "Statut mis à jour",
+        description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
+      });
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       

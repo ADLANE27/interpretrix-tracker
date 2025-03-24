@@ -27,7 +27,7 @@ interface InterpreterStatusDropdownProps {
   currentStatus: Status;
   className?: string;
   displayFormat?: "badge" | "button";
-  onStatusChange?: (newStatus: Status) => void;
+  onStatusChange?: (newStatus: Status) => void | Promise<void>;
 }
 
 const statusConfig: Record<Status, StatusConfigItem> = {
@@ -119,7 +119,14 @@ export const InterpreterStatusDropdown = ({
       
       // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
-        onStatusChange(pendingStatus);
+        try {
+          const result = onStatusChange(pendingStatus);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (error) {
+          console.error('[InterpreterStatusDropdown] Error in parent callback:', error);
+        }
       }
       
       // Update interpreter status using RPC function - this is the authoritative update

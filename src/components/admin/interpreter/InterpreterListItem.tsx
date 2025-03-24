@@ -49,7 +49,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
-  const handleStatusChange = (newStatus: Profile['status']) => {
+  const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
     
     // Update local state immediately for responsive UI
@@ -71,10 +71,9 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         const result = onStatusChange(interpreter.id, newStatus);
         
         // Check if the result is a Promise
-        if (result && typeof result.catch === 'function') {
-          result.catch(error => {
+        if (result instanceof Promise) {
+          await result.catch(error => {
             console.error(`[InterpreterListItem] Error updating status:`, error);
-            // Toast is displayed by the parent component that handles onStatusChange
             
             // If there have been multiple failed attempts, show guidance
             if (statusUpdateAttempts >= 2) {
@@ -88,6 +87,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         }
       } catch (error) {
         console.error(`[InterpreterListItem] Error in status update:`, error);
+        
         // Handle synchronous errors
         if (statusUpdateAttempts >= 2) {
           toast({
