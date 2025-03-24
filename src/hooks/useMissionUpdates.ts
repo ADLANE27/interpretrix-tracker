@@ -71,25 +71,25 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     }
   );
   
-  // Use a more specific subscription for interpreter profile status changes
-  // FIX: Use the correct filter format that works with Supabase realtime
+  // Subscribe to ALL interpreter profile changes - don't use filters as they're unreliable
   useRealtimeSubscription(
     {
-      event: 'UPDATE',
+      event: '*',
       schema: 'public',
       table: 'interpreter_profiles'
     },
     (payload) => {
-      console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      // Check if this is a status update
-      if (payload.new && payload.new.status) {
-        console.log('[useMissionUpdates] Status change detected:', payload.new.status);
+      console.log('[useMissionUpdates] Interpreter profile update received:', payload);
+      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+        console.log('[useMissionUpdates] Interpreter status changed from', payload.old.status, 'to', payload.new.status);
         onUpdate();
+      } else {
+        console.log('[useMissionUpdates] Not a status change, skipping update');
       }
     },
     {
       debugMode: true,
-      maxRetries: 3,
+      maxRetries: 5,
       retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);

@@ -30,6 +30,9 @@ interface InterpreterStatusDropdownProps {
   onStatusChange?: (interpreterId: string, newStatus: Status) => void;
 }
 
+// Define the allowable status values to ensure type safety
+const allowableStatuses: Status[] = ["available", "unavailable", "pause", "busy"];
+
 const statusConfig: Record<Status, StatusConfigItem> = {
   available: {
     color: "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm",
@@ -64,20 +67,28 @@ export const InterpreterStatusDropdown = ({
   displayFormat = "badge",
   onStatusChange
 }: InterpreterStatusDropdownProps) => {
+  // Ensure currentStatus is valid, defaulting to "unavailable" if not
+  const validatedStatus: Status = allowableStatuses.includes(currentStatus) ? currentStatus : "unavailable";
+  
   const [isOpen, setIsOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
+  const [localStatus, setLocalStatus] = useState<Status>(validatedStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const transactionIdRef = useRef<string | null>(null);
   const updateAttemptsRef = useRef(0);
   const maxUpdateAttempts = 3;
 
+  // Log initial status for debugging
+  useEffect(() => {
+    console.log(`[InterpreterStatusDropdown] Initial status for ${interpreterId}:`, validatedStatus);
+  }, [interpreterId, validatedStatus]);
+
   // Update local state when prop changes
   useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
+    if (currentStatus && currentStatus !== localStatus && allowableStatuses.includes(currentStatus)) {
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
@@ -89,6 +100,8 @@ export const InterpreterStatusDropdown = ({
       if (!transactionIdRef.current || !isUpdating || !pendingStatus) return;
       
       try {
+        console.log(`[InterpreterStatusDropdown] Verifying status update for ${interpreterId}. Transaction:`, transactionIdRef.current);
+        
         const { data, error } = await supabase
           .from('interpreter_profiles')
           .select('status')
@@ -99,6 +112,8 @@ export const InterpreterStatusDropdown = ({
           console.error('[InterpreterStatusDropdown] Error verifying status update:', error);
           return;
         }
+        
+        console.log(`[InterpreterStatusDropdown] Database status for ${interpreterId}:`, data?.status, 'Expected:', pendingStatus);
         
         if (data && data.status === pendingStatus) {
           console.log('[InterpreterStatusDropdown] Status update verified successfully:', data.status);
@@ -146,7 +161,7 @@ export const InterpreterStatusDropdown = ({
       }
     };
     
-    if (isUpdating && transactionIdRef.current) {
+    if (isUpdating && transactionIdRef.current && pendingStatus) {
       setTimeout(verifyStatusUpdate, 500); // Initial delay before first check
     }
   }, [isUpdating, pendingStatus, interpreterId, currentStatus, toast]);
@@ -156,6 +171,8 @@ export const InterpreterStatusDropdown = ({
       setIsOpen(false);
       return;
     }
+    
+    console.log(`[InterpreterStatusDropdown] Status selection initiated for ${interpreterId}:`, status);
     setPendingStatus(status);
     setIsConfirmDialogOpen(true);
     setIsOpen(false);
@@ -221,18 +238,20 @@ export const InterpreterStatusDropdown = ({
 
   // Content based on display format
   const triggerContent = () => {
-    const StatusIcon = statusConfig[localStatus].icon;
-    const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
+    // Ensure we're using a valid status
+    const displayStatus = allowableStatuses.includes(localStatus) ? localStatus : "unavailable";
+    const StatusIcon = statusConfig[displayStatus].icon;
+    const displayLabel = isMobile ? statusConfig[displayStatus].mobileLabel : statusConfig[displayStatus].label;
     
     if (displayFormat === "badge") {
       return (
-        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
+        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[displayStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
           {displayLabel}
         </div>
       );
     } else {
       return (
-        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
+        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[displayStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
           <StatusIcon className="h-4 w-4" />
           <span>{displayLabel}</span>
         </div>

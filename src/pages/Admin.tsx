@@ -11,10 +11,11 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isPolling, setIsPolling] = useState(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalMs = 7000; // Poll every 7 seconds
+  const pollingIntervalMs = 5000; // Reduced poll interval to 5 seconds for quicker updates
   
   // Use this function to refresh interpreter status data
   const refreshInterpreterStatuses = useCallback(() => {
+    console.log('[Admin] Refreshing interpreter statuses');
     // Dispatch a custom event that the AdminDashboard components will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
   }, []);
@@ -50,33 +51,10 @@ const Admin = () => {
     };
   }, [isPolling, refreshInterpreterStatuses]);
 
-  // Handle visibility changes to pause/resume polling
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[Admin] Tab became visible, refreshing data immediately');
-        // Immediately refresh data
-        refreshInterpreterStatuses();
-        // Resume polling
-        setIsPolling(true);
-      } else {
-        console.log('[Admin] Tab hidden, pausing polling');
-        // Pause polling when tab is not visible
-        setIsPolling(false);
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshInterpreterStatuses]);
-
-  // Add the useMissionUpdates hook as a supplementary method to refresh data
-  // This provides a backup mechanism in case the polling misses any updates
+  // Use the modified useMissionUpdates hook as a supplementary method to refresh data
   useMissionUpdates(refreshInterpreterStatuses);
 
+  // Authentication check
   useEffect(() => {
     const checkAuth = async () => {
       try {

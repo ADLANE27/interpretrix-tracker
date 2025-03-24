@@ -35,12 +35,23 @@ const workLocationConfig = {
 };
 
 export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
-  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
+  // Set default status to "unavailable" if not valid
+  const validStatus: Profile['status'] = 
+    ["available", "unavailable", "pause", "busy"].includes(interpreter.status) 
+      ? interpreter.status 
+      : "unavailable";
+      
+  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(validStatus);
   const { toast } = useToast();
+
+  // Log initial status for debugging
+  useEffect(() => {
+    console.log(`[InterpreterListItem] Initial status for ${interpreter.id}:`, validStatus);
+  }, [interpreter.id, validStatus]);
 
   // Update local state when props change
   useEffect(() => {
-    if (interpreter.status !== interpreterStatus) {
+    if (interpreter.status !== interpreterStatus && ["available", "unavailable", "pause", "busy"].includes(interpreter.status)) {
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
     }
