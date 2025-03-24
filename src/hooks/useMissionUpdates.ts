@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { useRealtimeSubscription } from './use-realtime-subscription';
+import { useRealtimeSubscription } from './realtime';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
 
 export const useMissionUpdates = (onUpdate: () => void) => {

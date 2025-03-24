@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Mission } from '@/types/mission';
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription';
+import { useRealtimeSubscription } from '@/hooks/realtime';
 
 export const useMissionSubscription = (
   currentUserId: string | null,
