@@ -11,7 +11,7 @@ type EventTypes = {
     isThreadReply?: boolean;
     isReplyToUserMessage?: boolean;
   };
-  interpreter-status-update: void;
+  'interpreter-status-update': void;
   status_update: { status: string; userId: string };
 };
 

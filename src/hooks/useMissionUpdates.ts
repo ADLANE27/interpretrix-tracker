@@ -1,12 +1,8 @@
-
 import { useEffect, useRef, useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { eventEmitter } from '@/lib/events';
-
-// Define a constant for the status update event
-export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
