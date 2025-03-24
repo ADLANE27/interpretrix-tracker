@@ -6,8 +6,9 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -43,10 +44,58 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
       
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(validStatus);
   const { toast } = useToast();
+  const statusRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStatusUpdateRef = useRef<number>(0);
+
+  // Refresh interpreter status from the database when UI becomes stale
+  const refreshInterpreterStatus = async () => {
+    try {
+      // Only refresh if it's been at least 5 seconds since the last update
+      const now = Date.now();
+      if (now - lastStatusUpdateRef.current < 5000) {
+        console.log(`[InterpreterListItem] Skipping refresh for ${interpreter.id} - too recent`);
+        return;
+      }
+      
+      console.log(`[InterpreterListItem] Refreshing status for ${interpreter.id} from database`);
+      
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', interpreter.id)
+        .single();
+        
+      if (error) {
+        console.error(`[InterpreterListItem] Error refreshing status for ${interpreter.id}:`, error);
+        return;
+      }
+      
+      if (data && data.status && data.status !== interpreterStatus) {
+        console.log(`[InterpreterListItem] Status updated from database for ${interpreter.id}: ${data.status}`);
+        setInterpreterStatus(data.status as Profile['status']);
+        lastStatusUpdateRef.current = now;
+      }
+    } catch (error) {
+      console.error(`[InterpreterListItem] Exception refreshing status for ${interpreter.id}:`, error);
+    }
+  };
 
   // Log initial status for debugging
   useEffect(() => {
     console.log(`[InterpreterListItem] Initial status for ${interpreter.id}:`, validStatus);
+    
+    // Set up a periodic refresh of the status
+    statusRefreshTimeoutRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshInterpreterStatus();
+      }
+    }, 30000); // Every 30 seconds
+    
+    return () => {
+      if (statusRefreshTimeoutRef.current) {
+        clearInterval(statusRefreshTimeoutRef.current);
+      }
+    };
   }, [interpreter.id, validStatus]);
 
   // Update local state when props change
@@ -54,12 +103,29 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     if (interpreter.status !== interpreterStatus && ["available", "unavailable", "pause", "busy"].includes(interpreter.status)) {
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
+      lastStatusUpdateRef.current = Date.now();
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
+
+  // Listen for global status update events
+  useEffect(() => {
+    const handleStatusUpdate = () => {
+      console.log(`[InterpreterListItem] Received status update event for ${interpreter.id}`);
+      refreshInterpreterStatus();
+    };
+    
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
+    
+    return () => {
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
+    };
+  }, [interpreter.id]);
 
   const handleStatusChange = (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
     setInterpreterStatus(newStatus);
+    lastStatusUpdateRef.current = Date.now();
+    
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
     }

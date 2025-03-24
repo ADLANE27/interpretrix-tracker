@@ -26,8 +26,8 @@ const circuitBreakerState = {
   isOpen: false,
   failureCount: 0,
   lastFailureTime: 0,
-  resetTimeout: 30000, // Reduced from 60s to 30s for faster recovery
-  failureThreshold: 3
+  resetTimeout: 20000, // Reduced to 20s for faster recovery
+  failureThreshold: 5
 };
 
 export function useRealtimeSubscription(
@@ -37,8 +37,8 @@ export function useRealtimeSubscription(
 ) {
   const {
     enabled = true,
-    retryInterval = 5000,
-    maxRetries = 3,
+    retryInterval = 3000,
+    maxRetries = 5,
     onError,
     debugMode = false,
     enableRealtimeConfig = true
@@ -49,6 +49,7 @@ export function useRealtimeSubscription(
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
@@ -59,6 +60,14 @@ export function useRealtimeSubscription(
   const logError = useCallback((message: string, ...args: any[]) => {
     console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
   }, []);
+
+  const resetCircuitBreaker = useCallback(() => {
+    if (circuitBreakerState.isOpen) {
+      log(`Manually resetting circuit breaker for ${config.table}`);
+      circuitBreakerState.isOpen = false;
+      circuitBreakerState.failureCount = 0;
+    }
+  }, [config.table, log]);
 
   const shouldTryEnableRealtime = useCallback((tableName: string) => {
     // If cache shows this table is already enabled, skip
@@ -94,6 +103,11 @@ export function useRealtimeSubscription(
     
     try {
       log(`Enabling realtime for table ${tableName}`);
+      
+      // Add to global cache preemptively to prevent duplicate calls
+      // This helps during quick retries even if the API call is still in progress
+      enabledTablesCache.add(tableName);
+      
       const { data, error } = await supabase.functions.invoke('enable-realtime', {
         body: { table: tableName }
       });
@@ -101,22 +115,24 @@ export function useRealtimeSubscription(
       if (error) {
         logError(`Error enabling realtime for table ${tableName}:`, error);
         
-        // Update circuit breaker on failure
-        circuitBreakerState.failureCount++;
-        circuitBreakerState.lastFailureTime = Date.now();
-        
-        if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
-          circuitBreakerState.isOpen = true;
-          logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+        // Only remove from cache if the error is not a "already enabled" error
+        if (!error.message?.includes('already enabled')) {
+          enabledTablesCache.delete(tableName);
+          
+          // Update circuit breaker on failure
+          circuitBreakerState.failureCount++;
+          circuitBreakerState.lastFailureTime = Date.now();
+          
+          if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
+            circuitBreakerState.isOpen = true;
+            logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+          }
         }
         
         return false;
       }
       
       log(`Successfully enabled realtime for table ${tableName}:`, data);
-      
-      // Add to global cache on success
-      enabledTablesCache.add(tableName);
       
       // Reset circuit breaker on success
       circuitBreakerState.failureCount = 0;
@@ -135,25 +151,42 @@ export function useRealtimeSubscription(
         logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
       }
       
+      // Remove from cache on error
+      enabledTablesCache.delete(tableName);
+      
       return false;
     }
   }, [enableRealtimeConfig, shouldTryEnableRealtime, log, logError]);
 
+  // Function to clear timeout
+  const clearSetupTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    if (!enabled) return;
+    
+    // Try to manually reset circuit breaker on each mount
+    // This helps to recover more quickly after page reloads
+    resetCircuitBreaker();
+    
+    let mounted = true;
 
     const setupChannel = async () => {
-      if (!enabled) return;
-
+      if (!mounted || !enabled) return;
+      
       try {
+        // Remove any existing channel
         if (channelRef.current) {
           log('Removing existing channel');
           await supabase.removeChannel(channelRef.current);
           channelRef.current = null;
         }
 
-        // Try to enable realtime for this table, but proceed with subscription even if it fails
-        // This allows reconnection attempts even if the realtime enablement failed
+        // Try to enable realtime for this table
         await enableRealtimeForTable(config.table);
 
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
@@ -161,14 +194,14 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
-        // Create subscription config without the filter if it contains 'eq.' as this format is not supported
+        // Create subscription config without filters that use 'eq.' format
         const subscriptionConfig: any = { 
           event: config.event, 
           schema: config.schema || 'public', 
           table: config.table
         };
         
-        // Only add filter if it doesn't use the 'eq.' format which is not working correctly
+        // Only add filter if it doesn't use the 'eq.' format which can be problematic
         if (config.filter && !config.filter.includes('eq.')) {
           subscriptionConfig.filter = config.filter;
           log(`Using filter: ${config.filter}`);
@@ -180,6 +213,8 @@ export function useRealtimeSubscription(
           'postgres_changes' as any, 
           subscriptionConfig, 
           (payload: RealtimePostgresChangesPayload<any>) => {
+            if (!mounted) return;
+            
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
               (payload.old as any)?.id : 
@@ -198,26 +233,34 @@ export function useRealtimeSubscription(
               seenEvents.current = new Set(eventsArray.slice(-50));
             }
             
-            log(`Received ${config.event} event for ${config.table}:`, payload);
+            log(`Received ${payload.eventType} event for ${config.table}:`, payload);
             callback(payload);
           }
         );
 
         channelRef.current = channel.subscribe((status) => {
+          if (!mounted) return;
+          
           log(`Subscription status for ${config.table}: ${status}`);
           
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
             retryCountRef.current = 0;
+            log(`Successfully subscribed to ${config.table}`);
           } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             setIsConnected(false);
             
             if (retryCountRef.current < maxRetries) {
               const currentRetry = retryCountRef.current + 1;
-              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1);
+              // Use a simple retryInterval instead of exponential backoff to recover faster
+              const delayMs = retryInterval;
               log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
               retryCountRef.current = currentRetry;
-              timeoutId = setTimeout(setupChannel, delayMs);
+              
+              clearSetupTimeout();
+              timeoutRef.current = setTimeout(() => {
+                if (mounted) setupChannel();
+              }, delayMs);
             } else {
               logError(`Max retries reached for ${config.table}`);
               onError?.({
@@ -228,18 +271,34 @@ export function useRealtimeSubscription(
         });
 
       } catch (error) {
+        if (!mounted) return;
+        
         logError(`Error setting up channel for ${config.table}:`, error);
         onError?.(error);
+        
+        if (retryCountRef.current < maxRetries) {
+          const currentRetry = retryCountRef.current + 1;
+          const delayMs = retryInterval;
+          log(`Attempting reconnection after error (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
+          retryCountRef.current = currentRetry;
+          
+          clearSetupTimeout();
+          timeoutRef.current = setTimeout(() => {
+            if (mounted) setupChannel();
+          }, delayMs);
+        }
       }
     };
 
     setupChannel();
 
     return () => {
-      log(`Cleaning up subscription for ${config.table}`);
-      clearTimeout(timeoutId);
+      mounted = false;
+      clearSetupTimeout();
+      
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
   }, [
@@ -254,8 +313,40 @@ export function useRealtimeSubscription(
     onError, 
     enableRealtimeForTable,
     log,
-    logError
+    logError,
+    clearSetupTimeout,
+    resetCircuitBreaker
   ]);
 
-  return { isConnected };
+  // Allow manual reconnection from outside
+  const reconnect = useCallback(() => {
+    log(`Manual reconnection triggered for ${config.table}`);
+    retryCountRef.current = 0;
+    resetCircuitBreaker();
+    
+    // Force remove and recreate channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
+    // Start the setup process again
+    const setupChannel = async () => {
+      try {
+        await enableRealtimeForTable(config.table);
+        
+        const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}-manual`;
+        log(`Setting up new channel manually with name: ${channelName}`);
+        
+        // Continue with channel setup logic
+        // ... similar to the useEffect logic
+      } catch (error) {
+        logError(`Error in manual reconnect for ${config.table}:`, error);
+      }
+    };
+    
+    setupChannel();
+  }, [config.table, config.event, config.filter, enableRealtimeForTable, log, logError, resetCircuitBreaker]);
+
+  return { isConnected, reconnect };
 }

@@ -11,13 +11,31 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isPolling, setIsPolling] = useState(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalMs = 5000; // Reduced poll interval to 5 seconds for quicker updates
+  const pollingIntervalMs = 10000; // Polling interval reduced to 10 seconds
+  const lastPollTimeRef = useRef<number>(0);
+  const pendingPollingRef = useRef<boolean>(false);
   
   // Use this function to refresh interpreter status data
   const refreshInterpreterStatuses = useCallback(() => {
+    const now = Date.now();
+    
+    // If we recently refreshed or if there's a pending refresh operation, skip this update
+    if (now - lastPollTimeRef.current < 2000 || pendingPollingRef.current) {
+      console.log('[Admin] Skipping refresh - too soon or pending refresh');
+      return;
+    }
+    
     console.log('[Admin] Refreshing interpreter statuses');
+    lastPollTimeRef.current = now;
+    pendingPollingRef.current = true;
+    
     // Dispatch a custom event that the AdminDashboard components will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+    
+    // Clear the pending flag after a short delay to allow the UI to update
+    setTimeout(() => {
+      pendingPollingRef.current = false;
+    }, 1000);
   }, []);
 
   // Set up polling for interpreter status updates
@@ -29,6 +47,9 @@ const Admin = () => {
       
       if (isPolling) {
         console.log('[Admin] Starting interpreter status polling');
+        // Initial refresh immediately after page load
+        refreshInterpreterStatuses();
+        
         pollingIntervalRef.current = setInterval(() => {
           if (document.visibilityState === 'visible') {
             console.log('[Admin] Polling interpreter statuses');
@@ -53,6 +74,30 @@ const Admin = () => {
 
   // Use the modified useMissionUpdates hook as a supplementary method to refresh data
   useMissionUpdates(refreshInterpreterStatuses);
+
+  // Handle visible/hidden state
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Admin] Page became visible, immediately refreshing statuses');
+        refreshInterpreterStatuses();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refreshInterpreterStatuses]);
+
+  // Handle online/offline state
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('[Admin] Network connection restored, immediately refreshing statuses');
+      refreshInterpreterStatuses();
+    };
+    
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [refreshInterpreterStatuses]);
 
   // Authentication check
   useEffect(() => {

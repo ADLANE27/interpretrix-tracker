@@ -28,6 +28,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const userId = useRef<string | null>(null);
   const updateAttemptsRef = useRef(0);
   const maxUpdateAttempts = 3;
+  const verificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get user ID once on component mount
   useEffect(() => {
@@ -51,72 +52,105 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   }, [currentStatus, localStatus]);
 
   // Verify status update was successful
-  useEffect(() => {
-    const verifyStatusUpdate = async () => {
-      if (!transactionIdRef.current || !userId.current || !isUpdating) return;
+  const verifyStatusUpdate = async (expectedStatus: Status, attempt = 1) => {
+    if (!userId.current || !isUpdating || !transactionIdRef.current) return;
+    
+    try {
+      console.log(`[StatusButtonsBar] Verifying status update (attempt ${attempt}/${maxUpdateAttempts}). Transaction:`, transactionIdRef.current);
       
-      try {
-        const { data, error } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', userId.current)
-          .single();
-          
-        if (error) {
-          console.error('[StatusButtonsBar] Error verifying status update:', error);
-          return;
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', userId.current)
+        .single();
+        
+      if (error) {
+        console.error('[StatusButtonsBar] Error verifying status update:', error);
+        if (attempt < maxUpdateAttempts) {
+          verificationTimeoutRef.current = setTimeout(() => {
+            verifyStatusUpdate(expectedStatus, attempt + 1);
+          }, 1000);
+        } else {
+          handleUpdateFailure('Erreur de vérification de la mise à jour');
+        }
+        return;
+      }
+      
+      console.log(`[StatusButtonsBar] Database status: ${data?.status}, Expected: ${expectedStatus}`);
+      
+      if (data && data.status === expectedStatus) {
+        console.log('[StatusButtonsBar] Status update verified successfully');
+        cleanupUpdate();
+        toast({
+          title: "Statut mis à jour",
+          description: `Votre statut est maintenant "${statusConfig[expectedStatus].label}"`,
+        });
+      } else if (attempt < maxUpdateAttempts) {
+        console.warn('[StatusButtonsBar] Status verification failed, retrying');
+        
+        // Retry the update
+        const { error: retryError } = await supabase.rpc('update_interpreter_status', {
+          p_interpreter_id: userId.current,
+          p_status: expectedStatus
+        });
+        
+        if (retryError) {
+          console.error('[StatusButtonsBar] Retry update error:', retryError);
+          if (attempt >= maxUpdateAttempts - 1) {
+            handleUpdateFailure('Erreur lors de la tentative de mise à jour');
+          }
+        } else {
+          console.log('[StatusButtonsBar] Retry attempt', attempt, 'sent');
         }
         
-        if (data && data.status === localStatus) {
-          console.log('[StatusButtonsBar] Status update verified successfully:', data.status);
-          setIsUpdating(false);
-          updateAttemptsRef.current = 0;
-          transactionIdRef.current = null;
-        } else if (updateAttemptsRef.current < maxUpdateAttempts) {
-          console.warn('[StatusButtonsBar] Status verification failed, retrying. Current DB status:', data?.status, 'Expected:', localStatus);
-          updateAttemptsRef.current++;
-          
-          // Retry the update
-          if (userId.current) {
-            const { error: retryError } = await supabase.rpc('update_interpreter_status', {
-              p_interpreter_id: userId.current,
-              p_status: localStatus
-            });
-            
-            if (retryError) {
-              console.error('[StatusButtonsBar] Retry update error:', retryError);
-            } else {
-              console.log('[StatusButtonsBar] Retry attempt', updateAttemptsRef.current, 'sent');
-            }
-          }
-          
-          // Check again after a delay
-          setTimeout(verifyStatusUpdate, 1000);
-        } else {
-          console.error('[StatusButtonsBar] Max retry attempts reached. Status update failed.');
-          setIsUpdating(false);
-          updateAttemptsRef.current = 0;
-          transactionIdRef.current = null;
-          
-          // Show error toast after max retries
-          toast({
-            title: "Erreur de synchronisation",
-            description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
-            variant: "destructive",
-          });
-          
-          // Revert to previous status
-          setLocalStatus(currentStatus);
-        }
-      } catch (e) {
-        console.error('[StatusButtonsBar] Exception in verification:', e);
+        // Check again after a delay
+        verificationTimeoutRef.current = setTimeout(() => {
+          verifyStatusUpdate(expectedStatus, attempt + 1);
+        }, 1000);
+      } else {
+        handleUpdateFailure('Le statut n\'a pas été mis à jour après plusieurs tentatives');
+      }
+    } catch (e) {
+      console.error('[StatusButtonsBar] Exception in verification:', e);
+      if (attempt < maxUpdateAttempts) {
+        verificationTimeoutRef.current = setTimeout(() => {
+          verifyStatusUpdate(expectedStatus, attempt + 1);
+        }, 1000);
+      } else {
+        handleUpdateFailure('Exception lors de la vérification');
+      }
+    }
+  };
+
+  const cleanupUpdate = () => {
+    setIsUpdating(false);
+    updateAttemptsRef.current = 0;
+    transactionIdRef.current = null;
+    if (verificationTimeoutRef.current) {
+      clearTimeout(verificationTimeoutRef.current);
+      verificationTimeoutRef.current = null;
+    }
+  };
+
+  const handleUpdateFailure = (errorMessage: string) => {
+    console.error('[StatusButtonsBar]', errorMessage);
+    cleanupUpdate();
+    setLocalStatus(currentStatus);
+    
+    toast({
+      title: "Erreur de synchronisation",
+      description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
+      variant: "destructive",
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
       }
     };
-    
-    if (isUpdating && transactionIdRef.current) {
-      setTimeout(verifyStatusUpdate, 500); // Initial delay before first check
-    }
-  }, [isUpdating, localStatus, currentStatus, toast]);
+  }, []);
 
   const statusConfig = {
     available: {
@@ -150,7 +184,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
+    if (!onStatusChange || localStatus === newStatus || isUpdating || !userId.current) return;
     
     try {
       setIsUpdating(true);
@@ -163,42 +197,34 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setLocalStatus(newStatus);
       
       // Update status directly in database
-      if (userId.current) {
-        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-          p_interpreter_id: userId.current,
-          p_status: newStatus as string
-        });
-        
-        if (dbError) {
-          console.error('[StatusButtonsBar] Database error:', dbError);
-          throw dbError;
-        }
-        
-        console.log('[StatusButtonsBar] Status update sent to database');
-      } else {
-        console.error('[StatusButtonsBar] No user ID available');
-        throw new Error('No user ID available');
+      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId.current,
+        p_status: newStatus as string
+      });
+      
+      if (dbError) {
+        console.error('[StatusButtonsBar] Database error:', dbError);
+        handleUpdateFailure(dbError.message);
+        return;
       }
       
-      // Call the parent handler
-      await onStatusChange(newStatus);
-      console.log('[StatusButtonsBar] Parent handler called for status:', newStatus);
+      console.log('[StatusButtonsBar] Status update sent to database');
       
-      // Verification will happen in the useEffect
+      // Call the parent handler
+      try {
+        await onStatusChange(newStatus);
+        console.log('[StatusButtonsBar] Parent handler called for status:', newStatus);
+      } catch (handlerError) {
+        console.error('[StatusButtonsBar] Parent handler error:', handlerError);
+        // Continue with verification even if parent handler fails
+      }
+      
+      // Start verification process
+      verifyStatusUpdate(newStatus, 1);
+      
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
-      
-      // Revert to previous status on error
-      setLocalStatus(currentStatus);
-      setIsUpdating(false);
-      transactionIdRef.current = null;
-      
-      // Show error toast
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
-        variant: "destructive",
-      });
+      handleUpdateFailure('Erreur système');
     }
   };
 
@@ -241,6 +267,9 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
             )}>
               {(variant === 'compact' || isMobile) ? config.mobileLabel : config.label}
             </span>
+            {isUpdating && isActive && (
+              <span className="ml-1 h-2 w-2 bg-white rounded-full animate-pulse"/>
+            )}
           </motion.button>
         );
       })}
