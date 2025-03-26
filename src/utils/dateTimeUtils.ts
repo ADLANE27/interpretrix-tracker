@@ -3,7 +3,7 @@
  * Utility functions for handling dates and times consistently across the application
  */
 
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInSeconds, differenceInMinutes, differenceInHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 // Extract time (HH:mm) from ISO string without any timezone conversion
@@ -59,4 +59,25 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
 export const createLocalISOString = (date: string, time: string): string => {
   // Simply concatenate date and time without adding Z marker
   return `${date}T${time}:00`;
+};
+
+// Format countdown display for missions
+export const formatCountdown = (targetDate: Date, now: Date): string => {
+  const diffSeconds = differenceInSeconds(targetDate, now);
+  
+  if (diffSeconds <= 0) {
+    return "Maintenant";
+  }
+  
+  const hours = Math.floor(diffSeconds / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+  
+  if (hours > 0) {
+    return `Dans ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
+  } else if (minutes > 0) {
+    return `Dans ${minutes}min${minutes < 10 ? seconds + 's' : ''}`;
+  } else {
+    return `Dans ${seconds}s`;
+  }
 };

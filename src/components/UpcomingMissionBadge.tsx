@@ -5,7 +5,7 @@ import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { formatTimeString, formatDateDisplay } from "@/utils/dateTimeUtils";
+import { formatTimeString, formatDateDisplay, formatCountdown } from "@/utils/dateTimeUtils";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -49,39 +49,6 @@ export const UpcomingMissionBadge = ({
     }
   };
 
-  const formatCountdown = () => {
-    if (isBefore(now, missionStartDate)) {
-      // Countdown to start
-      const diffSeconds = differenceInSeconds(missionStartDate, now);
-      const hours = Math.floor(diffSeconds / 3600);
-      const minutes = Math.floor((diffSeconds % 3600) / 60);
-      const seconds = diffSeconds % 60;
-      
-      if (hours > 0) {
-        return `Dans ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
-      } else if (minutes > 0) {
-        return `Dans ${minutes}min${seconds}s`;
-      } else {
-        return `Dans ${seconds}s`;
-      }
-    } else if (isBefore(now, missionEndDate)) {
-      // Countdown to end
-      const diffSeconds = differenceInSeconds(missionEndDate, now);
-      const hours = Math.floor(diffSeconds / 3600);
-      const minutes = Math.floor((diffSeconds % 3600) / 60);
-      const seconds = diffSeconds % 60;
-      
-      if (hours > 0) {
-        return `Reste ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
-      } else if (minutes > 0) {
-        return `Reste ${minutes}min${seconds}s`;
-      } else {
-        return `Reste ${seconds}s`;
-      }
-    }
-    return "";
-  };
-
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
@@ -89,7 +56,7 @@ export const UpcomingMissionBadge = ({
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
     const missionDate = formatDateDisplay(startTime);
-    const countdown = showCountdown ? formatCountdown() : '';
+    const countdown = showCountdown ? formatCountdown(missionStartDate, now) : '';
     const countdownPrefix = countdown ? `${countdown} • ` : '';
 
     switch (status) {
@@ -130,7 +97,7 @@ export const UpcomingMissionBadge = ({
       variant={status.variant} 
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2.5 py-1.5 rounded-full",
-        status.flash && "animate-pulse bg-orange-100 text-orange-800 border-orange-200",
+        status.flash && "animate-mission-flash",
         getMissionStatus() === "in-progress" && "bg-blue-100 text-blue-800"
       )}
     >
