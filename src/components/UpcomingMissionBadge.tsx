@@ -131,7 +131,7 @@ export const UpcomingMissionBadge = ({
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2.5 py-1.5 rounded-full",
         status.flash && "animate-pulse bg-orange-100 text-orange-800 border-orange-200",
-        getMissionStatus() === "in-progress" && "animate-pulse"
+        getMissionStatus() === "in-progress" && "bg-blue-100 text-blue-800"
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />

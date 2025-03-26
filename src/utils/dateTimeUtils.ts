@@ -59,4 +59,4 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
 export const createLocalISOString = (date: string, time: string): string => {
   // Simply concatenate date and time without adding Z marker
   return `${date}T${time}:00`;
-}
+};
