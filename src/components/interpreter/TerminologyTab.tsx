@@ -16,7 +16,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LanguageFilter } from "./LanguageFilter";
+import { LanguageCombobox } from "./LanguageCombobox";
 import { LANGUAGES } from "@/lib/constants";
 
 interface TerminologyTabProps {
@@ -210,7 +210,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
         <TabsContent value="search" className="flex-1 flex flex-col">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <LanguageFilter
+              <LanguageCombobox
                 languages={LANGUAGES}
                 value={sourceLanguage}
                 onChange={setSourceLanguage}
@@ -221,7 +221,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
             </div>
 
             <div>
-              <LanguageFilter
+              <LanguageCombobox
                 languages={LANGUAGES}
                 value={targetLanguage}
                 onChange={setTargetLanguage}

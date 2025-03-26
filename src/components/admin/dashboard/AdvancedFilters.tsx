@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Filter, X, ChevronUp, ChevronDown, Search, ChevronDown as ChevronDownIcon } from "lucide-react";
-import { LanguageFilter } from "@/components/interpreter/LanguageFilter";
+import { LanguageCombobox } from "@/components/interpreter/LanguageCombobox";
 import { CountrySelect } from "@/components/CountrySelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -105,7 +105,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="language">Langue</Label>
-              <LanguageFilter 
+              <LanguageCombobox 
                 languages={LANGUAGES}
                 value={languageFilter}
                 onChange={setLanguageFilter}
