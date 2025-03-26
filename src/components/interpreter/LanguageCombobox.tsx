@@ -49,11 +49,6 @@ export function LanguageCombobox({
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
-    } else if (inputRef.current) {
-      // Focus the search input when dropdown opens
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
     }
   }, [isOpen]);
 
@@ -106,7 +101,7 @@ export function LanguageCombobox({
     }
   }, [languages, searchTerm]);
 
-  // Get display name for selected value
+  // Get display value for selected value
   const displayValue = useMemo(() => {
     if (value === "all" && allLanguagesOption) {
       return allLanguagesLabel;
@@ -114,15 +109,23 @@ export function LanguageCombobox({
     return value || placeholder;
   }, [value, allLanguagesOption, allLanguagesLabel, placeholder]);
 
-  // Handle clicking the main button
-  const handleButtonClick = () => {
-    setIsOpen(!isOpen);
+  // Make the main button function as a search input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    if (!isOpen) {
+      setIsOpen(true);
+    }
   };
 
-  // New handler specifically for search icon
-  const handleSearchIconClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling to the parent button
-    setIsOpen(true); // Always open the dropdown
+  // Handle click on the button
+  const handleButtonClick = () => {
+    setIsOpen(!isOpen);
+    // Focus the input when opening
+    if (!isOpen) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10);
+    }
   };
 
   // Handle selecting a language
@@ -137,6 +140,7 @@ export function LanguageCombobox({
     e.stopPropagation();
     if (value !== "all" && value !== "") {
       onChange(allLanguagesOption ? "all" : "");
+      setSearchTerm("");
     }
   };
 
@@ -150,33 +154,23 @@ export function LanguageCombobox({
 
   return (
     <div className="relative w-full" data-language-selector ref={comboboxRef}>
-      {/* Main selector button */}
-      <Button
-        type="button"
-        variant="outline"
-        role="combobox"
-        className={cn(
-          "w-full justify-between text-left font-normal h-10 px-3 py-2",
-          !value && "text-muted-foreground",
-          isOpen && "ring-2 ring-ring ring-offset-2 ring-offset-background",
-          className
-        )}
-        onClick={handleButtonClick}
-        aria-expanded={isOpen}
-      >
-        <div className="flex items-center gap-2 truncate">
-          {/* Make the search icon clickable independently */}
-          <Search 
-            className="h-4 w-4 shrink-0 text-muted-foreground cursor-pointer" 
-            onClick={handleSearchIconClick}
+      {/* Main selector button/input */}
+      <div className={cn(
+        "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        isOpen && "ring-2 ring-ring ring-offset-2",
+        className
+      )}>
+        <div className="flex flex-grow items-center gap-2">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input 
+            ref={inputRef}
+            type="text"
+            className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 placeholder:text-muted-foreground"
+            placeholder={displayValue}
+            value={searchTerm}
+            onChange={handleInputChange}
+            onClick={() => !isOpen && setIsOpen(true)}
           />
-          {value && value !== "all" ? (
-            <Badge variant="outline" className="mr-1 font-normal bg-accent text-accent-foreground">
-              {displayValue}
-            </Badge>
-          ) : (
-            <span className="truncate">{displayValue}</span>
-          )}
         </div>
         <div className="flex items-center gap-1">
           {value && value !== "all" && allLanguagesOption && (
@@ -190,39 +184,23 @@ export function LanguageCombobox({
               <span className="sr-only">Effacer la sélection</span>
             </Button>
           )}
-          {isOpen ? 
-            <ChevronUp className="h-4 w-4 shrink-0 opacity-50" /> : 
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-          }
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 p-0"
+            onClick={handleButtonClick}
+          >
+            {isOpen ? 
+              <ChevronUp className="h-4 w-4 shrink-0 opacity-50" /> : 
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            }
+          </Button>
         </div>
-      </Button>
+      </div>
       
       {/* Dropdown */}
       {isOpen && (
         <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
-          {/* Search input */}
-          <div className="flex items-center p-2 border-b">
-            <Search className="h-4 w-4 mr-2 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              placeholder="Rechercher une langue..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 border-none shadow-none focus-visible:ring-0 bg-transparent"
-            />
-            {searchTerm && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 p-0 rounded-full hover:bg-muted"
-                onClick={() => setSearchTerm("")}
-              >
-                <X className="h-3 w-3" />
-                <span className="sr-only">Effacer la recherche</span>
-              </Button>
-            )}
-          </div>
-          
           {/* Language list */}
           <ScrollArea className="max-h-[300px] overflow-auto">
             <div className="p-1">
