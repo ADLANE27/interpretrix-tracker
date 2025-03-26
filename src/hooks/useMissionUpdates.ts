@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+
+import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
@@ -9,12 +10,7 @@ const isProduction = () => {
          !window.location.hostname.includes('preview');
 };
 
-// Keep track of active subscriptions to avoid duplicates
-const activeSubscriptionTables = new Set<string>();
-
 export const useMissionUpdates = (onUpdate: () => void) => {
-  const subscribedTablesRef = useRef<Set<string>>(new Set());
-  
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
@@ -26,12 +22,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    const handleOnline = () => {
-      console.log('[useMissionUpdates] App came online, triggering update');
-      onUpdate();
-    };
-
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Listen for interpreter status update events
@@ -43,11 +34,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
-  }, [onUpdate]); // Properly include onUpdate in the dependency array
+  }, [onUpdate]);
 
   // Common subscription options
   const subscriptionOptions = {
@@ -63,65 +54,50 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     }
   };
 
-  // Helper function to setup a subscription only if not already active
-  const setupSubscription = (table: string, event: string, filter: string | undefined, callback: (payload: any) => void) => {
-    const subscriptionKey = `${table}:${event}:${filter || 'none'}`;
-    
-    // Skip if this component instance has already subscribed to this table/event/filter
-    if (subscribedTablesRef.current.has(subscriptionKey)) {
-      console.log(`[useMissionUpdates] Subscription to ${subscriptionKey} already exists in this instance`);
-      return;
-    }
-    
-    subscribedTablesRef.current.add(subscriptionKey);
-    
-    // Create a stable callback that doesn't change between renders
-    const stableCallback = (payload: any) => {
-      console.log(`[useMissionUpdates] ${table} update received:`, payload);
-      callback(payload);
-    };
-    
-    useRealtimeSubscription(
-      {
-        event: event as any,
-        schema: 'public',
-        table: table,
-        filter: filter
-      },
-      stableCallback,
-      subscriptionOptions
-    );
-  };
-
   // Subscribe to mission changes
-  setupSubscription(
-    'interpretation_missions',
-    '*',
-    undefined,
-    onUpdate
+  useRealtimeSubscription(
+    {
+      event: '*',
+      schema: 'public',
+      table: 'interpretation_missions'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Mission update received:', payload);
+      onUpdate();
+    },
+    subscriptionOptions
   );
 
   // Subscribe to reservation changes
-  setupSubscription(
-    'private_reservations',
-    '*',
-    undefined,
-    onUpdate
+  useRealtimeSubscription(
+    {
+      event: '*',
+      schema: 'public',
+      table: 'private_reservations'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Private reservation update received:', payload);
+      onUpdate();
+    },
+    subscriptionOptions
   );
   
   // Use a more specific subscription for interpreter profile status changes
-  setupSubscription(
-    'interpreter_profiles',
-    'UPDATE',
-    'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable',
-    onUpdate
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'interpreter_profiles',
+      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
+      onUpdate();
+    },
+    {
+      ...subscriptionOptions,
+      retryInterval: 3000, // Shorter retry for status updates
+    }
   );
-
-  // Track cleanup of subscriptions
-  useEffect(() => {
-    return () => {
-      // Clean up subscription tracking for this component instance
-      subscribedTablesRef.current.clear();
-    };
-  }, []);
 };
