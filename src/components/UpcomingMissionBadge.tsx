@@ -1,6 +1,6 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, differenceInSeconds, differenceInMinutes } from "date-fns";
+import { isAfter, isBefore, addMinutes, parseISO, differenceInMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
@@ -73,7 +73,7 @@ export const UpcomingMissionBadge = ({
         };
       case "in-progress":
         return {
-          text: `${countdownPrefix}Se termine ${formatDistanceToNow(missionEndDate, { locale: fr, addSuffix: true })} ${timeRange}${languageInfo}`,
+          text: `${countdownPrefix}Se termine dans ${differenceInMinutes(missionEndDate, now)}min ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
