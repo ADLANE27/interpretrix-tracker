@@ -155,7 +155,7 @@ export const InterpreterStatusDropdown = ({
     
     if (displayFormat === "badge") {
       return (
-        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
+        <div className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
           {displayLabel}
         </div>
       );

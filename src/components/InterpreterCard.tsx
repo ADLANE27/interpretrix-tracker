@@ -158,7 +158,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 <span>
                   {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                     `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
-                  {interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                  {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                    interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
                     `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
                 </span>
               </div>

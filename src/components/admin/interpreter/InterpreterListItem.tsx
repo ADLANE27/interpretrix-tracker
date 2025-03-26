@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -49,7 +48,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
 
-  // Update local state when props change
   useEffect(() => {
     if (interpreter.status !== interpreterStatus) {
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
@@ -86,7 +84,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     <Card className="hover-elevate gradient-border">
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Status and Name */}
           <div className="flex items-center gap-2 min-w-0">
             <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
@@ -98,7 +95,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
           </div>
 
           <div className="flex flex-1 flex-wrap items-center gap-2 justify-end">
-            {/* Languages */}
             <div className="flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5 text-palette-ocean-blue" />
               <div className="flex flex-wrap gap-1">
@@ -115,18 +111,15 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               </div>
             </div>
 
-            {/* Employment Status */}
             <div className="text-xs text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 rounded-full shadow-sm">
               {employmentStatusLabels[interpreter.employment_status]}
             </div>
 
-            {/* Work Location */}
             <div className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-3 w-3" />
               <span>{workLocationLabels[workLocation]}</span>
             </div>
 
-            {/* Next Mission */}
             {interpreter.next_mission_start && (
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
@@ -134,7 +127,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               />
             )}
             
-            {/* Contact Information */}
             {hasAnyPhoneNumber && (
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 {interpreter.booth_number && (
@@ -154,7 +146,8 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
                     <span>
                       {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                         `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
-                      {interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                      {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                        interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
                         `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
                     </span>
                   </div>

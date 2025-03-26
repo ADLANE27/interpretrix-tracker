@@ -58,7 +58,8 @@ export const UpcomingMissionBadge = ({
       case "upcoming":
         return {
           text: `${missionDate} ${timeRange}${languageInfo}`,
-          variant: "secondary" as const
+          variant: "secondary" as const,
+          flashingClass: "animate-pulse bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple"
         };
       case "in-progress":
         const remainingTime = formatDistanceToNow(missionEndDate, { 
@@ -67,29 +68,33 @@ export const UpcomingMissionBadge = ({
         });
         return {
           text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "default" as const
+          variant: "default" as const,
+          flashingClass: "animate-pulse bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue"
         };
       case "ending-soon":
         return {
           text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "destructive" as const
+          variant: "destructive" as const,
+          flashingClass: "animate-pulse bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink"
         };
       case "ended":
         return {
           text: `Mission terminée ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "outline" as const
+          variant: "outline" as const,
+          flashingClass: ""
         };
     }
   };
 
   const status = getStatusDisplay();
+  const missionStatus = getMissionStatus();
 
   return (
     <Badge 
       variant={status.variant} 
       className={cn(
-        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full",
-        getMissionStatus() === "in-progress" && "animate-pulse"
+        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
+        missionStatus !== "ended" && status.flashingClass
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />
