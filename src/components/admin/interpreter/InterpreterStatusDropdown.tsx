@@ -26,7 +26,7 @@ interface InterpreterStatusDropdownProps {
   interpreterId: string;
   currentStatus: Status;
   className?: string;
-  displayFormat?: "badge" | "button";
+  displayFormat?: "badge" | "button" | "dropdown";
   onStatusChange?: (newStatus: Status) => void;
 }
 
