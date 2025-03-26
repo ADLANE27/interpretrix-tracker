@@ -30,9 +30,10 @@ BEGIN
         END;
     END LOOP;
 
-    -- Process language mentions with updated pattern to handle complex language names
+    -- Process language mentions with updated pattern to handle complex language names with text after them
+    -- Using a pattern that matches language mentions at the beginning of words
     FOR language_name IN
-        SELECT trim((regexp_matches(NEW.content, '@([A-Za-zÀ-ÿ\s]+(?:\s*\([^)]*\))?)', 'g'))[1])
+        SELECT trim((regexp_matches(NEW.content, '@([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)', 'g'))[1])
     LOOP
         BEGIN
             -- Find all interpreters who work with this target language
