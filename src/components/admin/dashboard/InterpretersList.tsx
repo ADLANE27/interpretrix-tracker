@@ -50,7 +50,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   return (
     <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" : "space-y-2"}>
       {interpreters.map(interpreter => viewMode === "grid" ? (
-        <div key={interpreter.id} className="aspect-auto h-full">
+        <div key={interpreter.id} className="h-auto">
           <InterpreterCard 
             interpreter={{
               id: interpreter.id,

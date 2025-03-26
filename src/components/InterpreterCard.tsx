@@ -62,12 +62,13 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     })
     .filter(lang => lang.source && lang.target);
 
-  const hasAnyPhoneNumber = 
+  const hasAnyPhoneNumber = Boolean(
     interpreter.phone_number || 
     interpreter.landline_phone || 
     interpreter.private_phone || 
     interpreter.professional_phone || 
-    interpreter.booth_number;
+    interpreter.booth_number
+  );
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
@@ -110,7 +111,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-2 relative flex flex-col h-full">
           {/* Front card content with improved layout */}
           <div className="flex items-center justify-between gap-1 mb-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -161,7 +162,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
           {/* Contact Information Section with larger font */}
           {hasAnyPhoneNumber && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-foreground mb-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-foreground mb-2 mt-auto">
               {interpreter.booth_number && (
                 <div className="flex items-center gap-1">
                   <User className="h-3.5 w-3.5 text-palette-ocean-blue" />
@@ -207,8 +208,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Footer Section with Employment Status and Rates as badges */}
-          <div className="flex flex-wrap gap-1.5 items-center pt-1 border-t border-slate-100">
+          {/* Footer Section with Employment Status and Rates as badges - now more compact */}
+          <div className="flex flex-wrap gap-1.5 items-center mt-auto pt-1 border-t border-slate-100">
             <Badge variant="outline" className="text-[11px] bg-gray-50">
               {employmentStatusLabels[interpreter.employment_status]}
             </Badge>
@@ -244,7 +245,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-2 relative flex flex-col h-full">
           {/* Back card header */}
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gradient-primary truncate">{interpreter.name}</h3>
