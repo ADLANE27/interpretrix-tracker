@@ -3,7 +3,7 @@
  * Utility functions for handling dates and times consistently across the application
  */
 
-import { format, parseISO, differenceInSeconds, differenceInMinutes, differenceInHours } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 // Extract time (HH:mm) from ISO string without any timezone conversion
@@ -59,38 +59,4 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
 export const createLocalISOString = (date: string, time: string): string => {
   // Simply concatenate date and time without adding Z marker
   return `${date}T${time}:00`;
-};
-
-// Format countdown display for missions
-export const formatCountdown = (targetDate: Date, now: Date): string => {
-  console.log(`[formatCountdown] Target: ${targetDate.toISOString()}, Now: ${now.toISOString()}`);
-  
-  // Compare timestamps directly instead of Date objects
-  const targetTime = targetDate.getTime();
-  const currentTime = now.getTime();
-  
-  // First check if mission has already started
-  if (currentTime >= targetTime) {
-    console.log('[formatCountdown] Mission has already started (currentTime >= targetTime)');
-    return "En cours";
-  }
-  
-  const diffSeconds = Math.floor((targetTime - currentTime) / 1000);
-  console.log(`[formatCountdown] Difference in seconds: ${diffSeconds}`);
-  
-  if (diffSeconds <= 0) {
-    return "Maintenant";
-  }
-  
-  const hours = Math.floor(diffSeconds / 3600);
-  const minutes = Math.floor((diffSeconds % 3600) / 60);
-  const seconds = diffSeconds % 60;
-  
-  if (hours > 0) {
-    return `Dans ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
-  } else if (minutes > 0) {
-    return `Dans ${minutes}min${minutes < 10 ? seconds + 's' : ''}`;
-  } else {
-    return `Dans ${seconds}s`;
-  }
-};
+}

@@ -26,7 +26,7 @@ interface InterpreterStatusDropdownProps {
   interpreterId: string;
   currentStatus: Status;
   className?: string;
-  displayFormat?: "badge" | "button" | "dropdown";
+  displayFormat?: "badge" | "button";
   onStatusChange?: (newStatus: Status) => void;
 }
 
@@ -154,12 +154,6 @@ export const InterpreterStatusDropdown = ({
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
     
     if (displayFormat === "badge") {
-      return (
-        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
-          {displayLabel}
-        </div>
-      );
-    } else if (displayFormat === "dropdown") {
       return (
         <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
           {displayLabel}

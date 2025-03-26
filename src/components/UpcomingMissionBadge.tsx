@@ -1,35 +1,31 @@
 
 import { Clock } from "lucide-react";
-import { isAfter, isBefore, addMinutes, parseISO, differenceInMinutes } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { formatTimeString, formatDateDisplay, formatCountdown } from "@/utils/dateTimeUtils";
+import { formatTimeString, formatDateDisplay } from "@/utils/dateTimeUtils";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
   estimatedDuration: number;
   sourceLang?: string | null;
   targetLang?: string | null;
-  showCountdown?: boolean;
-  flashBefore?: number;
 }
 
 export const UpcomingMissionBadge = ({ 
   startTime, 
   estimatedDuration,
   sourceLang,
-  targetLang,
-  showCountdown = true,
-  flashBefore = 30
+  targetLang 
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(new Date());
-    }, 1000); // Update every second for smoother countdown
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -38,83 +34,45 @@ export const UpcomingMissionBadge = ({
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    // Convert all dates to timestamps for direct comparison
-    const currentTime = now.getTime();
-    const startTime = missionStartDate.getTime();
-    const endTime = missionEndDate.getTime();
-    
-    console.log(`[MissionBadge] Status check - Current: ${now.toISOString()}`);
-    console.log(`[MissionBadge] Status check - Start: ${missionStartDate.toISOString()}`);
-    console.log(`[MissionBadge] Status check - End: ${missionEndDate.toISOString()}`);
-    console.log(`[MissionBadge] Raw timestamps - Current: ${currentTime}, Start: ${startTime}, End: ${endTime}`);
-    console.log(`[MissionBadge] Current > Start? ${currentTime >= startTime}`);
-    
-    // Check if mission has started (current time is after or equal to start time)
-    if (currentTime >= startTime) {
-      // Check if mission has ended
-      if (currentTime > endTime) {
-        console.log(`[MissionBadge] Mission has ended`);
-        return "ended";
-      } else {
-        // Mission is in progress
-        const minutesLeft = differenceInMinutes(missionEndDate, now);
-        console.log(`[MissionBadge] Mission in progress, minutes left: ${minutesLeft}`);
-        return minutesLeft <= flashBefore ? "ending-soon" : "in-progress";
-      }
+    if (isBefore(now, missionStartDate)) {
+      return "upcoming";
+    } else if (isAfter(now, missionEndDate)) {
+      return "ended";
     } else {
-      // Mission hasn't started yet
-      const minutesToStart = differenceInMinutes(missionStartDate, now);
-      console.log(`[MissionBadge] Minutes to start: ${minutesToStart}`);
-      return minutesToStart <= flashBefore ? "starting-soon" : "upcoming";
+      const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
+      return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
   };
 
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
+    // Use direct time extraction for consistent display
     const startHour = formatTimeString(startTime);
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
+    // Format the date
     const missionDate = formatDateDisplay(startTime);
-    
-    let countdownText = "";
-    
-    if (showCountdown) {
-      if (status === "upcoming" || status === "starting-soon") {
-        // For upcoming missions, show countdown to start
-        countdownText = formatCountdown(missionStartDate, now);
-        console.log(`[MissionBadge] Countdown for upcoming: ${countdownText}`);
-      } else if (status === "in-progress" || status === "ending-soon") {
-        // For in-progress missions, show remaining time
-        countdownText = `Se termine dans ${differenceInMinutes(missionEndDate, now)}min`;
-        console.log(`[MissionBadge] Countdown for in-progress: ${countdownText}`);
-      }
-    }
-    
-    const countdownPrefix = countdownText ? `${countdownText} • ` : '';
 
     switch (status) {
       case "upcoming":
         return {
-          text: `${countdownPrefix}${missionDate} ${timeRange}${languageInfo}`,
+          text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
-      case "starting-soon":
-        return {
-          text: `${countdownPrefix}Commence bientôt ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "warning" as const,
-          flash: true
-        };
       case "in-progress":
+        const remainingTime = formatDistanceToNow(missionEndDate, { 
+          locale: fr, 
+          addSuffix: true 
+        });
         return {
-          text: `En cours • ${timeRange}${languageInfo}`,
+          text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
         return {
-          text: `${countdownPrefix}Dernières minutes ${timeRange}${languageInfo}`,
-          variant: "destructive" as const,
-          flash: true
+          text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
+          variant: "destructive" as const
         };
       case "ended":
         return {
@@ -130,9 +88,8 @@ export const UpcomingMissionBadge = ({
     <Badge 
       variant={status.variant} 
       className={cn(
-        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2.5 py-1.5 rounded-full",
-        status.flash && "animate-mission-flash",
-        getMissionStatus() === "in-progress" && "bg-blue-100 text-blue-800"
+        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full",
+        getMissionStatus() === "in-progress" && "animate-pulse"
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />

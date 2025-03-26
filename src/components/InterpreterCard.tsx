@@ -96,11 +96,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   };
 
   const primaryContact = getPrimaryContact();
-  
-  // Check if rates should be displayed (at least one rate is not null and not 0)
-  const shouldDisplayRates = 
-    (interpreter.tarif_15min !== null && interpreter.tarif_15min > 0) || 
-    (interpreter.tarif_5min !== null && interpreter.tarif_5min > 0);
 
   return (
     <Card className="gradient-border h-full">
@@ -204,8 +199,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               estimatedDuration={interpreter.next_mission_duration || 0}
               sourceLang={interpreter.next_mission_source_language}
               targetLang={interpreter.next_mission_target_language}
-              showCountdown={true}
-              flashBefore={30}
             />
           </div>
         )}
@@ -269,11 +262,11 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         )}
       </CardContent>
 
-      {shouldDisplayRates && (
+      {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
         <CardFooter className="flex pt-0 pb-1.5 px-3 text-[10px] text-muted-foreground">
-          {interpreter.tarif_5min !== null && interpreter.tarif_5min > 0 && `5min: ${interpreter.tarif_5min}€`}
-          {interpreter.tarif_5min !== null && interpreter.tarif_5min > 0 && interpreter.tarif_15min !== null && interpreter.tarif_15min > 0 && ' | '}
-          {interpreter.tarif_15min !== null && interpreter.tarif_15min > 0 && `15min: ${interpreter.tarif_15min}€`}
+          {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
+          {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
+          {interpreter.tarif_15min !== null && `15min: ${interpreter.tarif_15min}€`}
         </CardFooter>
       )}
     </Card>
