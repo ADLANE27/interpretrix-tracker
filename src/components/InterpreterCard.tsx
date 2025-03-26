@@ -9,6 +9,7 @@ import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
 import { motion } from 'framer-motion';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -50,6 +51,27 @@ const workLocationConfig = {
   }
 };
 
+const employmentStatusConfig = {
+  salaried_aft: {
+    color: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+  },
+  salaried_aftcom: {
+    color: 'bg-violet-100 text-violet-800 border border-violet-300',
+  },
+  salaried_planet: {
+    color: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+  },
+  self_employed: {
+    color: 'bg-amber-100 text-amber-800 border border-amber-300',
+  },
+  permanent_interpreter: {
+    color: 'bg-teal-100 text-teal-800 border border-teal-300',
+  },
+  permanent_interpreter_aftcom: {
+    color: 'bg-sky-100 text-sky-800 border border-sky-300',
+  }
+};
+
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   
@@ -69,6 +91,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
+  const employmentStatus = interpreter.employment_status;
+  const employmentStatusColorClass = employmentStatusConfig[employmentStatus]?.color || 'bg-gray-100 text-gray-800 border border-gray-300';
 
   const handleStatusChange = (newStatus: Profile['status']) => {
     if (onStatusChange) {
@@ -98,7 +122,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
         <CardContent className="p-2 relative">
-          {/* Front card content - similar to current design but without languages */}
+          {/* Front card content */}
           <div className="flex items-center justify-between gap-1 mb-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
               <InterpreterStatusDropdown 
@@ -110,17 +134,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               />
               <h3 className="text-xs font-medium text-gradient-primary truncate">{interpreter.name}</h3>
             </div>
-            <div className={`px-1.5 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
-              <LocationIcon className="h-2.5 w-2.5" />
-              <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
-            </div>
-          </div>
-          
-          {/* Show languages count only as a summary */}
-          <div className="mb-1.5 text-xs flex items-center justify-between">
-            <span className="text-muted-foreground">
-              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
-            </span>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -130,10 +143,26 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               <RotateCw className="h-3 w-3 text-muted-foreground" />
             </Button>
           </div>
+          
+          {/* All badges section */}
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-2.5 w-2.5" />
+              <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
+            </div>
+            
+            <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${employmentStatusColorClass}`}>
+              <span>{employmentStatusLabels[employmentStatus]}</span>
+            </div>
+
+            <div className="text-[10px] text-muted-foreground">
+              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
+            </div>
+          </div>
 
           {/* Upcoming Mission Section - Highlighted */}
           {interpreter.next_mission_start && (
-            <div className="mb-1.5">
+            <div className="mb-2">
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
                 estimatedDuration={interpreter.next_mission_duration || 0}
@@ -143,42 +172,42 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Contact Information Section */}
+          {/* Contact Information Section with improved readability */}
           {hasAnyPhoneNumber && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground mb-1.5">
+            <div className="grid grid-cols-1 gap-y-1 text-xs text-muted-foreground mb-2">
               {interpreter.booth_number && (
-                <div className="flex items-center gap-0.5">
-                  <User className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <User className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>Cabine {interpreter.booth_number}</span>
                 </div>
               )}
               {interpreter.phone_number && (
-                <div className="flex items-center gap-0.5">
-                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>{interpreter.phone_number}</span>
                 </div>
               )}
               {interpreter.landline_phone && (
-                <div className="flex items-center gap-0.5">
-                  <PhoneCall className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>{interpreter.landline_phone}</span>
                 </div>
               )}
               {interpreter.private_phone && (
-                <div className="flex items-center gap-0.5">
-                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>{interpreter.private_phone}</span>
                 </div>
               )}
               {interpreter.professional_phone && (
-                <div className="flex items-center gap-0.5">
-                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>{interpreter.professional_phone}</span>
                 </div>
               )}
               {interpreter.work_hours && (
-                <div className="flex items-center gap-0.5 col-span-2">
-                  <Clock className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-palette-ocean-blue" />
                   <span>
                     {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                       `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
@@ -191,9 +220,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Footer Section with Employment Status and Rates */}
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
-            <span>{employmentStatusLabels[interpreter.employment_status]}</span>
+          {/* Footer Section with Rates */}
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-end text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
             {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
               <span>
                 {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
@@ -250,13 +278,17 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             ))}
           </div>
           
-          {/* Footer with employment status for context */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
-            <span>{employmentStatusLabels[interpreter.employment_status]}</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
-              <LocationIcon className="h-2.5 w-2.5" />
-              <span>{workLocationLabels[workLocation]}</span>
-            </span>
+          {/* Footer with badges for context */}
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pt-1 border-t border-slate-100">
+            <div className="flex flex-wrap gap-1">
+              <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${employmentStatusColorClass}`}>
+                <span>{employmentStatusLabels[employmentStatus]}</span>
+              </div>
+              <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+                <LocationIcon className="h-2.5 w-2.5" />
+                <span>{workLocationLabels[workLocation]}</span>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
