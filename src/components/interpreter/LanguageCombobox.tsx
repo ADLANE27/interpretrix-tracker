@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Check, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -119,11 +118,31 @@ export function LanguageCombobox({
     setIsOpen(!isOpen);
   };
 
+  // Handle clicking the search icon to open dropdown or focus search
+  const handleSearchIconClick = () => {
+    setIsOpen(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
   // Handle selecting a language
   const handleSelectLanguage = (lang: string) => {
     onChange(lang);
     setIsOpen(false);
     setSearchTerm("");
+  };
+
+  // Handle input direct search
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchTerm = e.target.value;
+    setSearchTerm(newSearchTerm);
+    
+    // If exact match found and only one result, don't auto-select
+    if (newSearchTerm && filteredLanguages.length === 1 && 
+        normalizeString(filteredLanguages[0]) === normalizeString(newSearchTerm)) {
+      // Just keep searching
+    }
   };
 
   // Handle clearing the selection
@@ -159,7 +178,13 @@ export function LanguageCombobox({
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2 truncate">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Search 
+            className="h-4 w-4 shrink-0 text-muted-foreground cursor-pointer" 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSearchIconClick();
+            }}
+          />
           {value && value !== "all" ? (
             <Badge variant="outline" className="mr-1 font-normal bg-accent text-accent-foreground">
               {displayValue}
@@ -189,7 +214,7 @@ export function LanguageCombobox({
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
+        <div className="absolute top-full left-0 z-[200] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
           {/* Search input */}
           <div className="flex items-center p-2 border-b">
             <Search className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -197,7 +222,7 @@ export function LanguageCombobox({
               ref={inputRef}
               placeholder="Rechercher une langue..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleInputChange}
               className="h-8 border-none shadow-none focus-visible:ring-0 bg-transparent"
             />
             {searchTerm && (
