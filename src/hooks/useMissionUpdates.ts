@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
@@ -76,6 +75,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     
     subscribedTablesRef.current.add(subscriptionKey);
     
+    // Create a stable callback that doesn't change between renders
+    const stableCallback = (payload: any) => {
+      console.log(`[useMissionUpdates] ${table} update received:`, payload);
+      callback(payload);
+    };
+    
     useRealtimeSubscription(
       {
         event: event as any,
@@ -83,10 +88,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         table: table,
         filter: filter
       },
-      (payload) => {
-        console.log(`[useMissionUpdates] ${table} update received:`, payload);
-        callback(payload);
-      },
+      stableCallback,
       subscriptionOptions
     );
   };
