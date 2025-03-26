@@ -24,6 +24,7 @@ interface Interpreter {
   booth_number?: string | null;
   private_phone?: string | null;
   professional_phone?: string | null;
+  landline_phone?: string | null;
   work_hours?: {
     start_morning?: string;
     end_morning?: string;
@@ -70,6 +71,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
             booth_number: interpreter.booth_number,
             private_phone: interpreter.private_phone,
             professional_phone: interpreter.professional_phone,
+            landline_phone: interpreter.landline_phone,
             work_hours: interpreter.work_hours,
             work_location: interpreter.work_location as WorkLocation
           }} 
@@ -86,6 +88,14 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
             languages: interpreter.languages,
             next_mission_start: interpreter.next_mission_start,
             next_mission_duration: interpreter.next_mission_duration,
+            next_mission_source_language: interpreter.next_mission_source_language,
+            next_mission_target_language: interpreter.next_mission_target_language,
+            phone_number: interpreter.phone_number,
+            booth_number: interpreter.booth_number,
+            private_phone: interpreter.private_phone,
+            professional_phone: interpreter.professional_phone,
+            landline_phone: interpreter.landline_phone,
+            work_hours: interpreter.work_hours,
             work_location: interpreter.work_location as WorkLocation
           }}
           onStatusChange={onStatusChange}

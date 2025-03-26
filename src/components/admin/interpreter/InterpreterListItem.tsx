@@ -1,13 +1,11 @@
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Globe, Home, Building } from "lucide-react";
-import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
-import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
-import { Profile } from "@/types/profile";
-import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
-import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
+import React from 'react';
+import { Profile } from '@/types/profile';
+import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
+import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
+import { InterpreterStatusDropdown } from './InterpreterStatusDropdown';
+import { UpcomingMissionBadge } from '@/components/UpcomingMissionBadge';
+import { Home, Building, Phone, User, PhoneCall, Clock } from 'lucide-react';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -16,103 +14,147 @@ interface InterpreterListItemProps {
     status: Profile['status'];
     employment_status: EmploymentStatus;
     languages: string[];
-    next_mission_start?: string | null;
-    next_mission_duration?: number | null;
-    work_location?: WorkLocation;
+    next_mission_start: string | null;
+    next_mission_duration: number | null;
+    next_mission_source_language?: string | null;
+    next_mission_target_language?: string | null;
+    phone_number?: string | null;
+    booth_number?: string | null;
+    private_phone?: string | null;
+    professional_phone?: string | null;
+    landline_phone?: string | null;
+    work_hours?: {
+      start_morning?: string;
+      end_morning?: string;
+      start_afternoon?: string;
+      end_afternoon?: string;
+    } | null;
+    work_location: WorkLocation;
   };
-  onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
+  onStatusChange: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
 const workLocationConfig = {
   remote: {
-    color: "bg-purple-100 text-purple-800 border border-purple-300",
+    color: 'bg-purple-100 text-purple-800 border border-purple-300',
     icon: Home
   },
   on_site: {
-    color: "bg-blue-100 text-blue-800 border border-blue-300",
+    color: 'bg-blue-100 text-blue-800 border border-blue-300',
     icon: Building
   }
 };
 
-export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
-  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
-  const { toast } = useToast();
-
-  // Update local state when props change
-  useEffect(() => {
-    if (interpreter.status !== interpreterStatus) {
-      console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
-      setInterpreterStatus(interpreter.status);
-    }
-  }, [interpreter.status, interpreter.id, interpreterStatus]);
-
-  const handleStatusChange = (newStatus: Profile['status']) => {
-    console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
-    setInterpreterStatus(newStatus);
-    if (onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
-    }
-  };
-
-  const parsedLanguages = interpreter.languages
-    .map(lang => {
-      const [source, target] = lang.split('→').map(l => l.trim());
-      return { source, target };
-    })
-    .filter(lang => lang.source && lang.target);
-
+export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
+  interpreter,
+  onStatusChange,
+}) => {
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
+  
+  // Determine primary contact for display
+  const getPrimaryContact = () => {
+    if (interpreter.booth_number) {
+      return { icon: User, label: `Cabine ${interpreter.booth_number}` };
+    }
+    if (interpreter.phone_number) {
+      return { icon: Phone, label: interpreter.phone_number };
+    }
+    if (interpreter.professional_phone) {
+      return { icon: Phone, label: interpreter.professional_phone };
+    }
+    if (interpreter.private_phone) {
+      return { icon: Phone, label: interpreter.private_phone };
+    }
+    if (interpreter.landline_phone) {
+      return { icon: PhoneCall, label: interpreter.landline_phone };
+    }
+    return null;
+  };
+
+  const primaryContact = getPrimaryContact();
+  
+  const getLanguageDisplay = () => {
+    const parsedLanguages = interpreter.languages
+      .map(lang => {
+        const [source, target] = lang.split('→').map(l => l.trim());
+        return { source, target };
+      })
+      .filter(lang => lang.source && lang.target);
+      
+    if (parsedLanguages.length === 0) return "";
+    
+    if (parsedLanguages.length === 1) {
+      return `${parsedLanguages[0].source} → ${parsedLanguages[0].target}`;
+    }
+    
+    return `${parsedLanguages[0].source} → ${parsedLanguages[0].target} +${parsedLanguages.length - 1}`;
+  };
 
   return (
-    <Card className="p-4 hover-elevate gradient-border">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <InterpreterStatusDropdown 
-              interpreterId={interpreter.id}
-              currentStatus={interpreterStatus}
-              displayFormat="badge"
-              onStatusChange={handleStatusChange}
-            />
-            <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-palette-ocean-blue" />
-              <div className="flex flex-wrap gap-1">
-                {parsedLanguages.map((lang, index) => (
-                  <div
-                    key={index}
-                    className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
-                  >
-                    <span>{lang.source}</span>
-                    <span className="text-palette-vivid-purple">→</span>
-                    <span>{lang.target}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-sm text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-3 py-1 rounded-full shadow-sm">
+    <div className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-12 gap-2 items-center">
+        {/* Name and status - 4 columns */}
+        <div className="col-span-3">
+          <div className="font-medium">{interpreter.name}</div>
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-xs text-muted-foreground">
               {employmentStatusLabels[interpreter.employment_status]}
-            </div>
-
-            <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+            </span>
+            <div className={`px-1 py-0.5 rounded-full text-xs flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-3 w-3" />
               <span>{workLocationLabels[workLocation]}</span>
             </div>
-
-            {interpreter.next_mission_start && (
-              <UpcomingMissionBadge
-                startTime={interpreter.next_mission_start}
-                estimatedDuration={interpreter.next_mission_duration || 0}
-              />
-            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+        
+        {/* Languages - 2 columns */}
+        <div className="col-span-2 text-sm">
+          {getLanguageDisplay()}
+        </div>
+        
+        {/* Contact info - 3 columns */}
+        <div className="col-span-3">
+          {primaryContact && (
+            <div className="flex items-center gap-1 text-sm text-slate-600">
+              <primaryContact.icon className="h-3.5 w-3.5 text-palette-ocean-blue" />
+              <span className="truncate">{primaryContact.label}</span>
+            </div>
+          )}
+          {interpreter.work_hours && (
+            <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
+              <Clock className="h-3 w-3 text-palette-ocean-blue" />
+              <span className="truncate">
+                {interpreter.work_hours.start_morning}-{interpreter.work_hours.end_morning}, {interpreter.work_hours.start_afternoon}-{interpreter.work_hours.end_afternoon}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* Next mission - 3 columns */}
+        <div className="col-span-3">
+          {interpreter.next_mission_start ? (
+            <UpcomingMissionBadge
+              startTime={interpreter.next_mission_start}
+              estimatedDuration={interpreter.next_mission_duration || 0}
+              sourceLang={interpreter.next_mission_source_language}
+              targetLang={interpreter.next_mission_target_language}
+            />
+          ) : (
+            <span className="text-xs text-muted-foreground">Aucune mission prévue</span>
+          )}
+        </div>
+        
+        {/* Status dropdown - 1 column */}
+        <div className="col-span-1 flex justify-end">
+          <InterpreterStatusDropdown
+            interpreterId={interpreter.id}
+            currentStatus={interpreter.status}
+            displayFormat="dropdown"
+            onStatusChange={(newStatus) => onStatusChange(interpreter.id, newStatus)}
+          />
+        </div>
+      </div>
+    </div>
   );
 };
