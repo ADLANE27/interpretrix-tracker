@@ -96,7 +96,7 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
 
   return (
     <div className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow">
-      <div className="grid grid-cols-12 gap-2 items-center">
+      <div className="grid grid-cols-12 gap-4 items-center">
         {/* Name and status - 3 columns */}
         <div className="col-span-3">
           <div className="font-medium truncate">{interpreter.name}</div>
@@ -140,16 +140,19 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
           )}
         </div>
         
-        {/* Next mission - 3 columns */}
+        {/* Next mission - 3 columns with enhanced countdown */}
         <div className="col-span-3 pr-2">
           {interpreter.next_mission_start ? (
-            <UpcomingMissionBadge
-              startTime={interpreter.next_mission_start}
-              estimatedDuration={interpreter.next_mission_duration || 0}
-              sourceLang={interpreter.next_mission_source_language}
-              targetLang={interpreter.next_mission_target_language}
-              showCountdown={true}
-            />
+            <div className="space-y-2">
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                sourceLang={interpreter.next_mission_source_language}
+                targetLang={interpreter.next_mission_target_language}
+                showCountdown={true}
+                flashBefore={15}
+              />
+            </div>
           ) : (
             <span className="text-xs text-muted-foreground">Aucune mission prévue</span>
           )}

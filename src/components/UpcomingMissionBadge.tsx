@@ -1,6 +1,6 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, differenceInSeconds, differenceInMinutes, differenceInHours } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, differenceInSeconds, differenceInMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ interface UpcomingMissionBadgeProps {
   sourceLang?: string | null;
   targetLang?: string | null;
   showCountdown?: boolean;
+  flashBefore?: number;
 }
 
 export const UpcomingMissionBadge = ({ 
@@ -20,14 +21,15 @@ export const UpcomingMissionBadge = ({
   estimatedDuration,
   sourceLang,
   targetLang,
-  showCountdown = false
+  showCountdown = false,
+  flashBefore = 15
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(new Date());
-    }, 60000);
+    }, 1000); // Update every second for smoother countdown
 
     return () => clearInterval(interval);
   }, []);
@@ -37,12 +39,13 @@ export const UpcomingMissionBadge = ({
   
   const getMissionStatus = () => {
     if (isBefore(now, missionStartDate)) {
-      return "upcoming";
+      const minutesToStart = differenceInMinutes(missionStartDate, now);
+      return minutesToStart <= flashBefore ? "starting-soon" : "upcoming";
     } else if (isAfter(now, missionEndDate)) {
       return "ended";
     } else {
-      const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
-      return minutesLeft <= 15 ? "ending-soon" : "in-progress";
+      const minutesLeft = differenceInMinutes(missionEndDate, now);
+      return minutesLeft <= flashBefore ? "ending-soon" : "in-progress";
     }
   };
 
@@ -52,26 +55,28 @@ export const UpcomingMissionBadge = ({
       const diffSeconds = differenceInSeconds(missionStartDate, now);
       const hours = Math.floor(diffSeconds / 3600);
       const minutes = Math.floor((diffSeconds % 3600) / 60);
+      const seconds = diffSeconds % 60;
       
       if (hours > 0) {
         return `Dans ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
       } else if (minutes > 0) {
-        return `Dans ${minutes} min`;
+        return `Dans ${minutes}min${seconds}s`;
       } else {
-        return "Commence très bientôt";
+        return `Dans ${seconds}s`;
       }
     } else if (isBefore(now, missionEndDate)) {
       // Countdown to end
       const diffSeconds = differenceInSeconds(missionEndDate, now);
       const hours = Math.floor(diffSeconds / 3600);
       const minutes = Math.floor((diffSeconds % 3600) / 60);
+      const seconds = diffSeconds % 60;
       
       if (hours > 0) {
         return `Reste ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
       } else if (minutes > 0) {
-        return `Reste ${minutes} min`;
+        return `Reste ${minutes}min${seconds}s`;
       } else {
-        return "Se termine très bientôt";
+        return `Reste ${seconds}s`;
       }
     }
     return "";
@@ -80,14 +85,10 @@ export const UpcomingMissionBadge = ({
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
-    // Use direct time extraction for consistent display
     const startHour = formatTimeString(startTime);
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
-    // Format the date
     const missionDate = formatDateDisplay(startTime);
-    
-    // Add countdown if enabled
     const countdown = showCountdown ? formatCountdown() : '';
     const countdownPrefix = countdown ? `${countdown} • ` : '';
 
@@ -97,19 +98,22 @@ export const UpcomingMissionBadge = ({
           text: `${countdownPrefix}${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
-      case "in-progress":
-        const remainingTime = formatDistanceToNow(missionEndDate, { 
-          locale: fr, 
-          addSuffix: true 
-        });
+      case "starting-soon":
         return {
-          text: `${countdown ? countdown + ' • ' : ''}Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
+          text: `${countdownPrefix}Commence bientôt ${missionDate} ${timeRange}${languageInfo}`,
+          variant: "warning" as const,
+          flash: true
+        };
+      case "in-progress":
+        return {
+          text: `${countdownPrefix}Se termine ${formatDistanceToNow(missionEndDate, { locale: fr, addSuffix: true })} ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
         return {
-          text: `${countdownPrefix}Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "destructive" as const
+          text: `${countdownPrefix}Dernières minutes ${timeRange}${languageInfo}`,
+          variant: "destructive" as const,
+          flash: true
         };
       case "ended":
         return {
@@ -125,7 +129,8 @@ export const UpcomingMissionBadge = ({
     <Badge 
       variant={status.variant} 
       className={cn(
-        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2 py-1",
+        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2.5 py-1.5 rounded-full",
+        status.flash && "animate-pulse bg-orange-100 text-orange-800 border-orange-200",
         getMissionStatus() === "in-progress" && "animate-pulse"
       )}
     >
