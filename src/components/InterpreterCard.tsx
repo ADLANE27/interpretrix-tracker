@@ -111,9 +111,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
         <CardContent className="p-2 relative">
-          {/* Front card content with improved layout */}
+          {/* Front card content with badges on same level */}
           <div className="flex items-center justify-between gap-1 mb-2">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <InterpreterStatusDropdown 
                 interpreterId={interpreter.id}
                 currentStatus={interpreter.status}
@@ -121,6 +121,22 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 onStatusChange={handleStatusChange}
                 className="text-[11px] px-2 py-0.5"
               />
+              
+              <Badge variant="outline" className="text-[11px] bg-gray-50">
+                {employmentStatusLabels[interpreter.employment_status]}
+              </Badge>
+              
+              {interpreter.tarif_5min !== null && (
+                <Badge variant="outline" className="text-[11px] bg-gray-50">
+                  5min: {interpreter.tarif_5min}€
+                </Badge>
+              )}
+              
+              {interpreter.tarif_15min !== null && (
+                <Badge variant="outline" className="text-[11px] bg-gray-50">
+                  15min: {interpreter.tarif_15min}€
+                </Badge>
+              )}
             </div>
             <div className={`px-1.5 py-0.5 rounded-full text-[11px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-3 w-3" />
@@ -207,24 +223,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Footer Section with Employment Status and Rates as badges */}
-          <div className="flex flex-wrap gap-1.5 items-center pt-1 border-t border-slate-100">
-            <Badge variant="outline" className="text-[11px] bg-gray-50">
-              {employmentStatusLabels[interpreter.employment_status]}
-            </Badge>
-            
-            {interpreter.tarif_5min !== null && (
-              <Badge variant="outline" className="text-[11px] bg-gray-50">
-                5min: {interpreter.tarif_5min}€
-              </Badge>
-            )}
-            
-            {interpreter.tarif_15min !== null && (
-              <Badge variant="outline" className="text-[11px] bg-gray-50">
-                15min: {interpreter.tarif_15min}€
-              </Badge>
-            )}
-          </div>
+          {/* Remove the footer section with rates */}
         </CardContent>
       </Card>
 
