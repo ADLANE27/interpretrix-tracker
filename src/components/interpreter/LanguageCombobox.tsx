@@ -1,10 +1,11 @@
 
-import React, { useState, useMemo, useEffect } from "react";
-import { Check, Search } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Check, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -29,12 +30,13 @@ export function LanguageCombobox({
 }: LanguageComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest("[data-language-selector]")) {
+      if (comboboxRef.current && !comboboxRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -47,6 +49,11 @@ export function LanguageCombobox({
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
+    } else if (inputRef.current) {
+      // Focus the search input when dropdown opens
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   }, [isOpen]);
 
@@ -119,6 +126,14 @@ export function LanguageCombobox({
     setSearchTerm("");
   };
 
+  // Handle clearing the selection
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (value !== "all" && value !== "") {
+      onChange(allLanguagesOption ? "all" : "");
+    }
+  };
+
   // Common languages to highlight at the top of the list
   const commonLanguages = [
     "Français", "Anglais", "Espagnol", "Arabe", "Arabe Maghrébin", "Dari", "Pashto", "Farsi", 
@@ -128,36 +143,74 @@ export function LanguageCombobox({
   const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
   return (
-    <div className="relative w-full" data-language-selector>
+    <div className="relative w-full" data-language-selector ref={comboboxRef}>
       {/* Main selector button */}
       <Button
         type="button"
         variant="outline"
         role="combobox"
         className={cn(
-          "w-full justify-between text-left font-normal",
+          "w-full justify-between text-left font-normal h-10 px-3 py-2",
           !value && "text-muted-foreground",
+          isOpen && "ring-2 ring-ring ring-offset-2 ring-offset-background",
           className
         )}
         onClick={handleButtonClick}
         aria-expanded={isOpen}
       >
-        <span className="truncate">{displayValue}</span>
-        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <div className="flex items-center gap-2 truncate">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          {value && value !== "all" ? (
+            <Badge variant="outline" className="mr-1 font-normal bg-accent text-accent-foreground">
+              {displayValue}
+            </Badge>
+          ) : (
+            <span className="truncate">{displayValue}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {value && value !== "all" && allLanguagesOption && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-5 w-5 rounded-full p-0 hover:bg-muted"
+              onClick={handleClear}
+            >
+              <X className="h-3 w-3" />
+              <span className="sr-only">Effacer la sélection</span>
+            </Button>
+          )}
+          {isOpen ? 
+            <ChevronUp className="h-4 w-4 shrink-0 opacity-50" /> : 
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          }
+        </div>
       </Button>
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-white shadow-xl">
+        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
           {/* Search input */}
-          <div className="p-2 border-b">
+          <div className="flex items-center p-2 border-b">
+            <Search className="h-4 w-4 mr-2 text-muted-foreground" />
             <Input
-              autoFocus
-              placeholder="Rechercher..."
+              ref={inputRef}
+              placeholder="Rechercher une langue..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8"
+              className="h-8 border-none shadow-none focus-visible:ring-0 bg-transparent"
             />
+            {searchTerm && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 p-0 rounded-full hover:bg-muted"
+                onClick={() => setSearchTerm("")}
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Effacer la recherche</span>
+              </Button>
+            )}
           </div>
           
           {/* Language list */}
@@ -166,16 +219,11 @@ export function LanguageCombobox({
               {allLanguagesOption && (
                 <Button
                   variant={value === "all" ? "secondary" : "ghost"}
-                  className="w-full justify-start font-normal mb-1"
+                  className="w-full justify-between font-normal mb-1 h-9"
                   onClick={() => handleSelectLanguage("all")}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === "all" ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {allLanguagesLabel}
+                  <span>{allLanguagesLabel}</span>
+                  {value === "all" && <Check className="h-4 w-4" />}
                 </Button>
               )}
               
@@ -191,16 +239,11 @@ export function LanguageCombobox({
                       <Button
                         key={language}
                         variant={value === language ? "secondary" : "ghost"}
-                        className="w-full justify-start font-normal mb-1"
+                        className="w-full justify-between font-normal mb-1 h-9"
                         onClick={() => handleSelectLanguage(language)}
                       >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === language ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {language}
+                        <span>{language}</span>
+                        {value === language && <Check className="h-4 w-4" />}
                       </Button>
                     ))
                   }
@@ -221,16 +264,11 @@ export function LanguageCombobox({
                     <Button
                       key={language}
                       variant={value === language ? "secondary" : "ghost"}
-                      className="w-full justify-start font-normal mb-1"
+                      className="w-full justify-between font-normal mb-1 h-9"
                       onClick={() => handleSelectLanguage(language)}
                     >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === language ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {language}
+                      <span>{language}</span>
+                      {value === language && <Check className="h-4 w-4" />}
                     </Button>
                   )
                 ))
