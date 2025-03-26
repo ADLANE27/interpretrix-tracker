@@ -21,8 +21,8 @@ export const UpcomingMissionBadge = ({
   estimatedDuration,
   sourceLang,
   targetLang,
-  showCountdown = false,
-  flashBefore = 15
+  showCountdown = true,
+  flashBefore = 30
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   

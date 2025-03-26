@@ -204,6 +204,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               estimatedDuration={interpreter.next_mission_duration || 0}
               sourceLang={interpreter.next_mission_source_language}
               targetLang={interpreter.next_mission_target_language}
+              showCountdown={true}
+              flashBefore={30}
             />
           </div>
         )}

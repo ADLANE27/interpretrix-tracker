@@ -150,7 +150,7 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
                 sourceLang={interpreter.next_mission_source_language}
                 targetLang={interpreter.next_mission_target_language}
                 showCountdown={true}
-                flashBefore={15}
+                flashBefore={30}
               />
             </div>
           ) : (
