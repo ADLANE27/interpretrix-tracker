@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -8,7 +9,7 @@ import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isPast, addMinutes } from 'date-fns';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -86,6 +87,18 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     setIsFlipped(!isFlipped);
   };
 
+  // Check if rate values are non-zero to determine if they should be displayed
+  const showTarif5min = interpreter.tarif_5min !== null && interpreter.tarif_5min > 0;
+  const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
+  const showAnyTarif = showTarif5min || showTarif15min;
+
+  // Check if mission is still active (not in the past)
+  const hasFutureMission = interpreter.next_mission_start && 
+    !isPast(addMinutes(
+      parseISO(interpreter.next_mission_start), 
+      interpreter.next_mission_duration || 0
+    ));
+
   return (
     <div className="preserve-3d perspective-1000 w-full h-full relative">
       <Card
@@ -110,7 +123,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
           </div>
           
-          {/* Badges row - status, location, employment, rates all in one line */}
+          {/* Badges row - status, location, employment in one line */}
           <div className="flex flex-wrap gap-1 mb-2 items-center">
             {/* Status badge */}
             <InterpreterStatusDropdown 
@@ -133,20 +146,22 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </Badge>
           </div>
           
-          {/* Rates row */}
-          <div className="flex flex-wrap gap-1 mb-2">
-            {interpreter.tarif_5min !== null && (
-              <Badge variant="outline" className="text-[10px] bg-gray-50">
-                5min: {interpreter.tarif_5min}€
-              </Badge>
-            )}
-            
-            {interpreter.tarif_15min !== null && (
-              <Badge variant="outline" className="text-[10px] bg-gray-50">
-                15min: {interpreter.tarif_15min}€
-              </Badge>
-            )}
-          </div>
+          {/* Rates row - only show if rates are non-zero */}
+          {showAnyTarif && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {showTarif5min && (
+                <Badge variant="outline" className="text-[10px] bg-gray-50">
+                  5min: {interpreter.tarif_5min}€
+                </Badge>
+              )}
+              
+              {showTarif15min && (
+                <Badge variant="outline" className="text-[10px] bg-gray-50">
+                  15min: {interpreter.tarif_15min}€
+                </Badge>
+              )}
+            </div>
+          )}
 
           {/* Contact Information - compact display */}
           {hasAnyPhoneNumber && (
@@ -196,8 +211,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Upcoming Mission - keeping existing design */}
-          {interpreter.next_mission_start && (
+          {/* Upcoming Mission - only show if mission is still active */}
+          {hasFutureMission && interpreter.next_mission_start && (
             <div className="mb-1">
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
@@ -209,11 +224,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Languages count and flip button */}
-          <div className="flex items-center justify-between text-xs mt-1">
-            <span className="text-muted-foreground">
-              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
-            </span>
+          {/* Flip button without showing language count */}
+          <div className="flex items-center justify-end text-xs mt-1">
             <Button 
               variant="ghost" 
               size="sm" 
