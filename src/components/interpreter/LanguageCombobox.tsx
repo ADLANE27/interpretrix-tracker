@@ -142,6 +142,34 @@ export function LanguageCombobox({
   
   const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
+  // Handle search input change with autocomplete suggestion
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    setSearchTerm(inputValue);
+    
+    // Auto-suggest if we have a single exact match at the beginning
+    if (inputValue && filteredLanguages.length === 1) {
+      const singleMatch = filteredLanguages[0];
+      const normalizedInput = normalizeString(inputValue);
+      const normalizedMatch = normalizeString(singleMatch);
+      
+      if (normalizedMatch.startsWith(normalizedInput)) {
+        inputRef.current?.setSelectionRange(inputValue.length, singleMatch.length);
+      }
+    }
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && filteredLanguages.length > 0) {
+      handleSelectLanguage(filteredLanguages[0]);
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      e.preventDefault();
+    }
+  };
+
   return (
     <div className="relative w-full" data-language-selector ref={comboboxRef}>
       {/* Main selector button */}
@@ -189,7 +217,7 @@ export function LanguageCombobox({
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
+        <div className="absolute top-full left-0 z-[9999] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
           {/* Search input */}
           <div className="flex items-center p-2 border-b">
             <Search className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -197,8 +225,10 @@ export function LanguageCombobox({
               ref={inputRef}
               placeholder="Rechercher une langue..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
               className="h-8 border-none shadow-none focus-visible:ring-0 bg-transparent"
+              autoComplete="off"
             />
             {searchTerm && (
               <Button 
