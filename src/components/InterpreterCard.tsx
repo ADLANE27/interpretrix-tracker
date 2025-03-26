@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -7,7 +6,6 @@ import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStat
 import { Profile } from '@/types/profile';
 import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
-import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { format, parseISO } from 'date-fns';
@@ -55,6 +53,11 @@ const workLocationConfig = {
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   
+  // Extract first and last name from the full name
+  const nameParts = interpreter.name.split(' ');
+  const lastName = nameParts.shift() || '';
+  const firstName = nameParts.join(' ');
+  
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -83,19 +86,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     setIsFlipped(!isFlipped);
   };
 
-  // Format next mission date to short format DD/MM/YYYY
-  const formatShortDate = (dateString: string | null) => {
-    if (!dateString) return '';
-    try {
-      return format(parseISO(dateString), 'dd/MM/yyyy');
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
-    }
-  };
-
   return (
-    <div className="preserve-3d perspective-1000 w-full aspect-square relative">
+    <div className="preserve-3d perspective-1000 w-full h-full relative">
       <Card
         asMotion
         motionProps={{
@@ -111,92 +103,88 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
-        <CardContent className="p-2 relative flex flex-col h-full">
-          {/* Front card content with improved layout */}
-          <div className="flex items-center justify-between gap-1 mb-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <InterpreterStatusDropdown 
-                interpreterId={interpreter.id}
-                currentStatus={interpreter.status}
-                displayFormat="badge"
-                onStatusChange={handleStatusChange}
-                className="text-[11px] px-2 py-0.5"
-              />
-            </div>
-            <div className={`px-1.5 py-0.5 rounded-full text-[11px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
-              <LocationIcon className="h-3 w-3" />
-              <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
-            </div>
+        <CardContent className="p-2 relative flex flex-col h-full justify-between">
+          {/* Interpreter name - last name and first name stacked */}
+          <div className="mb-2">
+            <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
+            {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
           </div>
           
-          {/* Interpreter name with larger font */}
-          <h3 className="text-sm font-medium text-gradient-primary truncate mb-2">{interpreter.name}</h3>
+          {/* Badges row - status, location, employment, rates all in one line */}
+          <div className="flex flex-wrap gap-1 mb-2 items-center">
+            {/* Status badge */}
+            <InterpreterStatusDropdown 
+              interpreterId={interpreter.id}
+              currentStatus={interpreter.status}
+              displayFormat="badge"
+              onStatusChange={handleStatusChange}
+              className="text-[10px] px-1.5 py-0.5"
+            />
+            
+            {/* Location badge */}
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-2.5 w-2.5" />
+              <span>{workLocationLabels[workLocation]}</span>
+            </Badge>
+            
+            {/* Employment badge */}
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-gray-50">
+              {employmentStatusLabels[interpreter.employment_status]}
+            </Badge>
+          </div>
           
-          {/* Language count summary */}
-          <div className="mb-2 text-xs flex items-center justify-between">
-            <span className="text-muted-foreground">
-              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
-            </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0 rounded-full" 
-              onClick={flipCard}
-            >
-              <RotateCw className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
+          {/* Rates row */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            {interpreter.tarif_5min !== null && (
+              <Badge variant="outline" className="text-[10px] bg-gray-50">
+                5min: {interpreter.tarif_5min}€
+              </Badge>
+            )}
+            
+            {interpreter.tarif_15min !== null && (
+              <Badge variant="outline" className="text-[10px] bg-gray-50">
+                15min: {interpreter.tarif_15min}€
+              </Badge>
+            )}
           </div>
 
-          {/* Upcoming Mission Section with shorter date format */}
-          {interpreter.next_mission_start && (
-            <div className="mb-2">
-              <UpcomingMissionBadge
-                startTime={interpreter.next_mission_start}
-                estimatedDuration={interpreter.next_mission_duration || 0}
-                sourceLang={interpreter.next_mission_source_language}
-                targetLang={interpreter.next_mission_target_language}
-                useShortDateFormat={true}
-              />
-            </div>
-          )}
-
-          {/* Contact Information Section with larger font */}
+          {/* Contact Information - compact display */}
           {hasAnyPhoneNumber && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-foreground mb-2 mt-auto">
+            <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-xs text-foreground mb-2">
               {interpreter.booth_number && (
                 <div className="flex items-center gap-1">
-                  <User className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>Cabine {interpreter.booth_number}</span>
+                  <User className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">Cabine {interpreter.booth_number}</span>
                 </div>
               )}
               {interpreter.phone_number && (
                 <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.phone_number}</span>
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.phone_number}</span>
                 </div>
               )}
               {interpreter.landline_phone && (
                 <div className="flex items-center gap-1">
-                  <PhoneCall className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.landline_phone}</span>
+                  <PhoneCall className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.landline_phone}</span>
                 </div>
               )}
               {interpreter.private_phone && (
                 <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.private_phone}</span>
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.private_phone}</span>
                 </div>
               )}
               {interpreter.professional_phone && (
                 <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.professional_phone}</span>
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.professional_phone}</span>
                 </div>
               )}
               {interpreter.work_hours && (
                 <div className="flex items-center gap-1 col-span-2">
-                  <Clock className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span className="text-xs">
+                  <Clock className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">
                     {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                       `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
                     {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
@@ -208,28 +196,37 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Footer Section with Employment Status and Rates as badges - now more compact */}
-          <div className="flex flex-wrap gap-1.5 items-center mt-auto pt-1 border-t border-slate-100">
-            <Badge variant="outline" className="text-[11px] bg-gray-50">
-              {employmentStatusLabels[interpreter.employment_status]}
-            </Badge>
-            
-            {interpreter.tarif_5min !== null && (
-              <Badge variant="outline" className="text-[11px] bg-gray-50">
-                5min: {interpreter.tarif_5min}€
-              </Badge>
-            )}
-            
-            {interpreter.tarif_15min !== null && (
-              <Badge variant="outline" className="text-[11px] bg-gray-50">
-                15min: {interpreter.tarif_15min}€
-              </Badge>
-            )}
+          {/* Upcoming Mission - keeping existing design */}
+          {interpreter.next_mission_start && (
+            <div className="mb-1">
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                sourceLang={interpreter.next_mission_source_language}
+                targetLang={interpreter.next_mission_target_language}
+                useShortDateFormat={true}
+              />
+            </div>
+          )}
+
+          {/* Languages count and flip button */}
+          <div className="flex items-center justify-between text-xs mt-1">
+            <span className="text-muted-foreground">
+              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 rounded-full" 
+              onClick={flipCard}
+            >
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Back side of the card - with ONLY languages */}
+      {/* Back side of the card - with languages */}
       <Card
         asMotion
         motionProps={{
@@ -248,14 +245,17 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         <CardContent className="p-2 relative flex flex-col h-full">
           {/* Back card header */}
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gradient-primary truncate">{interpreter.name}</h3>
+            <div>
+              <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
+              {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
+            </div>
             <Button 
               variant="ghost" 
               size="sm" 
               className="h-6 w-6 p-0 rounded-full" 
               onClick={flipCard}
             >
-              <RotateCw className="h-3.5 w-3.5 text-muted-foreground" />
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
             </Button>
           </div>
           
