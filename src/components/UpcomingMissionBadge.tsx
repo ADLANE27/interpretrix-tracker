@@ -26,6 +26,7 @@ export const UpcomingMissionBadge = ({
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
+    // Update 'now' every minute to ensure mission status is current
     const interval = setInterval(() => {
       setNow(new Date());
     }, 60000);
@@ -33,8 +34,19 @@ export const UpcomingMissionBadge = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Parse dates for mission start and end
   const missionStartDate = parseISO(startTime);
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
+  
+  // Debug log to check time values
+  console.log('[UpcomingMissionBadge]', {
+    missionId: startTime,
+    now: now.toISOString(),
+    missionStart: missionStartDate.toISOString(),
+    missionEnd: missionEndDate.toISOString(),
+    isBeforeStart: isBefore(now, missionStartDate),
+    isAfterEnd: isAfter(now, missionEndDate)
+  });
   
   const getMissionStatus = () => {
     if (isBefore(now, missionStartDate)) {
@@ -47,8 +59,10 @@ export const UpcomingMissionBadge = ({
     }
   };
 
-  // Si la mission est terminée, ne rien afficher du tout
-  if (getMissionStatus() === "ended") {
+  // Check mission status - if ended, don't render anything
+  const missionStatus = getMissionStatus();
+  if (missionStatus === "ended") {
+    console.log('[UpcomingMissionBadge] Mission ended, not rendering badge');
     return null;
   }
 
@@ -98,14 +112,13 @@ export const UpcomingMissionBadge = ({
   };
 
   const status = getStatusDisplay();
-  const missionStatus = getMissionStatus();
 
   return (
     <Badge 
       variant={status.variant} 
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
-        missionStatus !== "ended" && status.flashingClass
+        status.flashingClass
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />

@@ -60,3 +60,22 @@ export const createLocalISOString = (date: string, time: string): string => {
   // Simply concatenate date and time without adding Z marker
   return `${date}T${time}:00`;
 }
+
+// Helper to check if a mission is still active (not ended)
+export const isMissionActive = (startTimeStr: string | null, durationMinutes: number | null): boolean => {
+  if (!startTimeStr || !durationMinutes) {
+    return false;
+  }
+  
+  try {
+    const now = new Date();
+    const startTime = parseISO(startTimeStr);
+    const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+    
+    // Mission is active if current time is before end time
+    return now < endTime;
+  } catch (error) {
+    console.error('[dateTimeUtils] Error checking if mission is active:', error);
+    return false;
+  }
+};

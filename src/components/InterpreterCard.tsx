@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
@@ -53,6 +53,17 @@ const workLocationConfig = {
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  // Add state to force re-render for time-based updates
+  const [, setTimeRefresh] = useState(Date.now());
+  
+  // Update time every minute to ensure mission status is current
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeRefresh(Date.now());
+    }, 60000); // update every minute
+    
+    return () => clearInterval(timer);
+  }, []);
   
   // Extract first and last name from the full name
   const nameParts = interpreter.name.split(' ');
@@ -95,15 +106,29 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   // Check if mission is active - either upcoming or in progress
   const isMissionActive = () => {
     if (!interpreter.next_mission_start || !interpreter.next_mission_duration) {
+      console.log('[InterpreterCard] No mission data for', interpreter.name);
       return false;
     }
     
-    const now = new Date();
-    const missionStart = parseISO(interpreter.next_mission_start);
-    const missionEnd = addMinutes(missionStart, interpreter.next_mission_duration);
-    
-    // Mission is active if it hasn't ended yet
-    return !isAfter(now, missionEnd);
+    try {
+      const now = new Date();
+      const missionStart = parseISO(interpreter.next_mission_start);
+      const missionEnd = addMinutes(missionStart, interpreter.next_mission_duration);
+      
+      // Log for debugging
+      console.log('[InterpreterCard] Mission status check for', interpreter.name, {
+        now: now.toISOString(),
+        missionStart: missionStart.toISOString(),
+        missionEnd: missionEnd.toISOString(),
+        hasEnded: isAfter(now, missionEnd)
+      });
+      
+      // Mission is active if it hasn't ended yet
+      return !isAfter(now, missionEnd);
+    } catch (error) {
+      console.error('[InterpreterCard] Error checking mission status:', error);
+      return false;
+    }
   };
 
   const hasFutureMission = isMissionActive();
