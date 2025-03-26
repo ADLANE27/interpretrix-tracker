@@ -26,7 +26,7 @@ const Admin = () => {
       // If there are no active channels, it might indicate a connection issue
       const channels = supabase.getChannels();
       const connected = channels.length > 0 && 
-        channels.some((channel: RealtimeChannel) => channel.state === 'SUBSCRIBED');
+        channels.some((channel: RealtimeChannel) => channel.state === 'joined');
       
       if (!connected && !connectionError) {
         console.log('Connection issue detected, will attempt to reconnect');
@@ -99,4 +99,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
