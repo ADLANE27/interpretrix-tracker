@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,13 +13,16 @@ const Admin = () => {
   const [connectionError, setConnectionError] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
 
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
-  useMissionUpdates(() => {
+  // Create a stable callback function using useCallback
+  const handleMissionUpdate = useCallback(() => {
     // Reset connection error state on successful updates
     if (connectionError) setConnectionError(false);
     // Dispatch a custom event that the AdminDashboard will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
-  });
+  }, [connectionError]);
+
+  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
+  useMissionUpdates(handleMissionUpdate);
 
   // Handle connection status with improved detection
   useEffect(() => {

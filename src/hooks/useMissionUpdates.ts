@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
@@ -47,7 +48,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
-  }, [onUpdate]);
+  }, [onUpdate]); // Properly include onUpdate in the dependency array
 
   // Common subscription options
   const subscriptionOptions = {
