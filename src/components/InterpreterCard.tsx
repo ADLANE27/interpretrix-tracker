@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
@@ -9,7 +9,7 @@ import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { format, parseISO, isPast, addMinutes, isAfter } from 'date-fns';
+import { format, parseISO, isPast, addMinutes } from 'date-fns';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -53,17 +53,6 @@ const workLocationConfig = {
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  // Add state to force re-render for time-based updates
-  const [, setTimeRefresh] = useState(Date.now());
-  
-  // Update time every minute to ensure mission status is current
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRefresh(Date.now());
-    }, 60000); // update every minute
-    
-    return () => clearInterval(timer);
-  }, []);
   
   // Extract first and last name from the full name
   const nameParts = interpreter.name.split(' ');
@@ -103,35 +92,12 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  // Check if mission is active - either upcoming or in progress
-  const isMissionActive = () => {
-    if (!interpreter.next_mission_start || !interpreter.next_mission_duration) {
-      console.log('[InterpreterCard] No mission data for', interpreter.name);
-      return false;
-    }
-    
-    try {
-      const now = new Date();
-      const missionStart = parseISO(interpreter.next_mission_start);
-      const missionEnd = addMinutes(missionStart, interpreter.next_mission_duration);
-      
-      // Log for debugging
-      console.log('[InterpreterCard] Mission status check for', interpreter.name, {
-        now: now.toISOString(),
-        missionStart: missionStart.toISOString(),
-        missionEnd: missionEnd.toISOString(),
-        hasEnded: isAfter(now, missionEnd)
-      });
-      
-      // Mission is active if it hasn't ended yet
-      return !isAfter(now, missionEnd);
-    } catch (error) {
-      console.error('[InterpreterCard] Error checking mission status:', error);
-      return false;
-    }
-  };
-
-  const hasFutureMission = isMissionActive();
+  // Check if mission is still active (not in the past)
+  const hasFutureMission = interpreter.next_mission_start && 
+    !isPast(addMinutes(
+      parseISO(interpreter.next_mission_start), 
+      interpreter.next_mission_duration || 0
+    ));
 
   return (
     <div className="preserve-3d perspective-1000 w-full h-full relative">

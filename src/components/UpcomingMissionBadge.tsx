@@ -26,7 +26,6 @@ export const UpcomingMissionBadge = ({
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
-    // Update 'now' every minute to ensure mission status is current
     const interval = setInterval(() => {
       setNow(new Date());
     }, 60000);
@@ -34,19 +33,8 @@ export const UpcomingMissionBadge = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Parse dates for mission start and end
   const missionStartDate = parseISO(startTime);
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
-  
-  // Debug log to check time values
-  console.log('[UpcomingMissionBadge]', {
-    missionId: startTime,
-    now: now.toISOString(),
-    missionStart: missionStartDate.toISOString(),
-    missionEnd: missionEndDate.toISOString(),
-    isBeforeStart: isBefore(now, missionStartDate),
-    isAfterEnd: isAfter(now, missionEndDate)
-  });
   
   const getMissionStatus = () => {
     if (isBefore(now, missionStartDate)) {
@@ -58,13 +46,6 @@ export const UpcomingMissionBadge = ({
       return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
   };
-
-  // Check mission status - if ended, don't render anything
-  const missionStatus = getMissionStatus();
-  if (missionStatus === "ended") {
-    console.log('[UpcomingMissionBadge] Mission ended, not rendering badge');
-    return null;
-  }
 
   const getStatusDisplay = () => {
     const status = getMissionStatus();
@@ -102,9 +83,9 @@ export const UpcomingMissionBadge = ({
           variant: "destructive" as const,
           flashingClass: "animate-pulse bg-gradient-to-r from-orange-500 to-amber-400"
         };
-      default:
+      case "ended":
         return {
-          text: "",
+          text: `Mission terminée ${missionDate} ${timeRange}${languageInfo}`,
           variant: "outline" as const,
           flashingClass: ""
         };
@@ -112,13 +93,14 @@ export const UpcomingMissionBadge = ({
   };
 
   const status = getStatusDisplay();
+  const missionStatus = getMissionStatus();
 
   return (
     <Badge 
       variant={status.variant} 
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
-        status.flashingClass
+        missionStatus !== "ended" && status.flashingClass
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />
