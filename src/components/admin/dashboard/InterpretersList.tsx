@@ -1,6 +1,6 @@
 
 import React from "react";
-import InterpreterCard from "@/components/InterpreterCard";
+import InterpreterCard from "@/components/interpreter-card/InterpreterCard";
 import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterListItem";
 import { Profile } from "@/types/profile";
 import { WorkLocation } from "@/utils/workLocationStatus";
