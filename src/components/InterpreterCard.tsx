@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
@@ -73,35 +73,29 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
   return (
     <Card className="hover-elevate gradient-border">
-      <CardHeader className="card-header-gradient">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-gradient-primary">{interpreter.name}</CardTitle>
-          <InterpreterStatusDropdown 
-            interpreterId={interpreter.id}
-            currentStatus={interpreter.status}
-            displayFormat="badge"
-            onStatusChange={handleStatusChange}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {employmentStatusLabels[interpreter.employment_status]}
-          </p>
-          <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
-            <LocationIcon className="h-3 w-3" />
-            <span>{workLocationLabels[workLocation]}</span>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4 pt-4">
+      <CardContent className="p-3">
         <div className="space-y-2">
-          <h4 className="text-sm font-medium uppercase text-muted-foreground">LANGUES</h4>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <InterpreterStatusDropdown 
+                interpreterId={interpreter.id}
+                currentStatus={interpreter.status}
+                displayFormat="badge"
+                onStatusChange={handleStatusChange}
+              />
+              <h3 className="text-sm font-medium text-gradient-primary truncate">{interpreter.name}</h3>
+            </div>
+            <div className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-3 w-3" />
+              <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-1">
             {parsedLanguages.map((lang, index) => (
               <div
                 key={index}
-                className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+                className="px-2 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded text-xs flex items-center gap-1"
               >
                 <span>{lang.source}</span>
                 <span className="text-palette-vivid-purple">→</span>
@@ -109,80 +103,76 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               </div>
             ))}
           </div>
-        </div>
 
-        {hasAnyPhoneNumber && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium uppercase text-muted-foreground">CONTACT</h4>
-            <div className="space-y-2">
+          {interpreter.next_mission_start && (
+            <div className="py-1">
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                sourceLang={interpreter.next_mission_source_language}
+                targetLang={interpreter.next_mission_target_language}
+              />
+            </div>
+          )}
+
+          {hasAnyPhoneNumber && (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
               {interpreter.booth_number && (
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1">
+                  <User className="h-3 w-3 text-palette-ocean-blue" />
                   <span>Cabine {interpreter.booth_number}</span>
                 </div>
               )}
-              
               {interpreter.phone_number && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                  <span>Mobile: {interpreter.phone_number}</span>
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span>{interpreter.phone_number}</span>
                 </div>
               )}
-              
               {interpreter.landline_phone && (
-                <div className="flex items-center gap-2 text-sm">
-                  <PhoneCall className="h-4 w-4 text-palette-ocean-blue" />
-                  <span>Fixe: {interpreter.landline_phone}</span>
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-3 w-3 text-palette-ocean-blue" />
+                  <span>{interpreter.landline_phone}</span>
                 </div>
               )}
-              
               {interpreter.private_phone && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                  <span>Tél. personnel: {interpreter.private_phone}</span>
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span>{interpreter.private_phone}</span>
                 </div>
               )}
-              
               {interpreter.professional_phone && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                  <span>Tél. professionnel: {interpreter.professional_phone}</span>
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span>{interpreter.professional_phone}</span>
                 </div>
               )}
-              
               {interpreter.work_hours && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-palette-ocean-blue" />
+                <div className="flex items-center gap-1 col-span-2">
+                  <Clock className="h-3 w-3 text-palette-ocean-blue" />
                   <span>
-                    {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning}, {' '}
-                    {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
+                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                      `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
+                    {interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                      `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
                   </span>
                 </div>
               )}
             </div>
-          </div>
-        )}
-      </CardContent>
+          )}
 
-      {(interpreter.next_mission_start || interpreter.tarif_15min || interpreter.tarif_5min) && (
-        <CardFooter className="flex flex-col items-start border-t pt-4 space-y-3">
-          {interpreter.next_mission_start && (
-            <UpcomingMissionBadge
-              startTime={interpreter.next_mission_start}
-              estimatedDuration={interpreter.next_mission_duration || 0}
-              sourceLang={interpreter.next_mission_source_language}
-              targetLang={interpreter.next_mission_target_language}
-            />
-          )}
-          {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
-            <div className="text-sm text-muted-foreground">
-              {interpreter.tarif_5min !== null && `Tarif 5min: ${interpreter.tarif_5min}€`}
-              {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
-              {interpreter.tarif_15min !== null && `Tarif 15min: ${interpreter.tarif_15min}€`}
-            </div>
-          )}
-        </CardFooter>
-      )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+            <span>{employmentStatusLabels[interpreter.employment_status]}</span>
+            {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
+              <span>
+                {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
+                {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
+                {interpreter.tarif_15min !== null && `15min: ${interpreter.tarif_15min}€`}
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 };
