@@ -1,3 +1,4 @@
+
 -- Update the process_message_mentions function to handle standardized languages
 CREATE OR REPLACE FUNCTION public.process_message_mentions()
 RETURNS trigger
