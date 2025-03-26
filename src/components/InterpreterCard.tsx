@@ -60,12 +60,11 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     })
     .filter(lang => lang.source && lang.target);
 
-  const hasAnyPhoneNumber = 
-    interpreter.phone_number || 
-    interpreter.landline_phone || 
-    interpreter.private_phone || 
-    interpreter.professional_phone || 
-    interpreter.booth_number;
+  const hasAdditionalPhoneNumbers = 
+    (interpreter.booth_number && (interpreter.phone_number || interpreter.landline_phone || interpreter.private_phone || interpreter.professional_phone)) ||
+    (interpreter.phone_number && (interpreter.landline_phone || interpreter.private_phone || interpreter.professional_phone)) ||
+    (interpreter.landline_phone && (interpreter.private_phone || interpreter.professional_phone)) ||
+    (interpreter.private_phone && interpreter.professional_phone);
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
@@ -99,11 +98,11 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const primaryContact = getPrimaryContact();
 
   return (
-    <Card className="hover-elevate gradient-border h-full">
+    <Card className="gradient-border h-full">
       <CardHeader className="pb-1 pt-2 px-3">
         <div className="flex flex-row items-start justify-between gap-1">
           <div className="flex-grow min-w-0">
-            <CardTitle className="text-base font-medium truncate">{interpreter.name}</CardTitle>
+            <CardTitle className="text-base font-medium break-words">{interpreter.name}</CardTitle>
             <div className="flex flex-wrap items-center gap-1 mt-0.5">
               <span className="text-[10px] text-muted-foreground">
                 {employmentStatusLabels[interpreter.employment_status]}
@@ -119,7 +118,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             currentStatus={interpreter.status}
             displayFormat="badge"
             onStatusChange={handleStatusChange}
-            className="text-xs min-w-[70px] flex-shrink-0"
+            className="text-xs min-w-[60px] flex-shrink-0"
           />
         </div>
       </CardHeader>
@@ -205,7 +204,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         )}
 
         {/* Additional Contact Details section - Collapsible */}
-        {hasAnyPhoneNumber && (
+        {hasAdditionalPhoneNumbers && (
           <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen} className="w-full mt-1">
             <CollapsibleTrigger className="flex items-center justify-center w-full text-[10px] text-muted-foreground hover:text-primary py-0.5 transition-colors">
               {detailsOpen ? (
