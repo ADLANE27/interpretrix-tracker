@@ -6,19 +6,22 @@ import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { formatTimeString, formatDateDisplay } from "@/utils/dateTimeUtils";
+import { format } from "date-fns";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
   estimatedDuration: number;
   sourceLang?: string | null;
   targetLang?: string | null;
+  useShortDateFormat?: boolean;
 }
 
 export const UpcomingMissionBadge = ({ 
   startTime, 
   estimatedDuration,
   sourceLang,
-  targetLang 
+  targetLang,
+  useShortDateFormat = false
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
@@ -51,8 +54,11 @@ export const UpcomingMissionBadge = ({
     const startHour = formatTimeString(startTime);
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
-    // Format the date
-    const missionDate = formatDateDisplay(startTime);
+    
+    // Format the date - short format or regular format
+    const missionDate = useShortDateFormat 
+      ? format(parseISO(startTime), 'dd/MM/yyyy')
+      : formatDateDisplay(startTime);
 
     switch (status) {
       case "upcoming":
