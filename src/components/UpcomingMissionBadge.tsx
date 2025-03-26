@@ -38,15 +38,21 @@ export const UpcomingMissionBadge = ({
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    console.log(`[MissionBadge] Current time: ${now.toISOString()}`);
-    console.log(`[MissionBadge] Mission start: ${missionStartDate.toISOString()}`);
-    console.log(`[MissionBadge] Mission end: ${missionEndDate.toISOString()}`);
+    // Convert all dates to timestamps for direct comparison
+    const currentTime = now.getTime();
+    const startTime = missionStartDate.getTime();
+    const endTime = missionEndDate.getTime();
     
-    // Compare times directly without timezone adjustments
+    console.log(`[MissionBadge] Status check - Current: ${now.toISOString()}`);
+    console.log(`[MissionBadge] Status check - Start: ${missionStartDate.toISOString()}`);
+    console.log(`[MissionBadge] Status check - End: ${missionEndDate.toISOString()}`);
+    console.log(`[MissionBadge] Raw timestamps - Current: ${currentTime}, Start: ${startTime}, End: ${endTime}`);
+    console.log(`[MissionBadge] Current > Start? ${currentTime >= startTime}`);
+    
     // Check if mission has started (current time is after or equal to start time)
-    if (now.getTime() >= missionStartDate.getTime()) {
+    if (currentTime >= startTime) {
       // Check if mission has ended
-      if (now.getTime() > missionEndDate.getTime()) {
+      if (currentTime > endTime) {
         console.log(`[MissionBadge] Mission has ended`);
         return "ended";
       } else {
@@ -72,11 +78,16 @@ export const UpcomingMissionBadge = ({
     const missionDate = formatDateDisplay(startTime);
     
     let countdownText = "";
+    
     if (showCountdown) {
       if (status === "upcoming" || status === "starting-soon") {
+        // For upcoming missions, show countdown to start
         countdownText = formatCountdown(missionStartDate, now);
+        console.log(`[MissionBadge] Countdown for upcoming: ${countdownText}`);
       } else if (status === "in-progress" || status === "ending-soon") {
+        // For in-progress missions, show remaining time
         countdownText = `Se termine dans ${differenceInMinutes(missionEndDate, now)}min`;
+        console.log(`[MissionBadge] Countdown for in-progress: ${countdownText}`);
       }
     }
     

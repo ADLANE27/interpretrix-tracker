@@ -65,12 +65,18 @@ export const createLocalISOString = (date: string, time: string): string => {
 export const formatCountdown = (targetDate: Date, now: Date): string => {
   console.log(`[formatCountdown] Target: ${targetDate.toISOString()}, Now: ${now.toISOString()}`);
   
+  // Compare timestamps directly instead of Date objects
+  const targetTime = targetDate.getTime();
+  const currentTime = now.getTime();
+  
   // First check if mission has already started
-  if (now >= targetDate) {
+  if (currentTime >= targetTime) {
+    console.log('[formatCountdown] Mission has already started (currentTime >= targetTime)');
     return "En cours";
   }
   
-  const diffSeconds = differenceInSeconds(targetDate, now);
+  const diffSeconds = Math.floor((targetTime - currentTime) / 1000);
+  console.log(`[formatCountdown] Difference in seconds: ${diffSeconds}`);
   
   if (diffSeconds <= 0) {
     return "Maintenant";
