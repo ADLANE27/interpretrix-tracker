@@ -159,6 +159,12 @@ export const InterpreterStatusDropdown = ({
           {displayLabel}
         </div>
       );
+    } else if (displayFormat === "dropdown") {
+      return (
+        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
+          {displayLabel}
+        </div>
+      );
     } else {
       return (
         <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>

@@ -53,26 +53,29 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
   const LocationIcon = workLocationConfig[workLocation].icon;
   
   // Determine primary contact for display
-  const getPrimaryContact = () => {
+  const getContacts = () => {
+    const contacts = [];
+    
     if (interpreter.booth_number) {
-      return { icon: User, label: `Cabine ${interpreter.booth_number}` };
+      contacts.push({ icon: User, label: `Cabine ${interpreter.booth_number}` });
     }
     if (interpreter.phone_number) {
-      return { icon: Phone, label: interpreter.phone_number };
+      contacts.push({ icon: Phone, label: interpreter.phone_number });
     }
     if (interpreter.professional_phone) {
-      return { icon: Phone, label: interpreter.professional_phone };
+      contacts.push({ icon: Phone, label: interpreter.professional_phone });
     }
     if (interpreter.private_phone) {
-      return { icon: Phone, label: interpreter.private_phone };
+      contacts.push({ icon: Phone, label: interpreter.private_phone });
     }
     if (interpreter.landline_phone) {
-      return { icon: PhoneCall, label: interpreter.landline_phone };
+      contacts.push({ icon: PhoneCall, label: interpreter.landline_phone });
     }
-    return null;
+    
+    return contacts;
   };
 
-  const primaryContact = getPrimaryContact();
+  const contacts = getContacts();
   
   const getLanguageDisplay = () => {
     const parsedLanguages = interpreter.languages
@@ -94,9 +97,9 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
   return (
     <div className="bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="grid grid-cols-12 gap-2 items-center">
-        {/* Name and status - 4 columns */}
+        {/* Name and status - 3 columns */}
         <div className="col-span-3">
-          <div className="font-medium">{interpreter.name}</div>
+          <div className="font-medium truncate">{interpreter.name}</div>
           <div className="flex items-center gap-1 mt-0.5">
             <span className="text-xs text-muted-foreground">
               {employmentStatusLabels[interpreter.employment_status]}
@@ -115,11 +118,17 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
         
         {/* Contact info - 3 columns */}
         <div className="col-span-3">
-          {primaryContact && (
-            <div className="flex items-center gap-1 text-sm text-slate-600">
-              <primaryContact.icon className="h-3.5 w-3.5 text-palette-ocean-blue" />
-              <span className="truncate">{primaryContact.label}</span>
+          {contacts.length > 0 ? (
+            <div className="space-y-1">
+              {contacts.slice(0, 2).map((contact, index) => (
+                <div key={index} className="flex items-center gap-1 text-sm text-slate-600">
+                  <contact.icon className="h-3.5 w-3.5 text-palette-ocean-blue" />
+                  <span className="truncate">{contact.label}</span>
+                </div>
+              ))}
             </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Aucun contact</span>
           )}
           {interpreter.work_hours && (
             <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
@@ -132,7 +141,7 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
         </div>
         
         {/* Next mission - 3 columns */}
-        <div className="col-span-3">
+        <div className="col-span-3 pr-2">
           {interpreter.next_mission_start ? (
             <UpcomingMissionBadge
               startTime={interpreter.next_mission_start}
