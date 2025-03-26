@@ -47,12 +47,13 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     })
     .filter(lang => lang.source && lang.target);
 
-  const hasAnyPhoneNumber = 
+  const hasAnyPhoneNumber = !!(
     interpreter.phone_number || 
     interpreter.landline_phone || 
     interpreter.private_phone || 
     interpreter.professional_phone || 
-    interpreter.booth_number;
+    interpreter.booth_number
+  );
 
   const flipCard = () => {
     setIsFlipped(!isFlipped);

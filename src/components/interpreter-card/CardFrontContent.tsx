@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { UpcomingMissionBadge } from '../UpcomingMissionBadge';
