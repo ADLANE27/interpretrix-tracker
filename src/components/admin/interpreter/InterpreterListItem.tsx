@@ -148,6 +148,7 @@ export const InterpreterListItem: React.FC<InterpreterListItemProps> = ({
               estimatedDuration={interpreter.next_mission_duration || 0}
               sourceLang={interpreter.next_mission_source_language}
               targetLang={interpreter.next_mission_target_language}
+              showCountdown={true}
             />
           ) : (
             <span className="text-xs text-muted-foreground">Aucune mission prévue</span>

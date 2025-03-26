@@ -1,3 +1,4 @@
+
 import { fr } from "date-fns/locale";
 import { Calendar, Clock, CheckSquare, XSquare, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatTimeString, formatDateTimeDisplay } from "@/utils/dateTimeUtils";
+import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 
 interface MissionCardProps {
   mission: Mission;
@@ -113,6 +115,17 @@ export const MissionCard = ({
                 </>
               ) : mission.scheduled_start_time && (
                 <div className="space-y-1">
+                  {mission.status === 'accepted' && mission.assigned_interpreter_id === currentUserId && (
+                    <div className="mb-2">
+                      <UpcomingMissionBadge 
+                        startTime={mission.scheduled_start_time}
+                        estimatedDuration={mission.estimated_duration}
+                        sourceLang={mission.source_language}
+                        targetLang={mission.target_language}
+                        showCountdown={true}
+                      />
+                    </div>
+                  )}
                   <p className="text-blue-600">
                     Début: {formatDateTimeDisplay(mission.scheduled_start_time)}
                   </p>

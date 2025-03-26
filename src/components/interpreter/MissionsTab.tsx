@@ -57,16 +57,22 @@ export const MissionsTab = () => {
   }, []);
 
   return (
-    <div className="space-y-4">
-      {missions.map((mission) => (
-        <MissionCard
-          key={mission.id}
-          mission={mission}
-          currentUserId={currentUserId}
-          isProcessing={isProcessing}
-          onMissionResponse={handleMissionResponse}
-        />
-      ))}
+    <div className="space-y-4 p-2">
+      {missions.length > 0 ? (
+        missions.map((mission) => (
+          <MissionCard
+            key={mission.id}
+            mission={mission}
+            currentUserId={currentUserId}
+            isProcessing={isProcessing}
+            onMissionResponse={handleMissionResponse}
+          />
+        ))
+      ) : (
+        <div className="text-center p-8 text-muted-foreground">
+          Aucune mission disponible pour le moment
+        </div>
+      )}
     </div>
   );
 };

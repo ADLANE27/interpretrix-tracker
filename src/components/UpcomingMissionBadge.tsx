@@ -1,6 +1,6 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, differenceInSeconds, differenceInMinutes, differenceInHours } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
@@ -12,13 +12,15 @@ interface UpcomingMissionBadgeProps {
   estimatedDuration: number;
   sourceLang?: string | null;
   targetLang?: string | null;
+  showCountdown?: boolean;
 }
 
 export const UpcomingMissionBadge = ({ 
   startTime, 
   estimatedDuration,
   sourceLang,
-  targetLang 
+  targetLang,
+  showCountdown = false
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
@@ -44,6 +46,37 @@ export const UpcomingMissionBadge = ({
     }
   };
 
+  const formatCountdown = () => {
+    if (isBefore(now, missionStartDate)) {
+      // Countdown to start
+      const diffSeconds = differenceInSeconds(missionStartDate, now);
+      const hours = Math.floor(diffSeconds / 3600);
+      const minutes = Math.floor((diffSeconds % 3600) / 60);
+      
+      if (hours > 0) {
+        return `Dans ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
+      } else if (minutes > 0) {
+        return `Dans ${minutes} min`;
+      } else {
+        return "Commence très bientôt";
+      }
+    } else if (isBefore(now, missionEndDate)) {
+      // Countdown to end
+      const diffSeconds = differenceInSeconds(missionEndDate, now);
+      const hours = Math.floor(diffSeconds / 3600);
+      const minutes = Math.floor((diffSeconds % 3600) / 60);
+      
+      if (hours > 0) {
+        return `Reste ${hours}h${minutes > 0 ? minutes + 'min' : ''}`;
+      } else if (minutes > 0) {
+        return `Reste ${minutes} min`;
+      } else {
+        return "Se termine très bientôt";
+      }
+    }
+    return "";
+  };
+
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
@@ -53,11 +86,15 @@ export const UpcomingMissionBadge = ({
     const timeRange = `${startHour}-${endHour}`;
     // Format the date
     const missionDate = formatDateDisplay(startTime);
+    
+    // Add countdown if enabled
+    const countdown = showCountdown ? formatCountdown() : '';
+    const countdownPrefix = countdown ? `${countdown} • ` : '';
 
     switch (status) {
       case "upcoming":
         return {
-          text: `${missionDate} ${timeRange}${languageInfo}`,
+          text: `${countdownPrefix}${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
       case "in-progress":
@@ -66,12 +103,12 @@ export const UpcomingMissionBadge = ({
           addSuffix: true 
         });
         return {
-          text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
+          text: `${countdown ? countdown + ' • ' : ''}Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
         return {
-          text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
+          text: `${countdownPrefix}Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
           variant: "destructive" as const
         };
       case "ended":
@@ -88,7 +125,7 @@ export const UpcomingMissionBadge = ({
     <Badge 
       variant={status.variant} 
       className={cn(
-        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full",
+        "gap-1.5 text-xs whitespace-normal text-wrap max-w-full px-2 py-1",
         getMissionStatus() === "in-progress" && "animate-pulse"
       )}
     >
