@@ -217,7 +217,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700">
                         <Phone className="h-3 w-3 text-palette-ocean-blue" />
-                        <span>Mobile</span>
+                        <span>{interpreter.phone_number}</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
