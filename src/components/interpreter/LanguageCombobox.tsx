@@ -119,6 +119,12 @@ export function LanguageCombobox({
     setIsOpen(!isOpen);
   };
 
+  // New handler specifically for search icon
+  const handleSearchIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling to the parent button
+    setIsOpen(true); // Always open the dropdown
+  };
+
   // Handle selecting a language
   const handleSelectLanguage = (lang: string) => {
     onChange(lang);
@@ -159,7 +165,11 @@ export function LanguageCombobox({
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2 truncate">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          {/* Make the search icon clickable independently */}
+          <Search 
+            className="h-4 w-4 shrink-0 text-muted-foreground cursor-pointer" 
+            onClick={handleSearchIconClick}
+          />
           {value && value !== "all" ? (
             <Badge variant="outline" className="mr-1 font-normal bg-accent text-accent-foreground">
               {displayValue}
