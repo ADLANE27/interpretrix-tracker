@@ -47,7 +47,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   onStatusChange,
 }) => {
   return (
-    <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" : "space-y-2"}>
+    <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4" : "space-y-2"}>
       {interpreters.map(interpreter => viewMode === "grid" ? (
         <InterpreterCard 
           key={interpreter.id} 
