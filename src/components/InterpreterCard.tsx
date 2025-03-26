@@ -94,7 +94,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   };
 
   return (
-    <div className="preserve-3d perspective-1000 w-full aspect-square relative">
+    <div className="preserve-3d perspective-1000 w-full h-full relative">
       <Card
         asMotion
         motionProps={{
@@ -110,10 +110,10 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-1.5 relative flex flex-col h-full">
           {/* Front card content with badges on same level */}
-          <div className="flex items-center justify-between gap-1 mb-2">
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <div className="flex items-center justify-between gap-1 mb-1.5">
+            <div className="flex flex-wrap items-center gap-1 min-w-0">
               <InterpreterStatusDropdown 
                 interpreterId={interpreter.id}
                 currentStatus={interpreter.status}
@@ -145,10 +145,10 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
           </div>
           
           {/* Interpreter name with larger font */}
-          <h3 className="text-sm font-medium text-gradient-primary truncate mb-2">{interpreter.name}</h3>
+          <h3 className="text-sm font-medium text-gradient-primary truncate mb-1.5">{interpreter.name}</h3>
           
           {/* Language count summary */}
-          <div className="mb-2 text-xs flex items-center justify-between">
+          <div className="mb-1.5 text-xs flex items-center justify-between">
             <span className="text-muted-foreground">
               {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
             </span>
@@ -164,7 +164,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
           {/* Upcoming Mission Section with shorter date format */}
           {interpreter.next_mission_start && (
-            <div className="mb-2">
+            <div className="mb-1.5">
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
                 estimatedDuration={interpreter.next_mission_duration || 0}
@@ -177,7 +177,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
           {/* Contact Information Section with larger font */}
           {hasAnyPhoneNumber && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-foreground mb-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-foreground">
               {interpreter.booth_number && (
                 <div className="flex items-center gap-1">
                   <User className="h-3.5 w-3.5 text-palette-ocean-blue" />
@@ -222,8 +222,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               )}
             </div>
           )}
-
-          {/* Remove the footer section with rates */}
         </CardContent>
       </Card>
 
@@ -243,9 +241,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-1.5 relative h-full flex flex-col">
           {/* Back card header */}
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1.5">
             <h3 className="text-sm font-medium text-gradient-primary truncate">{interpreter.name}</h3>
             <Button 
               variant="ghost" 
@@ -259,7 +257,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
           
           {/* Languages section - now shown on the back */}
           <div className="mb-1 text-xs font-medium text-muted-foreground">Combinaisons de langues:</div>
-          <div className="flex flex-wrap gap-1 max-h-[calc(100%-60px)] overflow-y-auto pr-1 hide-scrollbar">
+          <div className="flex flex-wrap gap-1 overflow-y-auto pr-1 hide-scrollbar grow">
             {parsedLanguages.map((lang, index) => (
               <div
                 key={index}
