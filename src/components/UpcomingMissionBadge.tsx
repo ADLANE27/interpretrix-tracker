@@ -59,7 +59,7 @@ export const UpcomingMissionBadge = ({
         return {
           text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple"
+          flashingClass: "animate-pulse bg-gradient-to-r from-amber-300 to-orange-500"
         };
       case "in-progress":
         const remainingTime = formatDistanceToNow(missionEndDate, { 
@@ -69,13 +69,13 @@ export const UpcomingMissionBadge = ({
         return {
           text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
           variant: "default" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue"
+          flashingClass: "animate-pulse bg-gradient-to-r from-orange-400 to-amber-300"
         };
       case "ending-soon":
         return {
           text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
           variant: "destructive" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink"
+          flashingClass: "animate-pulse bg-gradient-to-r from-orange-500 to-amber-400"
         };
       case "ended":
         return {
