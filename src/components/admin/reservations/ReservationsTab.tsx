@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { COMPANY_TYPES, LANGUAGES } from "@/lib/constants";
 import { Search, Calendar, Building, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LanguageCombobox } from "@/components/interpreter/LanguageCombobox";
+import { LanguageFilter } from "@/components/interpreter/LanguageFilter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const ReservationsTab = () => {
@@ -59,7 +59,7 @@ export const ReservationsTab = () => {
 
             <div className="space-y-2">
               <Label>Langue source</Label>
-              <LanguageCombobox
+              <LanguageFilter
                 languages={LANGUAGES}
                 value={sourceLanguageFilter}
                 onChange={setSourceLanguageFilter}
@@ -71,7 +71,7 @@ export const ReservationsTab = () => {
 
             <div className="space-y-2">
               <Label>Langue cible</Label>
-              <LanguageCombobox
+              <LanguageFilter
                 languages={LANGUAGES}
                 value={targetLanguageFilter}
                 onChange={setTargetLanguageFilter}

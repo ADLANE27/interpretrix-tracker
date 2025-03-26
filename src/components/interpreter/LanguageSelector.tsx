@@ -5,7 +5,7 @@ import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LANGUAGES } from "@/lib/constants";
 import { LanguagePair, isValidLanguagePair } from "@/types/languages";
-import { LanguageCombobox } from "./LanguageCombobox";
+import { LanguageFilter } from "./LanguageFilter";
 
 interface LanguageSelectorProps {
   languages: LanguagePair[];
@@ -55,7 +55,7 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
       {isEditing && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <div className="flex-1">
-            <LanguageCombobox
+            <LanguageFilter
               languages={LANGUAGES}
               value={newSource}
               onChange={setNewSource}
@@ -66,7 +66,7 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
           </div>
           
           <div className="flex-1">
-            <LanguageCombobox
+            <LanguageFilter
               languages={LANGUAGES}
               value={newTarget}
               onChange={setNewTarget}
