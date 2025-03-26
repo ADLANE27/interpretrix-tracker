@@ -43,17 +43,23 @@ export const UpcomingMissionBadge = ({
     console.log(`[MissionBadge] Mission end: ${missionEndDate.toISOString()}`);
     
     // Compare times directly without timezone adjustments
-    if (now < missionStartDate) {
+    // Check if mission has started (current time is after or equal to start time)
+    if (now.getTime() >= missionStartDate.getTime()) {
+      // Check if mission has ended
+      if (now.getTime() > missionEndDate.getTime()) {
+        console.log(`[MissionBadge] Mission has ended`);
+        return "ended";
+      } else {
+        // Mission is in progress
+        const minutesLeft = differenceInMinutes(missionEndDate, now);
+        console.log(`[MissionBadge] Mission in progress, minutes left: ${minutesLeft}`);
+        return minutesLeft <= flashBefore ? "ending-soon" : "in-progress";
+      }
+    } else {
+      // Mission hasn't started yet
       const minutesToStart = differenceInMinutes(missionStartDate, now);
       console.log(`[MissionBadge] Minutes to start: ${minutesToStart}`);
       return minutesToStart <= flashBefore ? "starting-soon" : "upcoming";
-    } else if (now > missionEndDate) {
-      console.log(`[MissionBadge] Mission has ended`);
-      return "ended";
-    } else {
-      const minutesLeft = differenceInMinutes(missionEndDate, now);
-      console.log(`[MissionBadge] Mission in progress, minutes left: ${minutesLeft}`);
-      return minutesLeft <= flashBefore ? "ending-soon" : "in-progress";
     }
   };
 
@@ -67,7 +73,6 @@ export const UpcomingMissionBadge = ({
     
     let countdownText = "";
     if (showCountdown) {
-      const status = getMissionStatus();
       if (status === "upcoming" || status === "starting-soon") {
         countdownText = formatCountdown(missionStartDate, now);
       } else if (status === "in-progress" || status === "ending-soon") {
@@ -91,7 +96,7 @@ export const UpcomingMissionBadge = ({
         };
       case "in-progress":
         return {
-          text: `En cours • ${countdownPrefix}${timeRange}${languageInfo}`,
+          text: `En cours • ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
