@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
-import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { Profile } from '@/types/profile';
 import { EmploymentStatus } from '@/utils/employmentStatus';
 import { WorkLocation } from '@/utils/workLocationStatus';
@@ -77,7 +76,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
-        <CardContent className="p-1.5 relative flex flex-col h-full">
+        <CardContent className="p-1.5 relative flex flex-col justify-between h-full">
           <CardFrontContent 
             interpreter={interpreter}
             parsedLanguages={parsedLanguages}

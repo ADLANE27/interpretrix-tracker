@@ -137,7 +137,7 @@ export const CardFrontContent: React.FC<CardFrontContentProps> = ({
 
       {/* Contact Information */}
       {hasAnyPhoneNumber && (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs text-foreground">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-auto text-xs text-foreground">
           {interpreter.booth_number && (
             <ContactInfoItem 
               icon={User}
