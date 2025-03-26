@@ -11,6 +11,7 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
 
   // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
@@ -20,24 +21,43 @@ const Admin = () => {
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
   });
 
-  // Handle connection status
+  // Handle connection status with improved detection
   useEffect(() => {
+    let lastSuccessTime = Date.now();
+    
     const connectionCheck = setInterval(() => {
       // If there are no active channels, it might indicate a connection issue
       const channels = supabase.getChannels();
       const connected = channels.length > 0 && 
         channels.some((channel: RealtimeChannel) => channel.state === 'joined');
       
-      if (!connected && !connectionError) {
-        console.log('Connection issue detected, will attempt to reconnect');
+      const currentTime = Date.now();
+      const timeSinceLastSuccess = currentTime - lastSuccessTime;
+      
+      console.log(`[Admin] Connection check #${checkCount + 1}: `, {
+        channelsCount: channels.length, 
+        connected, 
+        timeSinceLastSuccess,
+        connectionErrorState: connectionError
+      });
+      
+      if (connected) {
+        lastSuccessTime = currentTime;
+        if (connectionError) {
+          console.log('[Admin] Connection restored');
+          setConnectionError(false);
+        }
+      } else if (!connectionError && timeSinceLastSuccess > 25000) {
+        // Only show error after 25 seconds without connection
+        console.log('[Admin] Connection issue detected');
         setConnectionError(true);
-      } else if (connected && connectionError) {
-        setConnectionError(false);
       }
+      
+      setCheckCount(count => count + 1);
     }, 30000); // Check every 30 seconds
 
     return () => clearInterval(connectionCheck);
-  }, [connectionError]);
+  }, [connectionError, checkCount]);
 
   useEffect(() => {
     const checkAuth = async () => {

@@ -6,7 +6,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 console.log("Enable realtime function loaded");
 
 // Create a cache to store which tables have been enabled
-const enabledTablesCache = new Map<string, boolean>();
+const enabledTablesCache = new Map<string, number>();
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -50,13 +50,16 @@ serve(async (req) => {
       );
     }
 
-    // Check if table is already in the cache
-    if (enabledTablesCache.get(table)) {
-      console.log(`Table ${table} is already enabled (from cache)`);
+    // Check if table is already in the cache with a timestamp within the last hour
+    const now = Date.now();
+    const cacheTime = enabledTablesCache.get(table);
+    if (cacheTime && (now - cacheTime) < 3600000) { // 1 hour cache
+      console.log(`Table ${table} is already enabled (from function cache)`);
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Table ${table} is already enabled for realtime (cached)` 
+          message: `Table ${table} is already enabled for realtime (cached)`,
+          cache: true
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -71,8 +74,8 @@ serve(async (req) => {
       console.error(`Error checking if table ${table} is enabled:`, isEnabledError);
     } else if (isEnabledData) {
       console.log(`Table ${table} is already enabled for realtime`);
-      // Add to cache
-      enabledTablesCache.set(table, true);
+      // Add to cache with current timestamp
+      enabledTablesCache.set(table, now);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -101,13 +104,23 @@ serve(async (req) => {
 
     console.log(`Successfully called enable_realtime_for_table for ${table}:`, data);
     
-    // Update cache on success
-    if (data.success) {
-      enabledTablesCache.set(table, true);
+    // Update cache on success with current timestamp
+    if (data && data.success) {
+      enabledTablesCache.set(table, now);
+    }
+
+    // Clean up old cache entries
+    for (const [cachedTable, timestamp] of enabledTablesCache.entries()) {
+      if (now - timestamp > 86400000) { // 24 hours
+        enabledTablesCache.delete(cachedTable);
+      }
     }
 
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        ...data,
+        cacheSize: enabledTablesCache.size
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

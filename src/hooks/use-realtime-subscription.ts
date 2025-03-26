@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,9 +26,12 @@ const circuitBreakerState = {
   isOpen: false,
   failureCount: 0,
   lastFailureTime: 0,
-  resetTimeout: 60000, // 1 minute before trying again
-  failureThreshold: 3
+  resetTimeout: 120000, // 2 minutes before trying again (increased)
+  failureThreshold: 5    // Increased threshold
 };
+
+// Track active subscriptions globally to avoid duplicates
+const activeSubscriptions = new Map<string, number>();
 
 // Determine if we're in production mode based on URL or environment
 const isProduction = () => {
@@ -55,6 +59,7 @@ export function useRealtimeSubscription(
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
+  const subscriptionKey = useRef<string>(`${config.table}:${config.event}:${config.filter || 'none'}`);
 
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
@@ -152,10 +157,22 @@ export function useRealtimeSubscription(
   }, [enableRealtimeConfig, shouldTryEnableRealtime, log, logError]);
 
   useEffect(() => {
+    if (!enabled) return;
+    
     let timeoutId: NodeJS.Timeout;
+    const key = subscriptionKey.current;
+    
+    // Increment reference count for this subscription
+    const currentCount = activeSubscriptions.get(key) || 0;
+    activeSubscriptions.set(key, currentCount + 1);
+    
+    log(`Subscription reference count for ${key} is now ${currentCount + 1}`);
+    
+    // Only set up a new channel if this is the first subscription to this config
+    const shouldSetupNewChannel = currentCount === 0;
 
     const setupChannel = async () => {
-      if (!enabled) return;
+      if (!enabled || !shouldSetupNewChannel) return;
 
       try {
         if (channelRef.current) {
@@ -241,13 +258,28 @@ export function useRealtimeSubscription(
       }
     };
 
-    setupChannel();
+    if (shouldSetupNewChannel) {
+      setupChannel();
+    } else {
+      // If not setting up a new channel, we're still "connected" in the sense that some other subscription is handling it
+      setIsConnected(true);
+    }
 
     return () => {
-      log(`Cleaning up subscription for ${config.table}`);
       clearTimeout(timeoutId);
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+      
+      // Decrement reference count
+      const newCount = (activeSubscriptions.get(key) || 1) - 1;
+      if (newCount <= 0) {
+        activeSubscriptions.delete(key);
+        // Only remove the channel if this is the last subscription to this config
+        if (channelRef.current) {
+          log(`Removing channel for ${key} as reference count reached 0`);
+          supabase.removeChannel(channelRef.current);
+        }
+      } else {
+        activeSubscriptions.set(key, newCount);
+        log(`Subscription reference count for ${key} decreased to ${newCount}`);
       }
     };
   }, [

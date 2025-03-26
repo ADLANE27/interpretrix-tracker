@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,7 +9,6 @@ import { ReservationEditDialog } from "./ReservationEditDialog";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 import { Clock, Languages, User, Building } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 import { COMPANY_TYPES } from "@/lib/constants";
 
 interface PrivateReservationListProps {
@@ -113,10 +113,19 @@ export const PrivateReservationList = ({
     fetchReservations();
   }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter, companyFilter]);
 
-  useMissionUpdates(() => {
-    console.log('[PrivateReservationList] Received update, refreshing reservations');
-    fetchReservations();
-  });
+  useEffect(() => {
+    // Set up listener for status updates from parent component
+    const handleStatusUpdate = () => {
+      console.log('[PrivateReservationList] Received update, refreshing reservations');
+      fetchReservations();
+    };
+    
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
+    
+    return () => {
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
+    };
+  }, []);
 
   const onClose = () => setSelectedReservation(null);
 
