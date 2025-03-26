@@ -124,7 +124,7 @@ export function LanguageCombobox({
         <input 
           ref={inputRef}
           type="text"
-          placeholder={value && value !== "all" ? value : allLanguagesLabel}
+          placeholder={value && value !== "all" ? value : placeholder}
           value={searchTerm}
           onChange={handleSearchChange}
           onClick={() => setIsOpen(true)}

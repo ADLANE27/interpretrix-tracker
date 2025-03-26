@@ -40,8 +40,14 @@ BEGIN
                 )
                 SELECT * FROM language_matches
             LOOP
-                -- ... keep existing code (mention insertion remains the same)
+                -- Insert mention in message_mentions table
+                INSERT INTO message_mentions (message_id, channel_id, mentioned_user_id, status, created_at)
+                VALUES (NEW.id, NEW.channel_id, interpreter_record, 'unread', NOW())
+                ON CONFLICT DO NOTHING;
             END LOOP;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RAISE WARNING 'Error processing mention %: %', language_name, SQLERRM;
         END;
     END LOOP;
 
