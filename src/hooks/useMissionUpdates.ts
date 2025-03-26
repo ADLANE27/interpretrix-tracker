@@ -3,6 +3,13 @@ import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
+// Determine if we're in production mode
+const isProduction = () => {
+  return window.location.hostname !== 'localhost' && 
+         window.location.hostname !== '127.0.0.1' &&
+         !window.location.hostname.includes('preview');
+};
+
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup visibility change event listeners
   useEffect(() => {
@@ -33,6 +40,20 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
   }, [onUpdate]);
 
+  // Common subscription options
+  const subscriptionOptions = {
+    debugMode: isProduction() ? false : true, // Disable verbose logging in production
+    maxRetries: isProduction() ? 10 : 3,      // Increase retries in production
+    retryInterval: 5000,
+    onError: (error: any) => {
+      if (!isProduction()) {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      } else {
+        console.error('[useMissionUpdates] Realtime subscription issue. Will auto-retry.');
+      }
+    }
+  };
+
   // Subscribe to mission changes
   useRealtimeSubscription(
     {
@@ -44,14 +65,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
       onUpdate();
     },
-    {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
-      }
-    }
+    subscriptionOptions
   );
 
   // Subscribe to reservation changes
@@ -65,14 +79,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
       onUpdate();
     },
-    {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
-      }
-    }
+    subscriptionOptions
   );
   
   // Use a more specific subscription for interpreter profile status changes
@@ -89,12 +96,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode for troubleshooting
-      maxRetries: 3,
+      ...subscriptionOptions,
       retryInterval: 3000, // Shorter retry for status updates
-      onError: (error) => {
-        console.error('[useMissionUpdates] Status subscription error:', error);
-      }
     }
   );
 };

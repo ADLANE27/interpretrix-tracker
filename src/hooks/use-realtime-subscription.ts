@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +29,13 @@ const circuitBreakerState = {
   failureThreshold: 3
 };
 
+// Determine if we're in production mode based on URL or environment
+const isProduction = () => {
+  return window.location.hostname !== 'localhost' && 
+         window.location.hostname !== '127.0.0.1' &&
+         !window.location.hostname.includes('preview');
+};
+
 export function useRealtimeSubscription(
   config: SubscriptionConfig,
   callback: (payload: any) => void,
@@ -38,9 +44,9 @@ export function useRealtimeSubscription(
   const {
     enabled = true,
     retryInterval = 5000,
-    maxRetries = 3,
+    maxRetries = isProduction() ? 10 : 3, // Increased retries in production
     onError,
-    debugMode = false,
+    debugMode = isProduction() ? false : true, // Disable debug mode in production
     enableRealtimeConfig = true
   } = options;
 
@@ -57,8 +63,14 @@ export function useRealtimeSubscription(
   }, [debugMode]);
 
   const logError = useCallback((message: string, ...args: any[]) => {
-    console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
-  }, []);
+    // Only log detailed errors in debug mode
+    if (debugMode) {
+      console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
+    } else {
+      // In production, log a simplified error message without the stack trace
+      console.error(`[Realtime] Error with ${config.table} subscription: ${message}`);
+    }
+  }, [debugMode, config.table]);
 
   const shouldTryEnableRealtime = useCallback((tableName: string) => {
     // If cache shows this table is already enabled, skip
@@ -156,7 +168,11 @@ export function useRealtimeSubscription(
         // This allows reconnection attempts even if the realtime enablement failed
         await enableRealtimeForTable(config.table);
 
-        const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
+        // Use a more stable channel name in production to avoid creating too many channels
+        const channelName = isProduction() 
+          ? `${config.table}-${config.event}${config.filter ? '-filtered' : ''}`
+          : `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
+        
         log(`Setting up new channel with name: ${channelName}`);
         
         const channel = supabase.channel(channelName);
@@ -210,16 +226,18 @@ export function useRealtimeSubscription(
               timeoutId = setTimeout(setupChannel, delayMs);
             } else {
               logError(`Max retries reached for ${config.table}`);
-              onError?.({
-                message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
-              });
+              if (onError) {
+                onError({
+                  message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
+                });
+              }
             }
           }
         });
 
       } catch (error) {
         logError(`Error setting up channel for ${config.table}:`, error);
-        onError?.(error);
+        if (onError) onError(error);
       }
     };
 
