@@ -50,30 +50,31 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   return (
     <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" : "space-y-2"}>
       {interpreters.map(interpreter => viewMode === "grid" ? (
-        <InterpreterCard 
-          key={interpreter.id} 
-          interpreter={{
-            id: interpreter.id,
-            name: `${interpreter.first_name} ${interpreter.last_name}`,
-            status: interpreter.status || "unavailable",
-            employment_status: interpreter.employment_status,
-            languages: interpreter.languages,
-            tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min,
-            phone_number: interpreter.phone_number,
-            next_mission_start: interpreter.next_mission_start,
-            next_mission_duration: interpreter.next_mission_duration,
-            next_mission_source_language: interpreter.next_mission_source_language,
-            next_mission_target_language: interpreter.next_mission_target_language,
-            booth_number: interpreter.booth_number,
-            private_phone: interpreter.private_phone,
-            professional_phone: interpreter.professional_phone,
-            landline_phone: interpreter.landline_phone,
-            work_hours: interpreter.work_hours,
-            work_location: interpreter.work_location as WorkLocation
-          }} 
-          onStatusChange={onStatusChange}
-        />
+        <div key={interpreter.id} className="aspect-auto h-full">
+          <InterpreterCard 
+            interpreter={{
+              id: interpreter.id,
+              name: `${interpreter.first_name} ${interpreter.last_name}`,
+              status: interpreter.status || "unavailable",
+              employment_status: interpreter.employment_status,
+              languages: interpreter.languages,
+              tarif_15min: interpreter.tarif_15min,
+              tarif_5min: interpreter.tarif_5min,
+              phone_number: interpreter.phone_number,
+              next_mission_start: interpreter.next_mission_start,
+              next_mission_duration: interpreter.next_mission_duration,
+              next_mission_source_language: interpreter.next_mission_source_language,
+              next_mission_target_language: interpreter.next_mission_target_language,
+              booth_number: interpreter.booth_number,
+              private_phone: interpreter.private_phone,
+              professional_phone: interpreter.professional_phone,
+              landline_phone: interpreter.landline_phone,
+              work_hours: interpreter.work_hours,
+              work_location: interpreter.work_location as WorkLocation
+            }} 
+            onStatusChange={onStatusChange}
+          />
+        </div>
       ) : (
         <InterpreterListItem 
           key={interpreter.id} 

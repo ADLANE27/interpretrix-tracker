@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
-import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
 import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
+import { motion } from 'framer-motion';
+import { Button } from './ui/button';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -49,6 +51,8 @@ const workLocationConfig = {
 };
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -72,114 +76,191 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     }
   };
 
+  const flipCard = () => {
+    setIsFlipped(!isFlipped);
+  };
+
   return (
-    <Card className="hover-elevate gradient-border">
-      <CardContent className="p-2">
-        {/* Header Section with Name, Status and Work Location */}
-        <div className="flex items-center justify-between gap-1 mb-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <InterpreterStatusDropdown 
-              interpreterId={interpreter.id}
-              currentStatus={interpreter.status}
-              displayFormat="badge"
-              onStatusChange={handleStatusChange}
-              className="text-[10px] px-2 py-0.5"
-            />
-            <h3 className="text-xs font-medium text-gradient-primary truncate">{interpreter.name}</h3>
-          </div>
-          <div className={`px-1.5 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
-            <LocationIcon className="h-2.5 w-2.5" />
-            <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
-          </div>
-        </div>
-        
-        {/* Languages Section */}
-        <div className="flex flex-wrap gap-1 mb-1.5">
-          {parsedLanguages.map((lang, index) => (
-            <div
-              key={index}
-              className="px-1.5 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded text-[10px] flex items-center gap-0.5"
-            >
-              <span>{lang.source}</span>
-              <span className="text-palette-vivid-purple">→</span>
-              <span>{lang.target}</span>
+    <div className="preserve-3d perspective-1000 w-full h-full relative">
+      <Card
+        asMotion
+        motionProps={{
+          animate: { 
+            rotateY: isFlipped ? 180 : 0 
+          },
+          transition: { 
+            duration: 0.6, 
+            type: "spring", 
+            stiffness: 260, 
+            damping: 20 
+          }
+        }}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
+      >
+        <CardContent className="p-2 relative">
+          {/* Front card content - similar to current design but without languages */}
+          <div className="flex items-center justify-between gap-1 mb-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <InterpreterStatusDropdown 
+                interpreterId={interpreter.id}
+                currentStatus={interpreter.status}
+                displayFormat="badge"
+                onStatusChange={handleStatusChange}
+                className="text-[10px] px-2 py-0.5"
+              />
+              <h3 className="text-xs font-medium text-gradient-primary truncate">{interpreter.name}</h3>
             </div>
-          ))}
-        </div>
-
-        {/* Upcoming Mission Section - Highlighted */}
-        {interpreter.next_mission_start && (
-          <div className="mb-1.5">
-            <UpcomingMissionBadge
-              startTime={interpreter.next_mission_start}
-              estimatedDuration={interpreter.next_mission_duration || 0}
-              sourceLang={interpreter.next_mission_source_language}
-              targetLang={interpreter.next_mission_target_language}
-            />
+            <div className={`px-1.5 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-2.5 w-2.5" />
+              <span className="hidden sm:inline">{workLocationLabels[workLocation]}</span>
+            </div>
           </div>
-        )}
-
-        {/* Contact Information Section */}
-        {hasAnyPhoneNumber && (
-          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground mb-1.5">
-            {interpreter.booth_number && (
-              <div className="flex items-center gap-0.5">
-                <User className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>Cabine {interpreter.booth_number}</span>
-              </div>
-            )}
-            {interpreter.phone_number && (
-              <div className="flex items-center gap-0.5">
-                <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>{interpreter.phone_number}</span>
-              </div>
-            )}
-            {interpreter.landline_phone && (
-              <div className="flex items-center gap-0.5">
-                <PhoneCall className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>{interpreter.landline_phone}</span>
-              </div>
-            )}
-            {interpreter.private_phone && (
-              <div className="flex items-center gap-0.5">
-                <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>{interpreter.private_phone}</span>
-              </div>
-            )}
-            {interpreter.professional_phone && (
-              <div className="flex items-center gap-0.5">
-                <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>{interpreter.professional_phone}</span>
-              </div>
-            )}
-            {interpreter.work_hours && (
-              <div className="flex items-center gap-0.5 col-span-2">
-                <Clock className="h-2.5 w-2.5 text-palette-ocean-blue" />
-                <span>
-                  {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                    `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
-                  {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                    interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
-                    `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Footer Section with Employment Status and Rates */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
-          <span>{employmentStatusLabels[interpreter.employment_status]}</span>
-          {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
-            <span>
-              {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
-              {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
-              {interpreter.tarif_15min !== null && `15min: ${interpreter.tarif_15min}€`}
+          
+          {/* Show languages count only as a summary */}
+          <div className="mb-1.5 text-xs flex items-center justify-between">
+            <span className="text-muted-foreground">
+              {parsedLanguages.length} {parsedLanguages.length > 1 ? "langues" : "langue"}
             </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 rounded-full" 
+              onClick={flipCard}
+            >
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
+
+          {/* Upcoming Mission Section - Highlighted */}
+          {interpreter.next_mission_start && (
+            <div className="mb-1.5">
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                sourceLang={interpreter.next_mission_source_language}
+                targetLang={interpreter.next_mission_target_language}
+              />
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Contact Information Section */}
+          {hasAnyPhoneNumber && (
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground mb-1.5">
+              {interpreter.booth_number && (
+                <div className="flex items-center gap-0.5">
+                  <User className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>Cabine {interpreter.booth_number}</span>
+                </div>
+              )}
+              {interpreter.phone_number && (
+                <div className="flex items-center gap-0.5">
+                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>{interpreter.phone_number}</span>
+                </div>
+              )}
+              {interpreter.landline_phone && (
+                <div className="flex items-center gap-0.5">
+                  <PhoneCall className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>{interpreter.landline_phone}</span>
+                </div>
+              )}
+              {interpreter.private_phone && (
+                <div className="flex items-center gap-0.5">
+                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>{interpreter.private_phone}</span>
+                </div>
+              )}
+              {interpreter.professional_phone && (
+                <div className="flex items-center gap-0.5">
+                  <Phone className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>{interpreter.professional_phone}</span>
+                </div>
+              )}
+              {interpreter.work_hours && (
+                <div className="flex items-center gap-0.5 col-span-2">
+                  <Clock className="h-2.5 w-2.5 text-palette-ocean-blue" />
+                  <span>
+                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                      `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
+                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                      interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                      `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer Section with Employment Status and Rates */}
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
+            <span>{employmentStatusLabels[interpreter.employment_status]}</span>
+            {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
+              <span>
+                {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
+                {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
+                {interpreter.tarif_15min !== null && `15min: ${interpreter.tarif_15min}€`}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Back side of the card */}
+      <Card
+        asMotion
+        motionProps={{
+          animate: { 
+            rotateY: isFlipped ? 0 : -180 
+          },
+          transition: { 
+            duration: 0.6, 
+            type: "spring", 
+            stiffness: 260, 
+            damping: 20 
+          }
+        }}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
+      >
+        <CardContent className="p-2 relative">
+          {/* Back card header */}
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-medium text-gradient-primary truncate">{interpreter.name}</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 rounded-full" 
+              onClick={flipCard}
+            >
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
+          
+          {/* Languages section - now shown on the back */}
+          <div className="mb-1 text-xs font-medium text-muted-foreground">Combinaisons de langues:</div>
+          <div className="flex flex-wrap gap-1 max-h-[120px] overflow-y-auto pr-1 hide-scrollbar">
+            {parsedLanguages.map((lang, index) => (
+              <div
+                key={index}
+                className="px-1.5 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded text-[10px] flex items-center gap-0.5"
+              >
+                <span>{lang.source}</span>
+                <span className="text-palette-vivid-purple">→</span>
+                <span>{lang.target}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Footer with employment status for context */}
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
+            <span>{employmentStatusLabels[interpreter.employment_status]}</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-2.5 w-2.5" />
+              <span>{workLocationLabels[workLocation]}</span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
