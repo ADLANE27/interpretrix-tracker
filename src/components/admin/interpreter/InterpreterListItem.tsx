@@ -1,6 +1,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe, Home, Building } from "lucide-react";
+import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
@@ -19,6 +19,17 @@ interface InterpreterListItemProps {
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
     work_location?: WorkLocation;
+    phone_number?: string | null;
+    booth_number?: string | null;
+    private_phone?: string | null;
+    professional_phone?: string | null;
+    landline_phone?: string | null;
+    work_hours?: {
+      start_morning?: string;
+      end_morning?: string;
+      start_afternoon?: string;
+      end_afternoon?: string;
+    } | null;
   };
   onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
 }
@@ -63,12 +74,20 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
+  
+  const hasAnyPhoneNumber = 
+    interpreter.phone_number || 
+    interpreter.landline_phone || 
+    interpreter.private_phone || 
+    interpreter.professional_phone || 
+    interpreter.booth_number;
 
   return (
-    <Card className="p-4 hover-elevate gradient-border">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+    <Card className="hover-elevate gradient-border">
+      <CardContent className="p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status and Name */}
+          <div className="flex items-center gap-2 min-w-0">
             <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
               currentStatus={interpreterStatus}
@@ -78,14 +97,15 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
             <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-palette-ocean-blue" />
+          <div className="flex flex-1 flex-wrap items-center gap-2 justify-end">
+            {/* Languages */}
+            <div className="flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5 text-palette-ocean-blue" />
               <div className="flex flex-wrap gap-1">
                 {parsedLanguages.map((lang, index) => (
                   <div
                     key={index}
-                    className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+                    className="px-2 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-xs flex items-center gap-1 shadow-sm"
                   >
                     <span>{lang.source}</span>
                     <span className="text-palette-vivid-purple">→</span>
@@ -95,20 +115,51 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               </div>
             </div>
 
-            <div className="text-sm text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-3 py-1 rounded-full shadow-sm">
+            {/* Employment Status */}
+            <div className="text-xs text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 rounded-full shadow-sm">
               {employmentStatusLabels[interpreter.employment_status]}
             </div>
 
-            <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+            {/* Work Location */}
+            <div className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-3 w-3" />
               <span>{workLocationLabels[workLocation]}</span>
             </div>
 
+            {/* Next Mission */}
             {interpreter.next_mission_start && (
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
                 estimatedDuration={interpreter.next_mission_duration || 0}
               />
+            )}
+            
+            {/* Contact Information */}
+            {hasAnyPhoneNumber && (
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                {interpreter.booth_number && (
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Cabine:</span> {interpreter.booth_number}
+                  </div>
+                )}
+                {interpreter.phone_number && (
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                    <span>{interpreter.phone_number}</span>
+                  </div>
+                )}
+                {interpreter.work_hours && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-palette-ocean-blue" />
+                    <span>
+                      {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                        `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
+                      {interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                        `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
