@@ -5,6 +5,7 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -24,7 +25,8 @@ const Admin = () => {
     const connectionCheck = setInterval(() => {
       // If there are no active channels, it might indicate a connection issue
       const channels = supabase.getChannels();
-      const connected = channels.length > 0 && channels.some(c => c.state === 'SUBSCRIBED');
+      const connected = channels.length > 0 && 
+        channels.some((channel: RealtimeChannel) => channel.state === 'SUBSCRIBED');
       
       if (!connected && !connectionError) {
         console.log('Connection issue detected, will attempt to reconnect');
@@ -97,3 +99,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
