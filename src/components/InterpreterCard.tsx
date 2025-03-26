@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -105,7 +104,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   };
 
   return (
-    <div className="preserve-3d perspective-1000 w-full h-full relative">
+    <div className="preserve-3d perspective-1000 w-full aspect-square relative">
       <Card
         asMotion
         motionProps={{
@@ -119,9 +118,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             damping: 20 
           }
         }}
-        className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
+        className={`hover-elevate gradient-border w-full h-full aspect-square backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-2 relative flex flex-col h-full">
           {/* Front card content */}
           <div className="flex items-center justify-between gap-1 mb-1.5">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -173,55 +172,53 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
           )}
 
           {/* Contact Information Section with improved readability */}
-          {hasAnyPhoneNumber && (
-            <div className="grid grid-cols-1 gap-y-1 text-xs text-muted-foreground mb-2">
-              {interpreter.booth_number && (
-                <div className="flex items-center gap-1">
-                  <User className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>Cabine {interpreter.booth_number}</span>
-                </div>
-              )}
-              {interpreter.phone_number && (
-                <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.phone_number}</span>
-                </div>
-              )}
-              {interpreter.landline_phone && (
-                <div className="flex items-center gap-1">
-                  <PhoneCall className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.landline_phone}</span>
-                </div>
-              )}
-              {interpreter.private_phone && (
-                <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.private_phone}</span>
-                </div>
-              )}
-              {interpreter.professional_phone && (
-                <div className="flex items-center gap-1">
-                  <Phone className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>{interpreter.professional_phone}</span>
-                </div>
-              )}
-              {interpreter.work_hours && (
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5 text-palette-ocean-blue" />
-                  <span>
-                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                      `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
-                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                      interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
-                      `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex-grow grid grid-cols-1 gap-y-1 text-xs text-muted-foreground mb-2">
+            {interpreter.booth_number && (
+              <div className="flex items-center gap-1">
+                <User className="h-4 w-4 text-palette-ocean-blue" />
+                <span>Cabine {interpreter.booth_number}</span>
+              </div>
+            )}
+            {interpreter.phone_number && (
+              <div className="flex items-center gap-1">
+                <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                <span>{interpreter.phone_number}</span>
+              </div>
+            )}
+            {interpreter.landline_phone && (
+              <div className="flex items-center gap-1">
+                <PhoneCall className="h-4 w-4 text-palette-ocean-blue" />
+                <span>{interpreter.landline_phone}</span>
+              </div>
+            )}
+            {interpreter.private_phone && (
+              <div className="flex items-center gap-1">
+                <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                <span>{interpreter.private_phone}</span>
+              </div>
+            )}
+            {interpreter.professional_phone && (
+              <div className="flex items-center gap-1">
+                <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                <span>{interpreter.professional_phone}</span>
+              </div>
+            )}
+            {interpreter.work_hours && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 text-palette-ocean-blue" />
+                <span>
+                  {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                    `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
+                  {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                    interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                    `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Footer Section with Rates */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-end text-[10px] text-muted-foreground pt-1 border-t border-slate-100">
+          <div className="mt-auto pt-1 border-t border-slate-100 flex items-center justify-end text-[10px] text-muted-foreground">
             {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
               <span>
                 {interpreter.tarif_5min !== null && `5min: ${interpreter.tarif_5min}€`}
@@ -247,9 +244,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             damping: 20 
           }
         }}
-        className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
+        className={`hover-elevate gradient-border w-full h-full aspect-square backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
       >
-        <CardContent className="p-2 relative">
+        <CardContent className="p-2 relative flex flex-col h-full">
           {/* Back card header */}
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-medium text-gradient-primary truncate">{interpreter.name}</h3>
@@ -265,7 +262,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
           
           {/* Languages section - now shown on the back */}
           <div className="mb-1 text-xs font-medium text-muted-foreground">Combinaisons de langues:</div>
-          <div className="flex flex-wrap gap-1 max-h-[120px] overflow-y-auto pr-1 hide-scrollbar">
+          <div className="flex-grow flex flex-wrap gap-1 max-h-[120px] overflow-y-auto pr-1 hide-scrollbar">
             {parsedLanguages.map((lang, index) => (
               <div
                 key={index}
@@ -276,19 +273,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 <span>{lang.target}</span>
               </div>
             ))}
-          </div>
-          
-          {/* Footer with badges for context */}
-          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pt-1 border-t border-slate-100">
-            <div className="flex flex-wrap gap-1">
-              <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${employmentStatusColorClass}`}>
-                <span>{employmentStatusLabels[employmentStatus]}</span>
-              </div>
-              <div className={`px-2 py-0.5 rounded-full text-[10px] flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
-                <LocationIcon className="h-2.5 w-2.5" />
-                <span>{workLocationLabels[workLocation]}</span>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
