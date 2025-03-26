@@ -108,20 +108,19 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             rotateY: isFlipped ? 180 : 0 
           },
           transition: { 
-            duration: 0.5, 
+            duration: 0.6, 
             type: "spring", 
-            stiffness: 200, 
-            damping: 25, 
-            mass: 1 
+            stiffness: 260, 
+            damping: 20 
           }
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
       >
         <CardContent className="p-2 relative flex flex-col h-full justify-between">
-          {/* Interpreter name - last name and first name on same line */}
-          <div className="mb-2 flex items-baseline gap-1.5">
+          {/* Interpreter name - last name and first name stacked */}
+          <div className="mb-2">
             <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
-            {firstName && <span className="text-xs text-muted-foreground truncate">{firstName}</span>}
+            {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
           </div>
           
           {/* Badges row - status, location, employment in one line */}
@@ -247,11 +246,10 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             rotateY: isFlipped ? 0 : -180 
           },
           transition: { 
-            duration: 0.5, 
+            duration: 0.6, 
             type: "spring", 
-            stiffness: 200, 
-            damping: 25, 
-            mass: 1
+            stiffness: 260, 
+            damping: 20 
           }
         }}
         className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
@@ -259,9 +257,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         <CardContent className="p-2 relative flex flex-col h-full">
           {/* Back card header */}
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-baseline gap-1.5">
+            <div>
               <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
-              {firstName && <span className="text-xs text-muted-foreground truncate">{firstName}</span>}
+              {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
             </div>
             <Button 
               variant="ghost" 

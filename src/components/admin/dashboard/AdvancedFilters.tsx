@@ -105,16 +105,14 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="language">Langue</Label>
-              <div className="relative z-[150]"> {/* Added higher z-index to ensure dropdown appears above cards */}
-                <LanguageCombobox 
-                  languages={LANGUAGES}
-                  value={languageFilter}
-                  onChange={setLanguageFilter}
-                  placeholder="Rechercher une langue..."
-                  emptyMessage="Aucune langue trouvée."
-                  allLanguagesLabel="Toutes les langues"
-                />
-              </div>
+              <LanguageCombobox 
+                languages={LANGUAGES}
+                value={languageFilter}
+                onChange={setLanguageFilter}
+                placeholder="Rechercher une langue..."
+                emptyMessage="Aucune langue trouvée."
+                allLanguagesLabel="Toutes les langues"
+              />
             </div>
 
             <div className="space-y-2">
@@ -133,7 +131,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0 z-[150]" align="start"> {/* Added higher z-index */}
+                <PopoverContent className="w-full p-0" align="start">
                   <div className="p-2">
                     <div className="flex items-center space-x-2 pb-2">
                       <Checkbox id="select-all-statuses" checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length} onCheckedChange={checked => {
@@ -167,7 +165,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 <SelectTrigger id="rate-sort">
                   <SelectValue placeholder="Trier par tarif" />
                 </SelectTrigger>
-                <SelectContent className="z-[150]"> {/* Added higher z-index */}
+                <SelectContent>
                   <SelectItem value="none">Pas de tri</SelectItem>
                   <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
                 </SelectContent>
