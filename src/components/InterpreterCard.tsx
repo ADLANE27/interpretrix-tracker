@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, Calendar, Bell, MessageSquare } from 'lucide-react';
@@ -81,7 +80,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     }
   };
 
-  // Last seen status formatting
   const getLastSeenStatus = () => {
     if (!interpreter.last_seen_at) return null;
     
@@ -106,21 +104,22 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
   const lastSeenStatus = getLastSeenStatus();
 
-  // Format work hours for display
   const formatWorkHours = () => {
     if (!interpreter.work_hours) return null;
     
     const { start_morning, end_morning, start_afternoon, end_afternoon } = interpreter.work_hours;
     
-    if (!start_morning || !end_morning) return null;
+    const formatHour = (hour?: string) => hour ? formatTimeString(hour) : '';
     
-    const morningHours = `${formatTimeString(start_morning)}-${formatTimeString(end_morning)}`;
+    const morningHours = start_morning && end_morning 
+      ? `${formatHour(start_morning)}-${formatHour(end_morning)}` 
+      : '';
     
-    if (!start_afternoon || !end_afternoon) return morningHours;
+    const afternoonHours = start_afternoon && end_afternoon
+      ? `${formatHour(start_afternoon)}-${formatHour(end_afternoon)}`
+      : '';
     
-    const afternoonHours = `${formatTimeString(start_afternoon)}-${formatTimeString(end_afternoon)}`;
-    
-    return `${morningHours}, ${afternoonHours}`;
+    return [morningHours, afternoonHours].filter(Boolean).join(', ');
   };
 
   const workHours = formatWorkHours();
