@@ -9,7 +9,7 @@ import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { format, parseISO, isPast, addMinutes } from 'date-fns';
+import { format, parseISO, isPast, addMinutes, isAfter } from 'date-fns';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -92,12 +92,21 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  // Check if mission is still active (not in the past)
-  const hasFutureMission = interpreter.next_mission_start && 
-    !isPast(addMinutes(
-      parseISO(interpreter.next_mission_start), 
-      interpreter.next_mission_duration || 0
-    ));
+  // Check if mission is active - either upcoming or in progress
+  const isMissionActive = () => {
+    if (!interpreter.next_mission_start || !interpreter.next_mission_duration) {
+      return false;
+    }
+    
+    const now = new Date();
+    const missionStart = parseISO(interpreter.next_mission_start);
+    const missionEnd = addMinutes(missionStart, interpreter.next_mission_duration);
+    
+    // Mission is active if it hasn't ended yet
+    return !isAfter(now, missionEnd);
+  };
+
+  const hasFutureMission = isMissionActive();
 
   return (
     <div className="preserve-3d perspective-1000 w-full h-full relative">

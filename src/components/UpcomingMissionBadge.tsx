@@ -47,6 +47,11 @@ export const UpcomingMissionBadge = ({
     }
   };
 
+  // Si la mission est terminée, ne rien afficher du tout
+  if (getMissionStatus() === "ended") {
+    return null;
+  }
+
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
@@ -83,9 +88,9 @@ export const UpcomingMissionBadge = ({
           variant: "destructive" as const,
           flashingClass: "animate-pulse bg-gradient-to-r from-orange-500 to-amber-400"
         };
-      case "ended":
+      default:
         return {
-          text: `Mission terminée ${missionDate} ${timeRange}${languageInfo}`,
+          text: "",
           variant: "outline" as const,
           flashingClass: ""
         };
