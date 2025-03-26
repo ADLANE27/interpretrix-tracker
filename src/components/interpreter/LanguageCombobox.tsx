@@ -144,6 +144,15 @@ export function LanguageCombobox({
     }
   };
 
+  // Handle clicking on the search icon
+  const handleSearchIconClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
+  };
+
   // Common languages to highlight at the top of the list
   const commonLanguages = [
     "Français", "Anglais", "Espagnol", "Arabe", "Arabe Maghrébin", "Dari", "Pashto", "Farsi", 
@@ -161,7 +170,10 @@ export function LanguageCombobox({
         className
       )}>
         <div className="flex flex-grow items-center gap-2">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Search 
+            className="h-4 w-4 shrink-0 text-muted-foreground cursor-pointer" 
+            onClick={handleSearchIconClick}
+          />
           <input 
             ref={inputRef}
             type="text"
@@ -198,9 +210,9 @@ export function LanguageCombobox({
         </div>
       </div>
       
-      {/* Dropdown */}
+      {/* Dropdown - Increased z-index to ensure it appears on top of cards */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
+        <div className="absolute top-full left-0 z-[9999] w-full mt-1 rounded-md border border-input bg-popover shadow-lg animate-in fade-in-80 zoom-in-95">
           {/* Language list */}
           <ScrollArea className="max-h-[300px] overflow-auto">
             <div className="p-1">
