@@ -183,6 +183,23 @@
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+
+  /* Card flipping styles */
+  .perspective-card {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotateY-180 {
+    transform: rotateY(180deg);
+  }
 }
 
 .gradient-bg-subtle {
