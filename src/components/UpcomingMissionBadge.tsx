@@ -38,13 +38,21 @@ export const UpcomingMissionBadge = ({
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    if (isBefore(now, missionStartDate)) {
+    console.log(`[MissionBadge] Current time: ${now.toISOString()}`);
+    console.log(`[MissionBadge] Mission start: ${missionStartDate.toISOString()}`);
+    console.log(`[MissionBadge] Mission end: ${missionEndDate.toISOString()}`);
+    
+    // Compare times directly without timezone adjustments
+    if (now < missionStartDate) {
       const minutesToStart = differenceInMinutes(missionStartDate, now);
+      console.log(`[MissionBadge] Minutes to start: ${minutesToStart}`);
       return minutesToStart <= flashBefore ? "starting-soon" : "upcoming";
-    } else if (isAfter(now, missionEndDate)) {
+    } else if (now > missionEndDate) {
+      console.log(`[MissionBadge] Mission has ended`);
       return "ended";
     } else {
       const minutesLeft = differenceInMinutes(missionEndDate, now);
+      console.log(`[MissionBadge] Mission in progress, minutes left: ${minutesLeft}`);
       return minutesLeft <= flashBefore ? "ending-soon" : "in-progress";
     }
   };
@@ -56,8 +64,18 @@ export const UpcomingMissionBadge = ({
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
     const missionDate = formatDateDisplay(startTime);
-    const countdown = showCountdown ? formatCountdown(missionStartDate, now) : '';
-    const countdownPrefix = countdown ? `${countdown} • ` : '';
+    
+    let countdownText = "";
+    if (showCountdown) {
+      const status = getMissionStatus();
+      if (status === "upcoming" || status === "starting-soon") {
+        countdownText = formatCountdown(missionStartDate, now);
+      } else if (status === "in-progress" || status === "ending-soon") {
+        countdownText = `Se termine dans ${differenceInMinutes(missionEndDate, now)}min`;
+      }
+    }
+    
+    const countdownPrefix = countdownText ? `${countdownText} • ` : '';
 
     switch (status) {
       case "upcoming":
@@ -73,7 +91,7 @@ export const UpcomingMissionBadge = ({
         };
       case "in-progress":
         return {
-          text: `${countdownPrefix}Se termine dans ${differenceInMinutes(missionEndDate, now)}min ${timeRange}${languageInfo}`,
+          text: `En cours • ${countdownPrefix}${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":

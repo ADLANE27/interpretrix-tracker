@@ -63,6 +63,13 @@ export const createLocalISOString = (date: string, time: string): string => {
 
 // Format countdown display for missions
 export const formatCountdown = (targetDate: Date, now: Date): string => {
+  console.log(`[formatCountdown] Target: ${targetDate.toISOString()}, Now: ${now.toISOString()}`);
+  
+  // First check if mission has already started
+  if (now >= targetDate) {
+    return "En cours";
+  }
+  
   const diffSeconds = differenceInSeconds(targetDate, now);
   
   if (diffSeconds <= 0) {

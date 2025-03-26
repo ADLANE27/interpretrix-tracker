@@ -11,6 +11,16 @@ interface MissionDetailsProps {
 }
 
 export const MissionDetails = ({ mission, currentUserId }: MissionDetailsProps) => {
+  // Add debug logging to understand the mission data
+  console.log(`[MissionDetails] Mission data:`, {
+    id: mission.id,
+    type: mission.mission_type,
+    status: mission.status,
+    startTime: mission.scheduled_start_time,
+    estimatedDuration: mission.estimated_duration,
+    currentTime: new Date().toISOString()
+  });
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-2">
