@@ -1,7 +1,6 @@
 
 export const useMessageFormatter = () => {
-  // Just return the original content as is
-  // We're now handling mentions on the server side only
+  // No formatting needed anymore since we removed language mentions
   const formatMessage = (content: string) => {
     return content;
   };

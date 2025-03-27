@@ -3,15 +3,11 @@ import React from 'react';
 import { FileText, FileImage, File, Download, ExternalLink } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { TRANSLATIONS } from "@/lib/constants";
-import { Attachment } from '@/types/messaging';
 
-// Update the props to accept the entire attachment object
 interface AttachmentProps {
   url: string;
   filename: string;
-  type?: string;
-  size?: number;
-  locale?: keyof typeof TRANSLATIONS.download;
+  locale?: keyof typeof TRANSLATIONS.download; // Making locale optional with default
 }
 
 export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentProps) => {
