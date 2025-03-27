@@ -5,39 +5,26 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
-
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
-  useMissionUpdates(() => {
+  const { isConnected } = useMissionUpdates(() => {
     // Reset connection error state on successful updates
     if (connectionError) setConnectionError(false);
     // Dispatch a custom event that the AdminDashboard will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
   });
 
-  // Handle connection status
   useEffect(() => {
-    const connectionCheck = setInterval(() => {
-      // If there are no active channels, it might indicate a connection issue
-      const channels = supabase.getChannels();
-      const connected = channels.length > 0 && 
-        channels.some((channel: RealtimeChannel) => channel.state === 'joined');
-      
-      if (!connected && !connectionError) {
-        console.log('Connection issue detected, will attempt to reconnect');
-        setConnectionError(true);
-      } else if (connected && connectionError) {
-        setConnectionError(false);
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(connectionCheck);
-  }, [connectionError]);
+    // Update connection error state based on isConnected from the context
+    if (!isConnected && !connectionError) {
+      setConnectionError(true);
+    } else if (isConnected && connectionError) {
+      setConnectionError(false);
+    }
+  }, [isConnected, connectionError]);
 
   useEffect(() => {
     const checkAuth = async () => {
