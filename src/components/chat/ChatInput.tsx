@@ -46,7 +46,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number>(0);
-  const { formatMessage } = useMessageFormatter();
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const { formatMessage, validateMentions } = useMessageFormatter();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -222,6 +224,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setMessage(newMessage);
     
     setMentionSuggestionsVisible(false);
+    setSendError(null);
     
     setTimeout(() => {
       if (inputRef.current) {
@@ -241,6 +244,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleSelectionChange = () => {
     if (inputRef.current) {
       setCursorPosition(inputRef.current.selectionStart || 0);
+    }
+  };
+
+  const handleSendWithValidation = async () => {
+    if (sendingMessage) return;
+    
+    try {
+      setSendingMessage(true);
+      setSendError(null);
+      
+      const { isValid, error } = validateMentions(message);
+      if (!isValid) {
+        setSendError(error || "Format de message invalide");
+        return;
+      }
+      
+      const formattedMessage = formatMessage(message);
+      setMessage(formattedMessage);
+      
+      await onSendMessage();
+      
+      setSendError(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setSendError(error instanceof Error ? error.message : "Impossible d'envoyer le message");
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -284,11 +314,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  
-                  const formattedMessage = formatMessage(message);
-                  setMessage(formattedMessage);
-                  
-                  onSendMessage();
+                  handleSendWithValidation();
                 }
               }}
             />
@@ -375,13 +401,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               size="icon"
               className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
-              onClick={() => {
-                const formattedMessage = formatMessage(message);
-                setMessage(formattedMessage);
-                onSendMessage();
-              }}
+              onClick={handleSendWithValidation}
+              disabled={sendingMessage}
             >
-              <Send className="h-4 w-4" />
+              {sendingMessage ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -394,6 +421,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             loading={isLoadingSuggestions}
             searchTerm={mentionSearchTerm}
           />
+        )}
+        
+        {sendError && (
+          <div className="mt-1 text-sm text-red-500 px-2">
+            {sendError}
+          </div>
         )}
       </div>
       {attachments.length > 0 && (

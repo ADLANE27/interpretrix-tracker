@@ -35,9 +35,13 @@ export const MentionSuggestions = ({
   
   // Filter language suggestions based on search term if provided
   const languageSuggestions = searchTerm 
-    ? standardLanguageSuggestions.filter(lang => 
-        lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
+    ? standardLanguageSuggestions.filter(lang => {
+        // Normalize both strings for comparison
+        const normalizedLang = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return normalizedLang.includes(normalizedSearch);
+      })
     : standardLanguageSuggestions;
 
   if (loading) {
@@ -75,7 +79,7 @@ export const MentionSuggestions = ({
       >
         <Command className="rounded-lg">
           <CommandInput 
-            placeholder="Rechercher un utilisateur..." 
+            placeholder="Rechercher un utilisateur ou une langue..." 
             className="border-b" 
             value={searchTerm} 
           />
@@ -103,18 +107,38 @@ export const MentionSuggestions = ({
           
           // Check if value starts with or contains the search term
           if (normalizedValue.startsWith(normalizedSearch)) return 1;
-          if (normalizedValue.includes(normalizedSearch)) return 0.5;
+          if (normalizedValue.includes(normalizedSearch)) return 0.75;
+          // Try word by word comparison for complex language names
+          if (normalizedValue.split(/\s+/).some(word => word.startsWith(normalizedSearch))) return 0.5;
           return 0;
         }}
       >
         <CommandInput 
-          placeholder="Rechercher un utilisateur..." 
+          placeholder="Rechercher un utilisateur ou une langue..." 
           className="border-b" 
           value={searchTerm}
           autoFocus
         />
         <CommandList>
           <ScrollArea className="max-h-[250px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            {languageSuggestions.length > 0 && (
+              <CommandGroup heading="Langues">
+                {languageSuggestions.map((lang) => (
+                  <CommandItem
+                    key={lang.name}
+                    value={lang.name.toLowerCase()}
+                    onSelect={() => onSelect(lang)}
+                    className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
+                  >
+                    <div className="h-8 w-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300 border border-border">
+                      <Languages className="h-4 w-4" />
+                    </div>
+                    <div className="font-medium">{lang.name}</div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
             {memberSuggestions.length > 0 && (
               <CommandGroup heading="Membres">
                 {memberSuggestions.map((member) => (
@@ -147,22 +171,6 @@ export const MentionSuggestions = ({
                 ))}
               </CommandGroup>
             )}
-
-            <CommandGroup heading="Langues">
-              {languageSuggestions.map((lang) => (
-                <CommandItem
-                  key={lang.name}
-                  value={lang.name.toLowerCase()}
-                  onSelect={() => onSelect(lang)}
-                  className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
-                >
-                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300 border border-border">
-                    <Languages className="h-4 w-4" />
-                  </div>
-                  <div className="font-medium">{lang.name}</div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
           </ScrollArea>
         </CommandList>
       </Command>
