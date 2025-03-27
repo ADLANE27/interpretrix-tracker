@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Mission } from "@/types/mission";
 import { MissionCard } from "./mission/MissionCard";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription2";
+import { useMissionSubscription } from "./mission/useMissionSubscription";
 import { useMissionManagement } from "./mission/useMissionManagement";
 
 export const MissionsTab = () => {
@@ -49,43 +49,8 @@ export const MissionsTab = () => {
   };
 
   const { isProcessing, handleMissionResponse } = useMissionManagement(fetchMissions);
+  useMissionSubscription(currentUserId, fetchMissions);
 
-  // Set up realtime subscription for mission updates
-  useRealtimeSubscription(
-    {
-      event: '*',
-      table: 'interpretation_missions',
-      filter: currentUserId ? 
-        `assigned_interpreter_id.eq.${currentUserId},notified_interpreters.cs.{${currentUserId}}` : 
-        undefined
-    },
-    (payload) => {
-      console.log('[MissionsTab] Mission update received:', payload);
-      fetchMissions();
-    },
-    {
-      enabled: !!currentUserId,
-      debounceTime: 300
-    }
-  );
-
-  // Set up visibility change listener to refresh data
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[MissionsTab] Tab became visible, refreshing data');
-        fetchMissions();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // Initial fetch
   useEffect(() => {
     console.log('[MissionsTab] Component mounted');
     fetchMissions();

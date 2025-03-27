@@ -1,12 +1,20 @@
 
 import { useEffect } from 'react';
-import { addTableEventListener } from '@/lib/realtimeManager';
-import { useRealtimeSubscription } from './useRealtimeSubscription2';
+import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+
+// Determine if we're in production mode
+const isProduction = () => {
+  return window.location.hostname !== 'localhost' && 
+         window.location.hostname !== '127.0.0.1' &&
+         !window.location.hostname.includes('preview');
+};
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup visibility change event listeners
   useEffect(() => {
+    console.log('[useMissionUpdates] Setting up visibility change event listeners');
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
@@ -25,25 +33,36 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
 
     return () => {
+      console.log('[useMissionUpdates] Cleaning up event listeners');
       window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
   }, [onUpdate]);
 
-  // Common options for all subscriptions
+  // Common subscription options
   const subscriptionOptions = {
-    debounceTime: 500, // Debounce multiple events occurring close together
+    debugMode: isProduction() ? false : true, // Disable verbose logging in production
+    maxRetries: isProduction() ? 10 : 3,      // Increase retries in production
+    retryInterval: 5000,
+    onError: (error: any) => {
+      if (!isProduction()) {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      } else {
+        console.error('[useMissionUpdates] Realtime subscription issue. Will auto-retry.');
+      }
+    }
   };
 
   // Subscribe to mission changes
   useRealtimeSubscription(
     {
       event: '*',
+      schema: 'public',
       table: 'interpretation_missions'
     },
-    () => {
-      console.log('[useMissionUpdates] Mission update received');
+    (payload) => {
+      console.log('[useMissionUpdates] Mission update received:', payload);
       onUpdate();
     },
     subscriptionOptions
@@ -53,10 +72,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   useRealtimeSubscription(
     {
       event: '*',
+      schema: 'public',
       table: 'private_reservations'
     },
-    () => {
-      console.log('[useMissionUpdates] Private reservation update received');
+    (payload) => {
+      console.log('[useMissionUpdates] Private reservation update received:', payload);
       onUpdate();
     },
     subscriptionOptions
@@ -66,13 +86,18 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   useRealtimeSubscription(
     {
       event: 'UPDATE',
+      schema: 'public',
       table: 'interpreter_profiles',
       filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
     },
-    () => {
-      console.log('[useMissionUpdates] Interpreter status update received');
+    (payload) => {
+      console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
       onUpdate();
     },
-    subscriptionOptions
+    {
+      ...subscriptionOptions,
+      retryInterval: 3000, // Shorter retry for status updates
+    }
   );
 };

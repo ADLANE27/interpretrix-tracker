@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -6,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
-import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription2';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -25,14 +25,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
-  const [userId, setUserId] = useState<string | null>(null);
+  const lastUpdateRef = useRef<string | null>(null);
+  const userId = useRef<string | null>(null);
 
   // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setUserId(user.id);
+        userId.current = user.id;
       }
     };
     
@@ -42,30 +43,16 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
+      const updateId = `${currentStatus}-${Date.now()}`;
+      
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
+      
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, localStatus]);
-
-  // Set up realtime subscription for status updates
-  useRealtimeSubscription(
-    {
-      event: 'UPDATE',
-      table: 'interpreter_profiles',
-      filter: userId ? `id=eq.${userId}` : undefined
-    },
-    (payload) => {
-      console.log('[StatusButtonsBar] Status update received:', payload);
-      const newStatus = payload.new.status;
-      if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
-        setLocalStatus(newStatus as Status);
-      }
-    },
-    {
-      enabled: !!userId,
-      debounceTime: 100
-    }
-  );
 
   const statusConfig = {
     available: {
@@ -99,7 +86,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus || isUpdating || !userId) return;
+    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
     
     try {
       setIsUpdating(true);
@@ -109,19 +96,21 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setLocalStatus(newStatus);
       
       // Update status via RPC function
-      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId,
-        p_status: newStatus as string
-      });
-      
-      if (dbError) {
-        console.error('[StatusButtonsBar] Database error:', dbError);
-        throw dbError;
+      if (userId.current) {
+        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+          p_interpreter_id: userId.current,
+          p_status: newStatus as string
+        });
+        
+        if (dbError) {
+          console.error('[StatusButtonsBar] Database error:', dbError);
+          throw dbError;
+        }
+        
+        // Emit event to notify components of status change
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+        console.log('[StatusButtonsBar] Status update event emitted');
       }
-      
-      // Emit event to notify components of status change
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
-      console.log('[StatusButtonsBar] Status update event emitted');
       
       // Call the parent handler
       await onStatusChange(newStatus);

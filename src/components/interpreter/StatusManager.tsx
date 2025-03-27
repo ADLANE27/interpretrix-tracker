@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -5,8 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription2";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -28,9 +28,9 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
-  }, [currentStatus, status]);
+  }, [currentStatus]);
 
-  // Get current user ID
+  // Get current user ID and set up real-time subscription
   useEffect(() => {
     const getCurrentUserId = async () => {
       try {
@@ -65,7 +65,10 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     },
     {
       enabled: !!userId,
-      debounceTime: 100
+      onError: (error) => {
+        console.error('[StatusManager] Error in realtime subscription:', error);
+      },
+      debugMode: true
     }
   );
 
@@ -123,9 +126,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       }
 
       console.log('[StatusManager] Status update successful');
-
-      // Emit event to notify other components of status change
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
 
       if (onStatusChange) {
         await onStatusChange(newStatus);

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -88,6 +89,14 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const showTarif5min = interpreter.tarif_5min !== null && interpreter.tarif_5min > 0;
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
+
+  console.log(`[InterpreterCard] ${interpreter.name} tarifs:`, {
+    tarif_5min: interpreter.tarif_5min,
+    tarif_15min: interpreter.tarif_15min,
+    showTarif5min,
+    showTarif15min,
+    showAnyTarif
+  });
 
   const hasFutureMission = interpreter.next_mission_start && 
     !isPast(addMinutes(
