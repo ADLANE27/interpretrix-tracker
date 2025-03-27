@@ -25,25 +25,10 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   const StatusIcon = statusConfig.icon;
 
   if (displayFormat === "badge") {
-    const getBadgeColor = () => {
-      switch (status) {
-        case "available":
-          return "bg-green-100 text-green-800 hover:bg-green-200";
-        case "busy":
-          return "bg-violet-100 text-violet-800 hover:bg-violet-200";
-        case "pause":
-          return "bg-orange-100 text-orange-800 hover:bg-orange-200";
-        case "unavailable":
-          return "bg-red-100 text-red-800 hover:bg-red-200";
-        default:
-          return "bg-gray-100 text-gray-800 hover:bg-gray-200";
-      }
-    };
-
     return (
       <Badge 
         variant="outline" 
-        className={`flex items-center gap-1 cursor-pointer ${getBadgeColor()} ${className}`}
+        className={`flex items-center gap-1 cursor-pointer ${statusConfig.color} ${className}`}
       >
         <StatusIcon className="h-3 w-3" />
         <span>{statusConfig.label}</span>

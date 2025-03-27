@@ -45,12 +45,14 @@ export const InterpreterStatusDropdown = ({
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <StatusTrigger 
-            displayFormat={displayFormat}
-            statusConfig={statusConfig[localStatus]}
-            status={localStatus}
-            className={className}
-          />
+          <div>
+            <StatusTrigger 
+              displayFormat={displayFormat}
+              statusConfig={statusConfig[localStatus]}
+              status={localStatus}
+              className={className}
+            />
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[180px] z-50 bg-white dark:bg-gray-950 border shadow-md">
           {Object.entries(statusConfig).map(([status, config]) => {

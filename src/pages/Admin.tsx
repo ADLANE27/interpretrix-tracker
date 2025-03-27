@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -146,6 +147,7 @@ const Admin = () => {
     toast({
       title: "Reconnexion initiée",
       description: "Tentative de reconnexion en cours...",
+      variant: "default"
     });
   };
 

@@ -1,3 +1,4 @@
+
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionStatus, createSubscriptionStatus } from './types';
@@ -111,7 +112,7 @@ export class SubscriptionRegistry {
                 // Just attempt to reconnect first
                 status.channelRef.subscribe((status) => {
                   console.log(`[RealtimeService] Resubscription status for ${key}: ${status}`);
-                  // Fixed this line: don't access channelRef property on status, use the existing channel reference
+                  // Use the existing channel reference instead of trying to access channelRef property on status
                   if (status === 'SUBSCRIBED') {
                     this.updateStatus(key, true);
                   }
