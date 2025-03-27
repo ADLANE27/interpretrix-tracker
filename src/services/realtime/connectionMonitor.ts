@@ -1,206 +1,400 @@
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  RETRY_MAX,
+  RETRY_DELAY_BASE,
+  CONNECTION_TIMEOUT,
+  CONNECTION_STATUS_DEBOUNCE_TIME,
+  RECONNECT_STAGGER_INTERVAL,
+  RECONNECT_STAGGER_MAX_DELAY,
+  RECONNECT_PERIODIC_INTERVAL,
+  DEBUG_MODE
+} from './constants';
+import { useToast } from '@/components/ui/use-toast';
+import { EventDebouncer } from './eventDebouncer';
+import { debounce } from '@/lib/utils';
 
-import { subscriptionRegistry } from './registry/subscriptionRegistry';
-import { HEALTH_CHECK_INTERVAL, RETRY_MAX, RETRY_DELAY_BASE, DEBUG_MODE } from './constants';
-
-type RetryCallback = (key: string) => void;
-type ConnectionCallback = (connected: boolean) => void;
-
-/**
- * Monitors connection status and handles reconnection
- */
-export class ConnectionMonitor {
-  private retryCallback: RetryCallback;
-  private connectionCallback: ConnectionCallback;
-  private checkInterval: NodeJS.Timeout | null = null;
-  private isActive: boolean = false;
-  private lastConnectionStatus: boolean = true;
-  private retryTimers: Map<string, NodeJS.Timeout> = new Map();
-  private lastSuccessfulConnection: number = Date.now();
-  private consecutiveFailures: number = 0;
-
-  constructor(retryCallback: RetryCallback, connectionCallback: ConnectionCallback) {
-    this.retryCallback = retryCallback;
-    this.connectionCallback = connectionCallback;
-  }
-
-  /**
-   * Start monitoring connection status
-   */
-  public start(): void {
-    if (this.isActive) {
-      return;
-    }
-
-    if (DEBUG_MODE) console.log('[ConnectionMonitor] Starting connection monitoring');
-    this.isActive = true;
-    this.lastSuccessfulConnection = Date.now();
-    this.consecutiveFailures = 0;
-
-    // Initial connection check
-    this.checkConnectionStatus();
-
-    // Set up periodic check
-    this.checkInterval = setInterval(() => {
-      this.checkConnectionStatus();
-    }, HEALTH_CHECK_INTERVAL);
-  }
-
-  /**
-   * Stop monitoring connection status
-   */
-  public stop(): void {
-    if (!this.isActive) {
-      return;
-    }
-
-    if (DEBUG_MODE) console.log('[ConnectionMonitor] Stopping connection monitoring');
-    this.isActive = false;
-
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-
-    // Clear all retry timers
-    this.retryTimers.forEach((timer) => clearTimeout(timer));
-    this.retryTimers.clear();
-  }
-
-  /**
-   * Check connection status of all subscriptions
-   */
-  private checkConnectionStatus(): void {
-    if (!this.isActive) return;
-    
-    const statuses = subscriptionRegistry.getAllStatuses();
-    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
-    
-    if (activeSubscriptions.length === 0) {
-      // No active subscriptions to check
-      return;
-    }
-
-    // Check if any subscriptions are disconnected
-    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
-    const isAnyDisconnected = disconnectedSubscriptions.length > 0;
-    
-    // If status changed, notify via callback
-    if (this.lastConnectionStatus !== !isAnyDisconnected) {
-      this.lastConnectionStatus = !isAnyDisconnected;
-      
-      if (!isAnyDisconnected) {
-        // Reset failure count on successful connection
-        this.consecutiveFailures = 0;
-        this.lastSuccessfulConnection = Date.now();
-        if (DEBUG_MODE) console.log('[ConnectionMonitor] Connection restored');
-      } else {
-        this.consecutiveFailures++;
-        if (DEBUG_MODE) console.log(`[ConnectionMonitor] Connection lost (failures: ${this.consecutiveFailures})`);
-      }
-      
-      this.connectionCallback(!isAnyDisconnected);
-    }
-
-    // Handle disconnected subscriptions with exponential backoff
-    if (isAnyDisconnected) {
-      const timeSinceLastSuccess = Date.now() - this.lastSuccessfulConnection;
-      
-      disconnectedSubscriptions.forEach(key => {
-        const status = statuses[key];
-        
-        // Only retry if we haven't exceeded max retries and we're not already retrying
-        if (status.retryCount < RETRY_MAX && !this.retryTimers.has(key)) {
-          // Calculate backoff delay with jitter
-          const baseDelay = Math.min(
-            RETRY_DELAY_BASE * Math.pow(1.5, Math.min(status.retryCount, 10)),
-            30000
-          );
-          
-          // Add jitter to avoid thundering herd problem (±20%)
-          const jitter = baseDelay * 0.2 * (Math.random() * 2 - 1);
-          const delay = Math.max(1000, baseDelay + jitter);
-          
-          if (DEBUG_MODE) {
-            console.log(`[ConnectionMonitor] Scheduling retry for ${key} in ${Math.round(delay)}ms (attempt ${status.retryCount + 1}/${RETRY_MAX})`);
-          }
-          
-          // Schedule retry with increasing delay
-          const timer = setTimeout(() => {
-            if (DEBUG_MODE) console.log(`[ConnectionMonitor] Retrying connection for ${key}`);
-            this.retryTimers.delete(key);
-            this.retryCallback(key);
-          }, delay);
-          
-          this.retryTimers.set(key, timer);
-        } else if (status.retryCount >= RETRY_MAX) {
-          // Log when max retries reached
-          if (!status.maxRetriesReached) {
-            status.maxRetriesReached = true;
-            console.warn(`[ConnectionMonitor] Max retries (${RETRY_MAX}) reached for ${key}`);
-          }
-        }
-      });
-    }
-  }
-
-  /**
-   * Check if system is currently connected
-   */
-  public isConnected(): boolean {
-    return this.lastConnectionStatus;
-  }
-  
-  /**
-   * Force reconnection for all subscriptions
-   */
-  public reconnectAll(): void {
-    if (DEBUG_MODE) console.log('[ConnectionMonitor] Force reconnecting all subscriptions');
-    
-    // Clear existing timers
-    this.retryTimers.forEach(timer => clearTimeout(timer));
-    this.retryTimers.clear();
-    
-    // Reset retry counters
-    const statuses = subscriptionRegistry.getAllStatuses();
-    Object.keys(statuses).forEach(key => {
-      if (statuses[key].isActive) {
-        statuses[key].retryCount = 0;
-        statuses[key].maxRetriesReached = false;
-      }
-    });
-    
-    // Get all subscriptions and retry them with slight staggering
-    Object.keys(statuses).forEach((key, index) => {
-      if (statuses[key].isActive) {
-        // Stagger reconnects by 50ms each to avoid overwhelming the server
-        setTimeout(() => {
-          if (DEBUG_MODE) console.log(`[ConnectionMonitor] Force reconnecting ${key}`);
-          this.retryCallback(key);
-        }, index * 50);
-      }
-    });
-    
-    // Reset connection status
-    this.lastConnectionStatus = false;
-    this.connectionCallback(false);
-    
-    // Force a connection status update after a delay
-    setTimeout(() => {
-      this.checkConnectionStatus();
-    }, 2000);
-  }
-  
-  /**
-   * Get time since last successful connection
-   */
-  public getTimeSinceLastSuccess(): number {
-    return Date.now() - this.lastSuccessfulConnection;
-  }
-  
-  /**
-   * Get consecutive failure count
-   */
-  public getConsecutiveFailures(): number {
-    return this.consecutiveFailures;
-  }
+interface SubscriptionStatus {
+  isSubscribed: boolean;
+  retryCount: number;
+  maxRetriesReached: boolean;
+  lastEventTimestamp: number | null;
+  error: Error | null;
 }
+
+interface ConnectionMonitorProps {
+  channelId: string | null;
+  userId: string | null;
+  retryCount: number;
+  setRetryCount: React.Dispatch<React.SetStateAction<number>>;
+  handleRealtimeMessage: (payload: any) => Promise<void>;
+}
+
+export const useConnectionMonitor = ({
+  channelId,
+  userId,
+  retryCount,
+  setRetryCount,
+  handleRealtimeMessage
+}: ConnectionMonitorProps) => {
+  const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStatus>({
+    isSubscribed: false,
+    retryCount: 0,
+    maxRetriesReached: false,
+    lastEventTimestamp: null,
+    error: null,
+  });
+  const [isForceReconnecting, setIsForceReconnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
+  const [reconnectingFor, setReconnectingFor] = useState(0);
+  const [lastEventTimestamp, setLastEventTimestamp] = useState<number | null>(null);
+  const [isPeriodicReconnecting, setIsPeriodicReconnecting] = useState(false);
+  const [periodicReconnectStartTime, setPeriodicReconnectStartTime] = useState<number | null>(null);
+  const { toast } = useToast();
+  const eventDebouncer = new EventDebouncer();
+  const maxRetries = RETRY_MAX;
+  const retryDelayBase = RETRY_DELAY_BASE;
+  const connectionTimeout = CONNECTION_TIMEOUT;
+  const reconnectStaggerInterval = RECONNECT_STAGGER_INTERVAL;
+  const reconnectStaggerMaxDelay = RECONNECT_STAGGER_MAX_DELAY;
+  const reconnectPeriodicInterval = RECONNECT_PERIODIC_INTERVAL;
+
+  // Debounced function to update connection status
+  const debouncedSetConnectionError = useCallback(
+    debounce((error: boolean) => {
+      setConnectionError(error);
+    }, CONNECTION_STATUS_DEBOUNCE_TIME),
+    []
+  );
+
+  // Reset connection error state
+  const resetConnectionError = useCallback(() => {
+    debouncedSetConnectionError(false);
+    setReconnectingFor(0);
+  }, [debouncedSetConnectionError]);
+
+  // Function to handle subscription errors
+  const handleSubscriptionError = useCallback((error: Error) => {
+    console.error('[Realtime] Subscription error:', error);
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      error: error,
+      isSubscribed: false,
+    }));
+    debouncedSetConnectionError(true);
+  }, [debouncedSetConnectionError]);
+
+  // Function to handle successful subscription
+  const handleSubscriptionSuccess = useCallback(() => {
+    console.log('[Realtime] Subscription successful');
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      isSubscribed: true,
+      error: null,
+    }));
+    resetConnectionError();
+  }, [resetConnectionError]);
+
+  // Function to handle disconnection
+  const handleDisconnection = useCallback(() => {
+    console.warn('[Realtime] Disconnected from realtime server');
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      isSubscribed: false,
+    }));
+    debouncedSetConnectionError(true);
+  }, [debouncedSetConnectionError]);
+
+  // Function to handle reconnection
+  const handleReconnection = useCallback(() => {
+    console.log('[Realtime] Reconnected to realtime server');
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      isSubscribed: true,
+      error: null,
+    }));
+    resetConnectionError();
+  }, [resetConnectionError]);
+
+  // Function to handle max retries reached
+  const handleMaxRetriesReached = useCallback(() => {
+    console.error('[Realtime] Max retries reached. Stopping reconnection attempts.');
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      maxRetriesReached: true,
+    }));
+    debouncedSetConnectionError(true);
+    
+    // Show a toast notification
+    toast({
+      title: "Erreur de connexion",
+      description: "Impossible de se reconnecter au serveur en temps réel. Veuillez rafraîchir la page.",
+      variant: "destructive",
+    });
+  }, [debouncedSetConnectionError, toast]);
+
+  // Function to force reconnect
+  const forceReconnect = useCallback(async () => {
+    if (isForceReconnecting) return;
+    
+    console.log('[Realtime] Force reconnect triggered');
+    setIsForceReconnecting(true);
+    setRetryCount(0); // Reset retry count
+    setSubscriptionStates(prevState => ({
+      ...prevState,
+      maxRetriesReached: false,
+    }));
+    resetConnectionError();
+    
+    // Small delay before attempting to reconnect
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsForceReconnecting(false);
+  }, [isForceReconnecting, resetConnectionError, setRetryCount]);
+
+  // Periodic Reconnection Logic
+  const startPeriodicReconnect = useCallback(() => {
+    if (isPeriodicReconnecting) return;
+    
+    console.log('[Realtime] Starting periodic reconnect attempts');
+    setIsPeriodicReconnecting(true);
+    setPeriodicReconnectStartTime(Date.now());
+  }, [isPeriodicReconnecting]);
+
+  useEffect(() => {
+    let periodicReconnectTimer: NodeJS.Timeout | null = null;
+    
+    if (isPeriodicReconnecting && periodicReconnectStartTime !== null) {
+      periodicReconnectTimer = setTimeout(() => {
+        console.log('[Realtime] Attempting periodic reconnect');
+        setRetryCount(0); // Reset retry count for periodic reconnect
+        setSubscriptionStates(prevState => ({
+          ...prevState,
+          maxRetriesReached: false,
+        }));
+        resetConnectionError();
+      }, reconnectPeriodicInterval);
+    }
+    
+    return () => {
+      if (periodicReconnectTimer) {
+        clearTimeout(periodicReconnectTimer);
+      }
+    };
+  }, [isPeriodicReconnecting, periodicReconnectStartTime, setRetryCount, resetConnectionError, reconnectPeriodicInterval]);
+
+  // Staggered Reconnection Logic
+  useEffect(() => {
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    
+    if (!subscriptionStates.isSubscribed && !subscriptionStates.maxRetriesReached) {
+      const delay = Math.min(retryCount * reconnectStaggerInterval, reconnectStaggerMaxDelay);
+      
+      reconnectTimeout = setTimeout(() => {
+        if (retryCount < maxRetries) {
+          setRetryCount(prevCount => prevCount + 1);
+          setReconnectingFor(retryCount);
+          console.log(`[Realtime] Reconnecting attempt ${retryCount + 1} after ${delay}ms`);
+        } else {
+          handleMaxRetriesReached();
+        }
+      }, delay);
+    } else {
+      // If we are subscribed, reset the retry count
+      if (subscriptionStates.isSubscribed) {
+        setRetryCount(0);
+        setReconnectingFor(0);
+      }
+    }
+    
+    return () => {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
+  }, [subscriptionStates.isSubscribed, subscriptionStates.maxRetriesReached, retryCount, maxRetries, handleMaxRetriesReached, setRetryCount, reconnectStaggerInterval, reconnectStaggerMaxDelay]);
+
+  // Realtime Subscription Logic
+  useEffect(() => {
+    if (!channelId || !userId) return;
+    
+    let subscribed = false;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    const subscribeToChannel = async () => {
+      try {
+        console.log(`[Realtime] Attempting to subscribe to channel: ${channelId} (Attempt ${retryCount + 1})`);
+        
+        const { data: existingSubscription, error: fetchError } = await supabase
+          .from('channel_subscriptions')
+          .select('*')
+          .eq('channel_id', channelId)
+          .eq('user_id', userId)
+          .single();
+        
+        if (fetchError && fetchError.message.includes('No rows found')) {
+          console.log(`[Realtime] No existing subscription found for user ${userId} in channel ${channelId}. Creating a new one.`);
+          
+          const { error: insertError } = await supabase
+            .from('channel_subscriptions')
+            .insert([{ channel_id: channelId, user_id: userId }]);
+          
+          if (insertError) {
+            console.error('[Realtime] Error creating channel subscription:', insertError);
+            handleSubscriptionError(insertError);
+            return;
+          }
+          console.log(`[Realtime] Successfully created channel subscription for user ${userId} in channel ${channelId}.`);
+        } else if (fetchError) {
+          console.error('[Realtime] Error fetching channel subscription:', fetchError);
+          handleSubscriptionError(fetchError);
+          return;
+        } else {
+          console.log(`[Realtime] Existing subscription found for user ${userId} in channel ${channelId}.`);
+        }
+        
+        // Clear any existing realtime subscriptions
+        await supabase.removeChannel(channelId);
+        
+        const channel = supabase.channel(channelId);
+        
+        channel
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'chat_messages',
+            filter: `channel_id=eq.${channelId}`
+          }, (payload) => {
+            if (eventDebouncer.shouldProcessEvent(`message-${payload.eventType}-${payload.new?.id || payload.old?.id}`, Date.now())) {
+              handleRealtimeMessage(payload);
+              setLastEventTimestamp(Date.now());
+            }
+          })
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'message_mentions',
+            filter: `channel_id=eq.${channelId}`
+          }, (payload) => {
+            if (eventDebouncer.shouldProcessEvent(`mention-${payload.eventType}-${payload.new?.id || payload.old?.id}`, Date.now())) {
+              handleRealtimeMessage(payload);
+              setLastEventTimestamp(Date.now());
+            }
+          })
+          .on('presence', { event: 'sync' }, () => {
+            if (DEBUG_MODE) {
+              console.log(`[Realtime] Presence sync event for channel: ${channelId}`);
+            }
+          })
+          .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+            if (DEBUG_MODE) {
+              console.log(`[Realtime] User(s) ${newPresences.map((p: any) => p.userId).join(', ')} joined channel ${channelId}`);
+            }
+          })
+          .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+            if (DEBUG_MODE) {
+              console.log(`[Realtime] User(s) ${leftPresences.map((p: any) => p.userId).join(', ')} left channel ${channelId}`);
+            }
+          })
+          .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              subscribed = true;
+              handleSubscriptionSuccess();
+              
+              // Fetch initial presence data after subscribing
+              const presence = channel.presenceState();
+              if (DEBUG_MODE) {
+                console.log(`[Realtime] Initial presence data for channel ${channelId}:`, presence);
+              }
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error(`[Realtime] Channel error for channel ${channelId}`);
+              handleSubscriptionError(new Error(`Channel error: ${status}`));
+            } else if (status === 'CLOSED') {
+              handleDisconnection();
+            }
+          });
+        
+        timeoutId = setTimeout(() => {
+          if (!subscribed) {
+            const errorMessage = `[Realtime] Subscription timeout for channel ${channelId} after ${connectionTimeout}ms`;
+            console.error(errorMessage);
+            handleSubscriptionError(new Error(errorMessage));
+            channel.unsubscribe();
+          }
+        }, connectionTimeout);
+      } catch (error: any) {
+        console.error('[Realtime] Unexpected error during subscription:', error);
+        handleSubscriptionError(error);
+      }
+    };
+    
+    subscribeToChannel();
+    
+    return () => {
+      console.log(`[Realtime] Unsubscribing from channel: ${channelId}`);
+      supabase.removeChannel(channelId);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [channelId, userId, retryCount, handleSubscriptionSuccess, handleSubscriptionError, handleDisconnection, handleRealtimeMessage, connectionTimeout]);
+
+  // Health Check Logic
+  useEffect(() => {
+    let healthCheckInterval: NodeJS.Timeout | null = null;
+    let heartbeatTimeout: NodeJS.Timeout | null = null;
+    
+    const sendHeartbeat = () => {
+      if (!subscriptionStates.isSubscribed) return;
+      
+      if (heartbeatTimeout) {
+        clearTimeout(heartbeatTimeout);
+      }
+      
+      // Optimistically update the last event timestamp
+      setLastEventTimestamp(Date.now());
+      
+      // Set a timeout to check if the heartbeat was received
+      heartbeatTimeout = setTimeout(() => {
+        console.warn('[Realtime] Heartbeat timeout: No events received recently. Triggering potential reconnect.');
+        
+        // Check if the last event timestamp is older than the heartbeat timeout
+        if (lastEventTimestamp && Date.now() - lastEventTimestamp > connectionTimeout) {
+          console.warn('[Realtime] Last event was too long ago. Starting periodic reconnect.');
+          startPeriodicReconnect();
+        } else {
+          console.warn('[Realtime] Last event was recent, but still no heartbeat. Continuing to monitor.');
+        }
+      }, connectionTimeout);
+    };
+    
+    if (subscriptionStates.isSubscribed) {
+      console.log('[Realtime] Starting health check interval');
+      healthCheckInterval = setInterval(sendHeartbeat, reconnectPeriodicInterval);
+    } else {
+      console.log('[Realtime] Health check interval stopped');
+      if (healthCheckInterval) clearInterval(healthCheckInterval);
+      if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
+    }
+    
+    return () => {
+      if (healthCheckInterval) clearInterval(healthCheckInterval);
+      if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
+    };
+  }, [subscriptionStates.isSubscribed, lastEventTimestamp, startPeriodicReconnect, connectionTimeout, reconnectPeriodicInterval]);
+
+  useEffect(() => {
+    return () => {
+      console.log('[Realtime] Disposing of EventDebouncer');
+      eventDebouncer.dispose();
+    };
+  }, []);
+
+  return {
+    subscriptionStates,
+    handleSubscriptionError,
+    isSubscribed: subscriptionStates.isSubscribed,
+    lastEventTimestamp,
+    connectionError,
+    reconnectingFor,
+    isForceReconnecting,
+    forceReconnect,
+  };
+};

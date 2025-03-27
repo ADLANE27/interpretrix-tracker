@@ -1,8 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
-import { useMessageFormatter } from '@/hooks/use-message-formatter';
+import { useMessageFormatter } from '@/hooks/chat/useMessageFormatter';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
 const ALLOWED_FILE_TYPES = new Set([

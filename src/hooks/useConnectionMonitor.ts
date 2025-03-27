@@ -1,175 +1,418 @@
-
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
-import { realtimeService } from '@/services/realtimeService';
+import { Attachment } from '@/types/messaging';
+import type { Json } from '@/integrations/supabase/types';
+import { useMessageFormatter } from '@/hooks/chat/useMessageFormatter';
 
-export function useConnectionMonitor() {
-  const { toast } = useToast();
-  const [connectionError, setConnectionError] = useState(false);
-  const [reconnectingFor, setReconnectingFor] = useState(0);
-  const [isForceReconnecting, setIsForceReconnecting] = useState(false);
-  const reconnectAttemptRef = useRef(0);
-  const reconnectStartTimeRef = useRef<number | null>(null);
-  const reconnectTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSuccessfulConnectionRef = useRef<number>(Date.now());
-  const toastIdRef = useRef<string | null>(null);
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
+const ALLOWED_FILE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+]);
+
+const sanitizeFilename = (filename: string): string => {
+  // Create a mapping of accented characters to their non-accented equivalents
+  const accentMap: { [key: string]: string } = {
+    'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+    'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+    'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+    'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+    'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+    'ý': 'y', 'ÿ': 'y',
+    'ñ': 'n',
+    'ç': 'c'
+  };
+
+  // Extract extension
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
   
-  // Initialize realtime service and listen for connection status changes
-  useEffect(() => {
-    console.log('[ConnectionMonitor] Initializing connection monitor');
-    const cleanup = realtimeService.init();
+  // Process the name without extension
+  let nameWithoutExt = filename.slice(0, -(ext.length + 1)).toLowerCase();
+  
+  // Replace accented characters
+  nameWithoutExt = nameWithoutExt.split('').map(char => accentMap[char] || char).join('');
+  
+  // Remove any remaining non-alphanumeric characters
+  nameWithoutExt = nameWithoutExt
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    || 'file';
+
+  // Add uniqueness with timestamp and random string
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 6);
+  
+  // Clean extension and construct final filename
+  const cleanExt = ext.replace(/[^a-z0-9]/g, '');
+
+  const finalName = `${nameWithoutExt}_${timestamp}_${randomString}.${cleanExt}`;
+  
+  console.log('[Chat] Filename sanitization:', {
+    original: filename,
+    sanitized: finalName
+  });
+
+  return finalName;
+};
+
+const validateFile = (file: File): string | null => {
+  if (!file) return 'No file provided';
+  if (file.size > MAX_FILE_SIZE) return 'File is too large (max 100MB)';
+  if (!ALLOWED_FILE_TYPES.has(file.type)) return 'File type not supported';
+  return null;
+};
+
+// Check if we have an internet connection
+const checkConnection = (): boolean => {
+  return navigator.onLine;
+};
+
+export const useMessageActions = (
+  channelId: string,
+  currentUserId: string | null,
+  fetchMessages: () => Promise<void>
+) => {
+  const { toast } = useToast();
+  const { validateMentions } = useMessageFormatter();
+
+  const uploadAttachment = async (file: File): Promise<Attachment> => {
+    // Check connection before attempting upload
+    if (!checkConnection()) {
+      throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
+    }
+
+    // Validate file before upload
+    const validationError = validateFile(file);
+    if (validationError) {
+      console.error('[Chat] File validation error:', validationError);
+      throw new Error(validationError);
+    }
+
+    const sanitizedFilename = sanitizeFilename(file.name);
+    console.log('[Chat] Uploading file with sanitized name:', sanitizedFilename);
     
-    const handleConnectionStatusChange = (connected: boolean) => {
-      console.log('[ConnectionMonitor] Connection status changed:', connected);
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const { data, error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(sanitizedFilename, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('[Chat] Upload error:', uploadError);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(sanitizedFilename);
+
+        console.log('[Chat] Upload successful:', {
+          originalName: file.name,
+          sanitizedName: sanitizedFilename,
+          publicUrl
+        });
+
+        return {
+          url: publicUrl,
+          filename: file.name, // Keep original filename for display
+          type: file.type,
+          size: file.size
+        };
+      } catch (error) {
+        console.error(`[Chat] Upload attempt ${4 - retries} failed:`, error);
+        retries--;
+        if (retries === 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+      }
+    }
+    throw new Error('Upload failed after all retries');
+  };
+
+  const sendMessage = async (
+    content: string,
+    parentMessageId?: string | null,
+    files: File[] = []
+  ): Promise<string> => {
+    if (!channelId || !currentUserId) throw new Error("Données requises manquantes");
+    if (!content.trim() && files.length === 0) throw new Error("Le message ne peut pas être vide");
+    
+    // Check connection before attempting to send
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
+    }
+
+    // Validate mentions for proper format
+    const { isValid, error } = validateMentions(content);
+    if (!isValid) {
+      toast({
+        title: "Erreur de format",
+        description: error || "Format de mention invalide",
+        variant: "destructive",
+      });
+      throw new Error(error || "Format de mention invalide");
+    }
+    
+    try {
+      console.log('[Chat] Starting message send process');
+      console.log('[Chat] Message content:', content);
+      console.log('[Chat] Channel ID:', channelId);
+      console.log('[Chat] Parent message ID:', parentMessageId);
+      console.log('[Chat] Files count:', files.length);
       
-      if (connected) {
-        // Connection is back, reset error state
-        if (connectionError) {
-          setConnectionError(false);
-          setIsForceReconnecting(false);
-          
-          // Dismiss previous error toast if it exists
-          if (toastIdRef.current) {
-            toast({
-              id: toastIdRef.current,
-              title: "Connexion rétablie",
-              description: "La connexion temps réel a été rétablie",
-              duration: 3000,
-            });
-            toastIdRef.current = null;
-          } else {
-            toast({
-              title: "Connexion rétablie",
-              description: "La connexion temps réel a été rétablie",
-              duration: 3000,
-            });
-          }
-        }
-        reconnectAttemptRef.current = 0;
-        reconnectStartTimeRef.current = null;
-        setReconnectingFor(0);
+      // Upload any attachments first
+      const uploadedAttachments = files.length > 0 
+        ? await Promise.all(files.map(file => uploadAttachment(file)))
+        : [];
         
-        if (reconnectTimerIntervalRef.current) {
-          clearInterval(reconnectTimerIntervalRef.current);
-          reconnectTimerIntervalRef.current = null;
-        }
-        
-        lastSuccessfulConnectionRef.current = Date.now();
+      console.log('[Chat] All files uploaded successfully:', uploadedAttachments.length);
+
+      const attachmentsForDb = uploadedAttachments.map(att => ({
+        ...att
+      })) as unknown as Json[];
+
+      const newMessage = {
+        channel_id: channelId,
+        sender_id: currentUserId,
+        content: content.trim(),
+        parent_message_id: parentMessageId,
+        attachments: attachmentsForDb,
+        reactions: {} as Json
+      };
+
+      console.log('[Chat] Sending message to database:', { ...newMessage, content: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : '') });
+
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert(newMessage)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('[Chat] Error inserting message:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('[Chat] No data returned from message insertion');
+        throw new Error("Aucune donnée retournée lors de l'insertion");
+      }
+
+      console.log('[Chat] Message sent successfully with ID:', data.id);
+      await fetchMessages();
+      return data.id;
+    } catch (error) {
+      console.error('[Chat] Error sending message:', error);
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Échec de l'envoi du message",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    // Check for connection before attempting to delete
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for required data
+    if (!messageId) {
+      toast({
+        title: "Erreur", 
+        description: "ID de message manquant",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!currentUserId) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour supprimer un message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log('[Chat] Attempting to delete message:', messageId);
+      
+      // First verify the message belongs to the current user, using maybeSingle instead of single
+      const { data: message, error: fetchError } = await supabase
+        .from('chat_messages')
+        .select('sender_id')
+        .eq('id', messageId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('[Chat] Error fetching message for deletion check:', fetchError);
+        throw new Error("Impossible de vérifier la propriété du message");
+      }
+
+      if (!message) {
+        console.error('[Chat] Message not found for deletion:', messageId);
+        throw new Error("Message introuvable");
+      }
+
+      if (message.sender_id !== currentUserId) {
+        console.error('[Chat] Unauthorized deletion attempt:', {
+          messageOwnerId: message.sender_id,
+          currentUserId
+        });
+        throw new Error("Vous ne pouvez supprimer que vos propres messages");
+      }
+
+      // Proceed with deletion inside a transaction to ensure consistency
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('[Chat] Error during message deletion:', error);
+        throw error;
+      }
+
+      // Refresh messages list after deletion
+      await fetchMessages();
+      
+      toast({
+        title: "Succès",
+        description: "Message supprimé avec succès"
+      });
+    } catch (error) {
+      console.error('[Chat] Error deleting message:', error);
+      toast({
+        title: "Erreur",
+        description: error instanceof Error 
+          ? error.message 
+          : "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const markMentionsAsRead = async () => {
+    if (!currentUserId || !channelId) return;
+
+    // Check connection before attempting to update mentions
+    if (!checkConnection()) {
+      console.error('[Chat] Cannot mark mentions as read: No internet connection');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'read' })
+        .eq('mentioned_user_id', currentUserId)
+        .eq('channel_id', channelId)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('[Chat] Error marking mentions as read:', error);
+      }
+    } catch (error) {
+      console.error('[Chat] Error marking mentions as read:', error);
+    }
+  };
+
+  const reactToMessage = async (messageId: string, emoji: string) => {
+    if (!currentUserId) return;
+
+    // Check connection before attempting to react
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Use maybeSingle instead of single for better error handling
+      const { data: messages, error: fetchError } = await supabase
+        .from('chat_messages')
+        .select('reactions')
+        .eq('id', messageId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('[Chat] Error fetching message for reaction:', fetchError);
+        throw fetchError;
+      }
+
+      if (!messages) {
+        console.error('[Chat] Message not found for reaction:', messageId);
+        throw new Error("Message introuvable");
+      }
+
+      const currentReactions = messages.reactions as Record<string, string[]> || {};
+      const currentUsers = currentReactions[emoji] || [];
+      
+      let updatedUsers;
+      if (currentUsers.includes(currentUserId)) {
+        updatedUsers = currentUsers.filter(id => id !== currentUserId);
       } else {
-        // Connection lost, start tracking time
-        if (!reconnectStartTimeRef.current) {
-          reconnectStartTimeRef.current = Date.now();
-          
-          // Start a timer to track how long we've been reconnecting
-          if (reconnectTimerIntervalRef.current) {
-            clearInterval(reconnectTimerIntervalRef.current);
-          }
-          
-          reconnectTimerIntervalRef.current = setInterval(() => {
-            if (reconnectStartTimeRef.current) {
-              const elapsedSeconds = Math.floor((Date.now() - reconnectStartTimeRef.current) / 1000);
-              setReconnectingFor(elapsedSeconds);
-              
-              // Only show toast after 5 seconds of disconnection
-              if (elapsedSeconds === 5 && !toastIdRef.current) {
-                const { id } = toast({
-                  title: "Problème de connexion",
-                  description: "Tentative de reconnexion en cours...",
-                  duration: 0, // Persistent until connection is restored
-                });
-                toastIdRef.current = id;
-              }
-            }
-          }, 1000);
-        }
-        
-        setConnectionError(true);
-        reconnectAttemptRef.current += 1;
+        updatedUsers = [...currentUsers, currentUserId];
       }
-    };
-    
-    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
-    
-    // Initial connection check with delay
-    const initialCheckTimeout = setTimeout(() => {
-      const isConnected = realtimeService.isConnected();
-      if (!isConnected) {
-        handleConnectionStatusChange(false);
-      }
-    }, 5000);
-    
-    return () => {
-      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
-      clearTimeout(initialCheckTimeout);
-      cleanup();
-      
-      if (reconnectTimerIntervalRef.current) {
-        clearInterval(reconnectTimerIntervalRef.current);
-      }
-      
-      // Clear any persistent toast on unmount
-      if (toastIdRef.current) {
-        toast({
-          id: toastIdRef.current,
-          duration: 1,
-        });
-      }
-    };
-  }, [toast]);
 
-  // Effect to update the connection status when component mounts
-  useEffect(() => {
-    const isConnected = realtimeService.isConnected();
-    if (!isConnected && !connectionError) {
-      setConnectionError(true);
-    } else if (isConnected && connectionError) {
-      setConnectionError(false);
-    }
-  }, [connectionError]);
+      const updatedReactions = {
+        ...currentReactions,
+        [emoji]: updatedUsers
+      };
 
-  // Manual force reconnect handler
-  const handleForceReconnect = useCallback(() => {
-    console.log('[ConnectionMonitor] Manual reconnection requested');
-    setIsForceReconnecting(true);
-    
-    // Reset timers for tracking reconnection time
-    if (reconnectStartTimeRef.current) {
-      reconnectStartTimeRef.current = Date.now();
-      setReconnectingFor(0);
-    }
-    
-    // Attempt full service reconnection
-    realtimeService.reconnectAll();
-    
-    // Show toast notification
-    toast({
-      title: "Reconnexion initiée",
-      description: "Tentative de reconnexion en cours...",
-      duration: 5000,
-    });
-    
-    // Reset force reconnecting state after a timeout
-    setTimeout(() => {
-      setIsForceReconnecting(false);
-      
-      // Check if reconnection was successful
-      const isConnected = realtimeService.isConnected();
-      if (!isConnected) {
-        toast({
-          title: "Échec de la reconnexion",
-          description: "La connexion n'a pas pu être rétablie. Veuillez rafraîchir la page.",
-          variant: "destructive",
-          duration: 0,
-        });
+      if (updatedUsers.length === 0) {
+        delete updatedReactions[emoji];
       }
-    }, 8000);
-  }, [toast]);
+
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ reactions: updatedReactions })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('[Chat] Error updating reaction:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('[Chat] Error updating reaction:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la réaction",
+        variant: "destructive",
+      });
+    }
+  };
 
   return {
-    connectionError,
-    reconnectingFor, 
-    isForceReconnecting,
-    handleForceReconnect
+    sendMessage,
+    deleteMessage,
+    reactToMessage,
+    markMentionsAsRead,
   };
-}
+};
