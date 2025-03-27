@@ -28,7 +28,7 @@ export class SubscriptionManager {
       const channel = supabase
         .channel(key)
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           {
             event: 'UPDATE',
             schema: 'public',
@@ -67,7 +67,7 @@ export class SubscriptionManager {
       const channel = supabase
         .channel(key)
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           {
             event: event,
             schema: 'public',
