@@ -43,7 +43,7 @@ class RealtimeService {
   }
 
   public init() {
-    if (this.isInitialized) return;
+    if (this.isInitialized) return () => {};
     
     console.log('[RealtimeService] Initializing');
     this.setupConnectionMonitor();
@@ -134,7 +134,7 @@ class RealtimeService {
     console.log(`[RealtimeService] Subscribing to interpreter status for ${interpreterId}`);
     
     const channel = supabase.channel(key)
-      .on('postgres_changes', {
+      .on('postgres_changes' as any, {
         event: 'UPDATE',
         schema: 'public',
         table: 'interpreter_profiles',
@@ -195,7 +195,7 @@ class RealtimeService {
     console.log(`[RealtimeService] Subscribing to ${table} for ${event} events`);
     
     const channel = supabase.channel(key)
-      .on('postgres_changes', {
+      .on('postgres_changes' as any, {
         event: event,
         schema: 'public',
         table: table,
