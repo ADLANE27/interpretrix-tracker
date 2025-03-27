@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,8 +47,25 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      if (nameFilter) {
-        query = query.or(`interpreter_profiles.first_name.ilike.%${nameFilter}%,interpreter_profiles.last_name.ilike.%${nameFilter}%`);
+      // Fix for name filter: Check if nameFilter exists before applying it
+      if (nameFilter && nameFilter.trim() !== '') {
+        // Get interpreter IDs matching the name filter
+        const { data: matchingInterpreters, error: interpreterError } = await supabase
+          .from('interpreter_profiles')
+          .select('id')
+          .or(`first_name.ilike.%${nameFilter}%,last_name.ilike.%${nameFilter}%`);
+        
+        if (interpreterError) throw interpreterError;
+        
+        // If we found matching interpreters, filter by their IDs
+        if (matchingInterpreters && matchingInterpreters.length > 0) {
+          const interpreterIds = matchingInterpreters.map(interpreter => interpreter.id);
+          query = query.in('interpreter_id', interpreterIds);
+        } else {
+          // No matching interpreters found, return empty result
+          setReservations([]);
+          return;
+        }
       }
 
       if (sourceLanguageFilter !== 'all') {

@@ -37,14 +37,12 @@ export class SubscriptionManager {
             filter: `id=eq.${interpreterId}`
           },
           (payload: any) => {
-            console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload);
-            
-            // Direct status update broadcasting without debounce
+            // Immediate status update broadcasting with no debounce
             if (payload.new && payload.old && payload.new.status !== payload.old.status) {
               const newStatus = payload.new.status as Profile['status'];
-              console.log(`[SubscriptionManager] Interpreter status changed from ${payload.old.status} to ${newStatus}`);
+              console.log(`[SubscriptionManager] Interpreter status changed from ${payload.old.status} to ${newStatus} - emitting immediately`);
               
-              // Immediately emit the status update event for faster UI updates
+              // Immediately emit the status update event for real-time UI updates
               eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
                 interpreterId: interpreterId,
                 status: newStatus
@@ -61,6 +59,12 @@ export class SubscriptionManager {
             subscriptionRegistry.updateStatus(key, true);
           } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
             subscriptionRegistry.updateStatus(key, false);
+            
+            // Try to resubscribe immediately on errors
+            setTimeout(() => {
+              console.log(`[SubscriptionManager] Attempting to resubscribe to ${key} after error`);
+              this.createInterpreterStatusSubscription(interpreterId, eventDebouncer);
+            }, 1000);
           }
         });
       
@@ -109,7 +113,14 @@ export class SubscriptionManager {
             
             if (isStatusUpdate || eventDebouncer.shouldProcessEvent(eventId, now)) {
               console.log(`[SubscriptionManager] ${event} event on ${table}:`, payload);
-              callback(payload);
+              
+              // Execute callback immediately for status updates
+              if (isStatusUpdate) {
+                console.log(`[SubscriptionManager] Processing status update immediately`);
+                callback(payload);
+              } else {
+                callback(payload);
+              }
             }
           }
         )
@@ -120,6 +131,21 @@ export class SubscriptionManager {
             subscriptionRegistry.updateStatus(key, true);
           } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
             subscriptionRegistry.updateStatus(key, false);
+            
+            // Try to resubscribe immediately on errors
+            if (table === 'interpreter_profiles') {
+              console.log(`[SubscriptionManager] Critical subscription ${key} failed, attempting immediate reconnect`);
+              setTimeout(() => {
+                const newChannel = supabase.channel(key).on('postgres_changes' as any, {
+                  event: event,
+                  schema: 'public',
+                  table: table,
+                  filter: filter || undefined
+                }, callback).subscribe();
+                
+                subscriptionRegistry.register(key, newChannel);
+              }, 500);
+            }
           }
         });
       
