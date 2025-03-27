@@ -183,10 +183,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
       
+      const normalizeString = (str: string) => {
+        return str.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "");
+      };
+      
       const filteredSuggestions = searchTerm 
         ? combinedSuggestions.filter(suggestion => {
-            const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedName = normalizeString(suggestion.name);
+            const normalizedSearch = normalizeString(searchTerm);
             return normalizedName.includes(normalizedSearch);
           })
         : combinedSuggestions;

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -170,7 +169,7 @@ export const useMessageActions = (
       const newMessage = {
         channel_id: channelId,
         sender_id: currentUserId,
-        content: content.trim(),
+        content: content.trim(), // The server-side trigger will handle the mentions
         parent_message_id: parentMessageId,
         attachments: attachmentsForDb,
         reactions: {} as Json
