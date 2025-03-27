@@ -14,12 +14,18 @@ const Admin = () => {
   const [connectionError, setConnectionError] = useState(false);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSuccessfulConnectionRef = useRef<number>(Date.now());
 
   // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
     // Reset connection error state on successful updates
-    if (connectionError) setConnectionError(false);
+    if (connectionError) {
+      setConnectionError(false);
+      console.log('[Admin] Connection restored via mission updates');
+    }
     reconnectAttemptRef.current = 0;
+    lastSuccessfulConnectionRef.current = Date.now();
     
     // Emit event using mitt instead of DOM CustomEvent
     eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
@@ -33,44 +39,63 @@ const Admin = () => {
       const connected = channels.length > 0 && 
         channels.some((channel: RealtimeChannel) => channel.state === 'joined');
       
-      if (!connected) {
-        // Only show reconnection message after 2 failed attempts
-        if (!connectionError && reconnectAttemptRef.current >= 2) {
-          console.log('Connection issue detected, showing reconnection message');
+      const timeSinceLastSuccess = Date.now() - lastSuccessfulConnectionRef.current;
+      const connectionTimeout = 30000; // 30 seconds
+      
+      if (!connected || timeSinceLastSuccess > connectionTimeout) {
+        // Only show reconnection message after failed attempts
+        if (!connectionError && reconnectAttemptRef.current >= 1) {
+          console.log('[Admin] Connection issue detected, showing reconnection message');
           setConnectionError(true);
         }
         
         // Try to reconnect by subscribing to a health check channel
-        console.log(`Reconnection attempt ${reconnectAttemptRef.current + 1}`);
-        const healthChannel = supabase.channel('connection-health-check');
+        console.log(`[Admin] Reconnection attempt ${reconnectAttemptRef.current + 1}`);
+        
+        const healthChannel = supabase.channel('admin-connection-health-check');
         healthChannel.subscribe((status) => {
-          console.log('Health channel status:', status);
+          console.log('[Admin] Health channel status:', status);
           if (status === 'SUBSCRIBED') {
-            console.log('Successfully reconnected');
+            console.log('[Admin] Successfully reconnected');
             setConnectionError(false);
             reconnectAttemptRef.current = 0;
+            lastSuccessfulConnectionRef.current = Date.now();
             supabase.removeChannel(healthChannel);
           }
         });
         
         reconnectAttemptRef.current += 1;
       } else if (connected && connectionError) {
-        console.log('Connection restored');
+        console.log('[Admin] Connection restored via channel check');
         setConnectionError(false);
         reconnectAttemptRef.current = 0;
+        lastSuccessfulConnectionRef.current = Date.now();
       }
     };
 
-    const connectionCheck = setInterval(checkConnection, 15000); // Check every 15 seconds
+    // Check every 10 seconds
+    connectionCheckIntervalRef.current = setInterval(checkConnection, 10000);
+
+    // Also set up a heartbeat channel to maintain connection
+    const heartbeatChannel = supabase.channel('admin-heartbeat-channel')
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Admin] Heartbeat channel established');
+          lastSuccessfulConnectionRef.current = Date.now();
+        }
+      });
 
     // Initial check
     checkConnection();
 
     return () => {
-      clearInterval(connectionCheck);
+      if (connectionCheckIntervalRef.current) {
+        clearInterval(connectionCheckIntervalRef.current);
+      }
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
+      supabase.removeChannel(heartbeatChannel);
     };
   }, [connectionError]);
 
@@ -79,7 +104,7 @@ const Admin = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('No user found, redirecting to login');
+          console.log('[Admin] No user found, redirecting to login');
           navigate('/admin/login');
           return;
         }
@@ -92,13 +117,13 @@ const Admin = () => {
           .single();
 
         if (roles?.role !== 'admin') {
-          console.log('User is not an admin, redirecting to login');
+          console.log('[Admin] User is not an admin, redirecting to login');
           await supabase.auth.signOut();
           navigate('/admin/login');
           return;
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('[Admin] Auth check error:', error);
         navigate('/admin/login');
       }
     };

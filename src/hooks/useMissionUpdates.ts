@@ -38,19 +38,23 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
 
-    // Set up a direct channel subscription for interpreter status changes
-    const statusChannel = supabase.channel('interpreter-status-direct')
+    // Set up a direct realtime subscription for critical interpreter status changes
+    // This ensures immediate updates across all interfaces
+    const statusChannel = supabase.channel('interpreter-status-direct-updates')
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'interpreter_profiles',
         filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
       }, (payload) => {
-        console.log('[useMissionUpdates] Direct status update received:', payload);
+        console.log('[useMissionUpdates] Direct status update received via channel:', payload);
+        // First run the provided callback
         onUpdate();
-        // Also propagate the event to other components
+        // Then propagate the event to other components
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
-      }).subscribe();
+      }).subscribe((status) => {
+        console.log('[useMissionUpdates] Status channel subscription status:', status);
+      });
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
@@ -64,8 +68,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   // Common subscription options
   const subscriptionOptions = {
     debugMode: isProduction() ? false : true, // Disable verbose logging in production
-    maxRetries: isProduction() ? 10 : 3,      // Increase retries in production
-    retryInterval: 5000,
+    maxRetries: isProduction() ? 15 : 5,      // Increase retries in production
+    retryInterval: 3000,
     onError: (error: any) => {
       if (!isProduction()) {
         console.error('[useMissionUpdates] Subscription error:', error);
@@ -112,7 +116,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
     },
     (payload) => {
-      console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      console.log('[useMissionUpdates] Interpreter status update received via subscription:', payload);
       // This is a status update, trigger the refresh
       onUpdate();
       // Also propagate the event
@@ -120,7 +124,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     {
       ...subscriptionOptions,
-      retryInterval: 3000, // Shorter retry for status updates
+      retryInterval: 2000, // Shorter retry for status updates
     }
   );
 };

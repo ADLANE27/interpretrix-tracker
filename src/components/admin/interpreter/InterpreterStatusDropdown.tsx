@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -72,6 +73,59 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen for status updates from other components
+  useEffect(() => {
+    const handleExternalStatusUpdate = () => {
+      // Clear any pending update timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+
+      // Fetch the latest status directly from the database
+      const fetchCurrentStatus = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', interpreterId)
+            .single();
+
+          if (error) {
+            console.error('[InterpreterStatusDropdown] Error fetching status:', error);
+            return;
+          }
+
+          if (data && data.status && data.status !== localStatus) {
+            console.log(`[InterpreterStatusDropdown] External update for ${interpreterId}: ${data.status}`);
+            setLocalStatus(data.status as Status);
+          }
+        } catch (err) {
+          console.error('[InterpreterStatusDropdown] Fetch error:', err);
+        }
+      };
+
+      fetchCurrentStatus();
+    };
+
+    // Add listener for status updates
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+
+    // Initial status check on mount
+    const initialCheck = setTimeout(() => {
+      handleExternalStatusUpdate();
+    }, 500);
+
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+      clearTimeout(initialCheck);
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [interpreterId, localStatus]);
 
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
@@ -102,12 +156,15 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      // Optimistically update UI
       setLocalStatus(pendingStatus);
       
+      // Call parent callback if provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
+      // Update database
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -119,7 +176,37 @@ export const InterpreterStatusDropdown = ({
         throw error;
       }
 
+      // Broadcast the status update event
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      
+      // Set up a timeout to verify the update was successfully processed
+      updateTimeoutRef.current = setTimeout(async () => {
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', interpreterId)
+            .single();
+            
+          if (fetchError) {
+            console.error('[InterpreterStatusDropdown] Verification fetch error:', fetchError);
+            return;
+          }
+          
+          if (data && data.status !== pendingStatus) {
+            console.log('[InterpreterStatusDropdown] Status verification failed, retrying update');
+            // If verification fails, retry the update
+            await supabase.rpc('update_interpreter_status', {
+              p_interpreter_id: interpreterId,
+              p_status: pendingStatus
+            });
+            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+          }
+        } catch (err) {
+          console.error('[InterpreterStatusDropdown] Verification error:', err);
+        }
+        updateTimeoutRef.current = null;
+      }, 2000);
 
       toast({
         title: "Statut mis à jour",

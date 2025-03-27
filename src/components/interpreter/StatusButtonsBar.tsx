@@ -26,19 +26,84 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const lastUpdateRef = useRef<string | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const userId = useRef<string | null>(null);
 
   // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId.current = user.id;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId.current = user.id;
+          console.log('[StatusButtonsBar] User ID set:', user.id);
+        }
+      } catch (err) {
+        console.error('[StatusButtonsBar] Error fetching user:', err);
       }
     };
     
     fetchUserId();
   }, []);
+
+  // Listen for status updates from other components
+  useEffect(() => {
+    if (!userId.current) return;
+
+    const handleExternalStatusUpdate = () => {
+      // Skip if we're currently updating
+      if (isUpdating) return;
+
+      // Clear any pending update timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+
+      // Fetch the latest status directly from the database
+      const fetchCurrentStatus = async () => {
+        if (!userId.current) return;
+        
+        try {
+          const { data, error } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', userId.current)
+            .single();
+
+          if (error) {
+            console.error('[StatusButtonsBar] Error fetching status:', error);
+            return;
+          }
+
+          if (data && data.status && data.status !== localStatus) {
+            console.log(`[StatusButtonsBar] External update for ${userId.current}: ${data.status}`);
+            setLocalStatus(data.status as Status);
+          }
+        } catch (err) {
+          console.error('[StatusButtonsBar] Fetch error:', err);
+        }
+      };
+
+      fetchCurrentStatus();
+    };
+
+    // Add listener for status updates
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+
+    // Initial status check on mount
+    const initialCheck = setTimeout(() => {
+      handleExternalStatusUpdate();
+    }, 500);
+
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+      clearTimeout(initialCheck);
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [userId.current, localStatus, isUpdating]);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -86,7 +151,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
+    if (!onStatusChange || localStatus === newStatus || isUpdating || !userId.current) return;
     
     try {
       setIsUpdating(true);
@@ -96,21 +161,51 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setLocalStatus(newStatus);
       
       // Update status via RPC function
-      if (userId.current) {
-        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-          p_interpreter_id: userId.current,
-          p_status: newStatus as string
-        });
-        
-        if (dbError) {
-          console.error('[StatusButtonsBar] Database error:', dbError);
-          throw dbError;
-        }
-        
-        // Emit event to notify components of status change
-        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
-        console.log('[StatusButtonsBar] Status update event emitted');
+      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId.current,
+        p_status: newStatus as string
+      });
+      
+      if (dbError) {
+        console.error('[StatusButtonsBar] Database error:', dbError);
+        setLocalStatus(currentStatus); // Revert on error
+        throw dbError;
       }
+      
+      // Emit event to notify components of status change
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      console.log('[StatusButtonsBar] Status update event emitted');
+      
+      // Set up a timeout to verify the update was successfully processed
+      updateTimeoutRef.current = setTimeout(async () => {
+        try {
+          if (!userId.current) return;
+          
+          const { data, error: fetchError } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', userId.current)
+            .single();
+            
+          if (fetchError) {
+            console.error('[StatusButtonsBar] Verification fetch error:', fetchError);
+            return;
+          }
+          
+          if (data && data.status !== newStatus) {
+            console.log('[StatusButtonsBar] Status verification failed, retrying update');
+            // If verification fails, retry the update
+            await supabase.rpc('update_interpreter_status', {
+              p_interpreter_id: userId.current,
+              p_status: newStatus as string
+            });
+            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+          }
+        } catch (err) {
+          console.error('[StatusButtonsBar] Verification error:', err);
+        }
+        updateTimeoutRef.current = null;
+      }, 2000);
       
       // Call the parent handler
       await onStatusChange(newStatus);
