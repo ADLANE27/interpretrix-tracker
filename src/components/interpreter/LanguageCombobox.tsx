@@ -134,7 +134,7 @@ export function LanguageCombobox({
       </div>
       
       {isOpen && (
-        <div className="absolute top-full left-0 z-[9999] w-full mt-1 rounded-md border border-input bg-white dark:bg-gray-800 shadow-lg">
+        <div className="absolute bottom-full left-0 z-[9999] w-full mb-1 rounded-md border border-input bg-white dark:bg-gray-800 shadow-lg">
           <ScrollArea className="max-h-[300px]">
             <div className="p-1">
               {/* Optional: All languages option */}
