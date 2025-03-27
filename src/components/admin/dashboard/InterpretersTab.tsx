@@ -81,72 +81,94 @@ export const InterpretersTab: React.FC = () => {
   useEffect(() => {
     console.log("[InterpretersTab] Setting up real-time subscriptions and event listeners");
     const channels: RealtimeChannel[] = [];
+    let isComponentMounted = true;
 
-    // Subscribe to interpreter_profiles table directly with a more specific filter
-    const interpreterChannel = supabase.channel('admin-interpreter-profiles').on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'interpreter_profiles',
-      filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
-    }, async payload => {
-      console.log(`[InterpretersTab] Interpreter status changed:`, payload);
-      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
-        // Status has changed, update only that interpreter
-        const interpreterId = payload.new.id;
-        const newStatus = payload.new.status;
+    // Create a dedicated channel for interpreter status changes with robust error handling
+    const interpreterStatusChannel = supabase.channel('admin-interpreter-profiles-status')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
+      }, async payload => {
+        if (!isComponentMounted) return;
         
-        setInterpreters(current => 
-          current.map(interpreter => 
-            interpreter.id === interpreterId 
-              ? { ...interpreter, status: newStatus as Profile['status'] } 
-              : interpreter
-          )
-        );
-      } else {
-        // For other changes, refresh the full list
-        await fetchInterpreters();
-      }
-    }).subscribe(status => {
-      console.log(`[InterpretersTab] Interpreter profiles subscription status:`, status);
-    });
-    channels.push(interpreterChannel);
+        console.log(`[InterpretersTab] Interpreter status changed:`, payload);
+        if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+          const interpreterId = payload.new.id;
+          const newStatus = payload.new.status;
+          
+          // Update only that interpreter's status
+          setInterpreters(current => 
+            current.map(interpreter => 
+              interpreter.id === interpreterId 
+                ? { ...interpreter, status: newStatus as Profile['status'] } 
+                : interpreter
+            )
+          );
+        }
+      })
+      .subscribe(status => {
+        console.log(`[InterpretersTab] Interpreter status subscription status:`, status);
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[InterpretersTab] Channel error, attempting recovery');
+          setTimeout(() => {
+            if (isComponentMounted) {
+              interpreterStatusChannel.subscribe();
+            }
+          }, 5000);
+        }
+      });
+    
+    channels.push(interpreterStatusChannel);
 
     // Channel for private reservations changes
-    const reservationsChannel = supabase.channel('admin-private-reservations').on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'private_reservations'
-    }, async payload => {
-      console.log(`[InterpretersTab] Private reservations changed:`, payload);
-      await fetchInterpreters();
-    }).subscribe(status => {
-      console.log(`[InterpretersTab] Private reservations subscription status:`, status);
-    });
+    const reservationsChannel = supabase.channel('admin-private-reservations')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'private_reservations'
+      }, async payload => {
+        console.log(`[InterpretersTab] Private reservations changed:`, payload);
+        if (isComponentMounted) {
+          await fetchInterpreters();
+        }
+      })
+      .subscribe(status => {
+        console.log(`[InterpretersTab] Private reservations subscription status:`, status);
+      });
+    
     channels.push(reservationsChannel);
     
     // Listen for interpreter status update events from the event emitter
     const handleStatusUpdate = () => {
       console.log("[InterpretersTab] Received interpreter status update event");
-      fetchInterpreters();
+      if (isComponentMounted) {
+        fetchInterpreters();
+      }
     };
     
-    // Use mitt event emitter instead of window event listener
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && isComponentMounted) {
         console.log("[InterpretersTab] Tab became visible, refreshing data");
         fetchInterpreters();
       }
     };
+    
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Add connection health check with shorter interval for more responsive feedback
     const handleConnectionState = () => {
+      if (!isComponentMounted) return;
+      
       const connectionState = supabase.getChannels().some(channel => channel.state === 'joined');
       console.log("[InterpretersTab] Connection state:", connectionState ? "connected" : "disconnected");
+      
       if (!connectionState) {
-        console.log("[InterpretersTab] Attempting to reconnect...");
+        console.log("[InterpretersTab] Attempting to reconnect channels...");
         channels.forEach(channel => {
           if (channel.state !== 'joined') {
             channel.subscribe();
@@ -154,21 +176,22 @@ export const InterpretersTab: React.FC = () => {
         });
       }
     };
-    const connectionCheckInterval = setInterval(handleConnectionState, 15000); // Check every 15 seconds
+    
+    const connectionCheckInterval = setInterval(handleConnectionState, 15000);
 
     // Initial fetch
     fetchInterpreters();
     
     return () => {
       console.log("[InterpretersTab] Cleaning up subscriptions and event listeners");
+      isComponentMounted = false;
+      
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
+      
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Clean up mitt event listener instead of window event listener
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      
       clearInterval(connectionCheckInterval);
     };
   }, []);

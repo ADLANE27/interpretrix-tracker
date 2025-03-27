@@ -74,17 +74,43 @@ export const InterpreterStatusDropdown = ({
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 3;
 
-  // Listen for status updates from other components
+  // Dedicated channel for this interpreter's status
+  const channelRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Set up a dedicated channel for this interpreter's status updates
+    const statusChannel = supabase.channel(`interpreter-status-${interpreterId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: `id=eq.${interpreterId}`
+      }, (payload) => {
+        if (payload.new && payload.new.status) {
+          console.log(`[InterpreterStatusDropdown] Received direct status update for ${interpreterId}: ${payload.new.status}`);
+          setLocalStatus(payload.new.status as Status);
+        }
+      })
+      .subscribe(status => {
+        console.log(`[InterpreterStatusDropdown] Status channel subscription status for ${interpreterId}:`, status);
+      });
+    
+    channelRef.current = statusChannel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [interpreterId]);
+
+  // Listen for status updates from event emitter
   useEffect(() => {
     const handleExternalStatusUpdate = () => {
-      // Clear any pending update timeout
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = null;
-      }
-
-      // Fetch the latest status directly from the database
+      // Fetch the latest status directly from the database to ensure consistency
       const fetchCurrentStatus = async () => {
         try {
           const { data, error } = await supabase
@@ -110,23 +136,14 @@ export const InterpreterStatusDropdown = ({
       fetchCurrentStatus();
     };
 
-    // Add listener for status updates
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
-
-    // Initial status check on mount
-    const initialCheck = setTimeout(() => {
-      handleExternalStatusUpdate();
-    }, 500);
-
+    
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
-      clearTimeout(initialCheck);
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
     };
   }, [interpreterId, localStatus]);
 
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       const updateId = `${currentStatus}-${Date.now()}`;
@@ -149,6 +166,46 @@ export const InterpreterStatusDropdown = ({
     setIsOpen(false);
   };
 
+  const updateInterpreterStatus = async (interpreterId: string, status: Status): Promise<boolean> => {
+    try {
+      // Use the RPC function for consistent status updates
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: status
+      });
+
+      if (error) {
+        console.error('[InterpreterStatusDropdown] RPC error:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[InterpreterStatusDropdown] Update error:', error);
+      return false;
+    }
+  };
+
+  const verifyStatusUpdate = async (interpreterId: string, expectedStatus: Status): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', interpreterId)
+        .single();
+        
+      if (error) {
+        console.error('[InterpreterStatusDropdown] Verification fetch error:', error);
+        return false;
+      }
+      
+      return data?.status === expectedStatus;
+    } catch (err) {
+      console.error('[InterpreterStatusDropdown] Verification error:', err);
+      return false;
+    }
+  };
+
   const handleConfirm = async () => {
     if (!pendingStatus) return;
     
@@ -164,49 +221,42 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update database
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: pendingStatus
-      });
-
-      if (error) {
-        console.error('[InterpreterStatusDropdown] RPC error:', error);
-        setLocalStatus(currentStatus);
-        throw error;
+      let updateSuccess = false;
+      retryCountRef.current = 0;
+      
+      // Try to update with retries
+      while (retryCountRef.current < MAX_RETRIES && !updateSuccess) {
+        updateSuccess = await updateInterpreterStatus(interpreterId, pendingStatus);
+        
+        if (!updateSuccess) {
+          retryCountRef.current++;
+          if (retryCountRef.current < MAX_RETRIES) {
+            // Exponential backoff
+            const delay = Math.pow(2, retryCountRef.current) * 500;
+            console.log(`[InterpreterStatusDropdown] Retrying update (${retryCountRef.current}/${MAX_RETRIES}) in ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
       }
-
-      // Broadcast the status update event
+      
+      if (!updateSuccess) {
+        throw new Error(`Failed to update status after ${MAX_RETRIES} attempts`);
+      }
+      
+      // Emit event after successful update
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
       
-      // Set up a timeout to verify the update was successfully processed
-      updateTimeoutRef.current = setTimeout(async () => {
-        try {
-          const { data, error: fetchError } = await supabase
-            .from('interpreter_profiles')
-            .select('status')
-            .eq('id', interpreterId)
-            .single();
-            
-          if (fetchError) {
-            console.error('[InterpreterStatusDropdown] Verification fetch error:', fetchError);
-            return;
-          }
-          
-          if (data && data.status !== pendingStatus) {
-            console.log('[InterpreterStatusDropdown] Status verification failed, retrying update');
-            // If verification fails, retry the update
-            await supabase.rpc('update_interpreter_status', {
-              p_interpreter_id: interpreterId,
-              p_status: pendingStatus
-            });
-            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
-          }
-        } catch (err) {
-          console.error('[InterpreterStatusDropdown] Verification error:', err);
+      // Verify the update after a short delay
+      setTimeout(async () => {
+        const isVerified = await verifyStatusUpdate(interpreterId, pendingStatus);
+        
+        if (!isVerified) {
+          console.warn(`[InterpreterStatusDropdown] Verification failed for ${interpreterId} status update to ${pendingStatus}`);
+          // Make one final direct attempt without going through the retry loop
+          await updateInterpreterStatus(interpreterId, pendingStatus);
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
         }
-        updateTimeoutRef.current = null;
-      }, 2000);
+      }, 1000);
 
       toast({
         title: "Statut mis à jour",
@@ -214,15 +264,20 @@ export const InterpreterStatusDropdown = ({
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
+      
+      // Revert UI state
+      setLocalStatus(currentStatus);
+      
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
+        description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);
       setIsUpdating(false);
+      retryCountRef.current = 0;
     }
   };
 

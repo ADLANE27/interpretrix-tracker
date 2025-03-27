@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
@@ -10,6 +9,7 @@ import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatus
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { format, parseISO, isPast, addMinutes } from 'date-fns';
+import { useInterpreterStatusSync } from '@/hooks/useInterpreterStatusSync';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -52,8 +52,38 @@ const workLocationConfig = {
 };
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [status, setStatus] = useState(interpreter.status);
   
+  const { updateStatus } = useInterpreterStatusSync({
+    interpreterId: interpreter.id,
+    onStatusChange: (newStatus) => {
+      console.log(`[InterpreterCard] Status sync updated status to: ${newStatus}`);
+      setStatus(newStatus);
+      
+      if (onStatusChange && newStatus !== interpreter.status) {
+        onStatusChange(interpreter.id, newStatus);
+      }
+    },
+    initialStatus: interpreter.status,
+    isAdmin: true
+  });
+  
+  useEffect(() => {
+    if (interpreter.status !== status) {
+      console.log(`[InterpreterCard] Status updated from prop for ${interpreter.name}:`, interpreter.status);
+      setStatus(interpreter.status);
+    }
+  }, [interpreter.status, status]);
+
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    console.log(`[InterpreterCard] Status change requested for ${interpreter.name} to ${newStatus}`);
+    setStatus(newStatus);
+    
+    if (onStatusChange) {
+      onStatusChange(interpreter.id, newStatus);
+    }
+  };
+
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
@@ -75,16 +105,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
-
-  const handleStatusChange = (newStatus: Profile['status']) => {
-    if (onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
-    }
-  };
-
-  const flipCard = () => {
-    setIsFlipped(!isFlipped);
-  };
 
   const showTarif5min = interpreter.tarif_5min !== null && interpreter.tarif_5min > 0;
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;

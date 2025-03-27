@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -22,15 +22,25 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
+  // Use our custom hook for status sync
+  const { updateStatus } = useInterpreterStatusSync({
+    interpreterId: userId || '',
+    onStatusChange: (newStatus) => {
+      console.log('[StatusManager] Status sync updated status to:', newStatus);
+      setStatus(newStatus);
+    },
+    initialStatus: status
+  });
+
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
-  }, [currentStatus]);
+  }, [currentStatus, status]);
 
-  // Get current user ID and set up real-time subscription
+  // Get current user ID
   useEffect(() => {
     const getCurrentUserId = async () => {
       try {
@@ -48,33 +58,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
     getCurrentUserId();
   }, []);
-
-  // Set up realtime subscription for status updates
-  useRealtimeSubscription(
-    {
-      event: 'UPDATE',
-      table: 'interpreter_profiles',
-      filter: userId ? `id=eq.${userId}` : undefined
-    },
-    (payload) => {
-      console.log('[StatusManager] Status update received:', payload);
-      const newStatus = payload.new.status;
-      if (isValidStatus(newStatus)) {
-        setStatus(newStatus);
-      }
-    },
-    {
-      enabled: !!userId,
-      onError: (error) => {
-        console.error('[StatusManager] Error in realtime subscription:', error);
-      },
-      debugMode: true
-    }
-  );
-
-  const isValidStatus = (status: string): status is Status => {
-    return ['available', 'unavailable', 'pause', 'busy'].includes(status);
-  };
 
   const statusConfig = {
     available: {
@@ -113,19 +96,14 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       // Optimistically update local state
       setStatus(newStatus);
       
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId,
-        p_status: newStatus as string
-      });
-
-      if (error) {
-        console.error('[StatusManager] Database error:', error);
-        // Revert on error
-        setStatus(status);
-        throw error;
+      // Use our custom hook to update status
+      const success = await updateStatus(newStatus);
+      
+      if (!success) {
+        console.error('[StatusManager] Failed to update status');
+        setStatus(status); // Revert on error
+        throw new Error('Failed to update status');
       }
-
-      console.log('[StatusManager] Status update successful');
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
