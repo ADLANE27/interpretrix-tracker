@@ -9,6 +9,7 @@ export interface SubscriptionStatus {
   retryCount: number;
   lastUpdate: Date;
   channelRef?: RealtimeChannel;
+  isActive?: boolean;  // Add the isActive property
 }
 
 export function createSubscriptionStatus(channel?: RealtimeChannel): SubscriptionStatus {
@@ -16,6 +17,8 @@ export function createSubscriptionStatus(channel?: RealtimeChannel): Subscriptio
     connected: false,
     retryCount: 0,
     lastUpdate: new Date(),
-    channelRef: channel
+    channelRef: channel,
+    isActive: false  // Initialize with false
   };
 }
+

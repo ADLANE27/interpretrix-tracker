@@ -118,7 +118,7 @@ export class ConnectionMonitor {
     
     for (const [key, status] of Object.entries(statuses)) {
       // Check if this is an interpreter status subscription
-      if (key.startsWith('interpreter-status-') && status.isActive) {
+      if (key.startsWith('interpreter-status-') && status.connected) {  // Changed from isActive to connected
         this.reconnectSubscription(key);
         reconnectCount++;
       }
@@ -181,3 +181,4 @@ export class ConnectionMonitor {
     return subscriptionRegistry.getActiveCount() > 0;
   }
 }
+
