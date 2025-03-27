@@ -28,6 +28,7 @@ export class SubscriptionRegistry {
     if (!status) {
       this.subscriptionStatuses[key] = createSubscriptionStatus(channel);
       this.subscriptionStatuses[key].connected = connected;
+      this.subscriptionStatuses[key].isActive = connected; // Set isActive to the same value as connected
       this.subscriptionStatuses[key].lastUpdate = new Date();
       return;
     }
@@ -38,6 +39,7 @@ export class SubscriptionRegistry {
     }
     
     status.connected = connected;
+    status.isActive = connected; // Set isActive to the same value as connected
     status.lastUpdate = new Date();
     
     if (channel) {
@@ -122,7 +124,7 @@ export class SubscriptionRegistry {
    * Get the count of active subscriptions
    */
   public getActiveCount(): number {
-    return Object.values(this.subscriptionStatuses).filter(status => status.connected).length;
+    return Object.values(this.subscriptionStatuses).filter(status => status.isActive).length;
   }
   
   /**

@@ -1,211 +1,170 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
-import { SubscriptionManager } from './subscriptionManager';
+import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { ConnectionMonitor } from './connectionMonitor';
+import { CONNECTION_STATUS_DEBOUNCE_TIME } from './constants';
 import { EventDebouncer } from './eventDebouncer';
-import { Profile } from '@/types/profile';
+
+// Create our connection monitor
+const connectionStatusDebouncer = new EventDebouncer(CONNECTION_STATUS_DEBOUNCE_TIME);
 
 /**
- * Centralized service to manage all Supabase realtime subscriptions
+ * Core service for managing realtime subscriptions
  */
 class RealtimeService {
-  private static instance: RealtimeService;
-  private isInitialized = false;
-  private isOnline = navigator.onLine;
-  private subscriptionManager: SubscriptionManager;
-  private connectionMonitor: ConnectionMonitor;
-  private eventDebouncer: EventDebouncer;
-  private visibilityChangeTimeout: NodeJS.Timeout | null = null;
-  private networkStateChangeTimeout: NodeJS.Timeout | null = null;
-  
-  private constructor() {
-    this.subscriptionManager = new SubscriptionManager();
-    this.connectionMonitor = new ConnectionMonitor(
-      (key) => this.retrySubscription(key),
-      (connected) => this.updateConnectionStatus(connected)
-    );
-    this.eventDebouncer = new EventDebouncer();
-  }
+  private connectionMonitor: ConnectionMonitor | null = null;
+  private initialized: boolean = false;
 
-  public static getInstance(): RealtimeService {
-    if (!RealtimeService.instance) {
-      RealtimeService.instance = new RealtimeService();
+  /**
+   * Initialize the realtime service
+   */
+  public init(): () => void {
+    if (this.initialized) {
+      console.log('[RealtimeService] Already initialized');
+      return () => {};
     }
-    return RealtimeService.instance;
-  }
 
-  private retrySubscription(key: string) {
-    console.log(`[RealtimeService] Retrying subscription for ${key}`);
-    if (key.startsWith('interpreter-status-')) {
-      const interpreterId = key.replace('interpreter-status-', '');
-      this.subscriptionManager.createInterpreterStatusSubscription(
-        interpreterId,
-        this.eventDebouncer
-      );
-    } else if (key.startsWith('table-')) {
-      // Parse the table key pattern: table-{tableName}-{event}-{filterSuffix?}
-      const parts = key.split('-');
-      if (parts.length >= 3) {
-        const tableName = parts[1];
-        const event = parts[2] as 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-        
-        // This is a simplification - in a real app we'd need to store and retrieve 
-        // the original callbacks and filters
-        this.subscriptionManager.createTableSubscription(
-          tableName,
-          event,
-          null,
-          () => {
-            console.log(`[RealtimeService] Received event from retried subscription ${key}`);
-            // Ideally, we'd call the original callback here
-          },
-          this.eventDebouncer
-        );
-      }
-    }
-  }
-
-  private updateConnectionStatus(connected: boolean) {
-    if (this.isOnline !== connected) {
-      this.isOnline = connected;
-      console.log(`[RealtimeService] Connection status changed to: ${connected ? 'connected' : 'disconnected'}`);
-      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
-    }
-  }
-
-  public init() {
-    if (this.isInitialized) return () => {};
-    
     console.log('[RealtimeService] Initializing');
+    this.initialized = true;
+
+    // Create connection monitor
+    this.connectionMonitor = new ConnectionMonitor(
+      (key) => this.handleSubscriptionRetry(key),
+      (connected) => this.handleConnectionStatusChange(connected)
+    );
+
+    // Start monitoring
     this.connectionMonitor.start();
-    this.isInitialized = true;
-    
-    // Setup global connection status handling
-    window.addEventListener('online', this.handleOnline);
-    window.addEventListener('offline', this.handleOffline);
-    document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    
-    // Initial status check
-    this.isOnline = navigator.onLine;
-    
+
+    // Return cleanup function
     return () => {
-      window.removeEventListener('online', this.handleOnline);
-      window.removeEventListener('offline', this.handleOffline);
-      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
       this.cleanup();
     };
   }
-  
-  private handleOnline = () => {
-    console.log('[RealtimeService] Network online event received');
-    
-    // Debounce network state changes to avoid multiple rapid reconnections
-    if (this.networkStateChangeTimeout) {
-      clearTimeout(this.networkStateChangeTimeout);
+
+  /**
+   * Clean up all resources
+   */
+  private cleanup(): void {
+    console.log('[RealtimeService] Cleaning up');
+    if (this.connectionMonitor) {
+      this.connectionMonitor.stop();
+      this.connectionMonitor = null;
     }
     
-    this.networkStateChangeTimeout = setTimeout(() => {
-      console.log('[RealtimeService] Network online, reconnecting all channels');
-      this.reconnectAll();
-      this.updateConnectionStatus(true);
-      this.networkStateChangeTimeout = null;
-    }, 1000); // Debounce network events by 1 second
+    subscriptionRegistry.cleanupAll();
+    this.initialized = false;
   }
   
-  private handleOffline = () => {
-    console.log('[RealtimeService] Network offline event received');
+  /**
+   * Handle connection status change
+   */
+  private handleConnectionStatusChange(connected: boolean): void {
+    // Debounce connection status changes to prevent UI flickering
+    connectionStatusDebouncer.debounce(() => {
+      console.log(`[RealtimeService] Connection status changed: ${connected ? 'connected' : 'disconnected'}`);
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
+    });
+  }
+  
+  /**
+   * Handle subscription retry
+   */
+  private handleSubscriptionRetry(key: string): void {
+    console.log(`[RealtimeService] Retry subscription: ${key}`);
     
-    // Debounce network state changes
-    if (this.networkStateChangeTimeout) {
-      clearTimeout(this.networkStateChangeTimeout);
+    if (key.startsWith('interpreter-status-')) {
+      const interpreterId = key.replace('interpreter-status-', '');
+      this.subscribeToInterpreterStatus(interpreterId);
+    } else {
+      console.warn(`[RealtimeService] Unknown subscription type: ${key}`);
     }
-    
-    this.networkStateChangeTimeout = setTimeout(() => {
-      console.log('[RealtimeService] Network offline confirmed');
-      this.updateConnectionStatus(false);
-      this.networkStateChangeTimeout = null;
-    }, 1000); // Debounce network events by 1 second
   }
   
-  private handleVisibilityChange = () => {
-    if (document.visibilityState === 'visible') {
-      console.log('[RealtimeService] Document became visible');
-      
-      // Debounce visibility changes to prevent unnecessary reconnections
-      if (this.visibilityChangeTimeout) {
-        clearTimeout(this.visibilityChangeTimeout);
+  /**
+   * Subscribe to interpreter status updates
+   */
+  public subscribeToInterpreterStatus(interpreterId: string): void {
+    const subscriptionKey = `interpreter-status-${interpreterId}`;
+    const existingStatus = subscriptionRegistry.getStatus(subscriptionKey);
+    
+    // Unsubscribe from existing subscription if any
+    if (existingStatus && existingStatus.channelRef) {
+      console.log(`[RealtimeService] Unsubscribing from existing interpreter status: ${interpreterId}`);
+      try {
+        supabase.removeChannel(existingStatus.channelRef);
+      } catch (error) {
+        console.error(`[RealtimeService] Error removing channel: ${error}`);
       }
+    }
+    
+    console.log(`[RealtimeService] Subscribing to interpreter status: ${interpreterId}`);
+    
+    try {
+      // Create a new channel
+      const channel = supabase
+        .channel(`interpreter-status-${interpreterId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'interpreter_profiles',
+            filter: `id=eq.${interpreterId}`
+          },
+          (payload) => {
+            console.log(`[RealtimeService] Received update for interpreter: ${interpreterId}`, payload);
+            // Mark as active when we receive updates
+            subscriptionRegistry.updateStatus(subscriptionKey, true);
+          }
+        )
+        .subscribe((status) => {
+          console.log(`[RealtimeService] Subscription status for interpreter ${interpreterId}: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            // Mark as connected when subscribed
+            subscriptionRegistry.updateStatus(subscriptionKey, true);
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+            // Mark as disconnected on errors
+            subscriptionRegistry.updateStatus(subscriptionKey, false);
+            
+            // Let connection monitor know there was an error
+            this.handleConnectionStatusChange(this.isConnected());
+          }
+        });
       
-      this.visibilityChangeTimeout = setTimeout(() => {
-        console.log('[RealtimeService] Checking connection status after visibility change');
-        
-        // Check current Supabase channels state
-        const channels = supabase.getChannels();
-        const hasActiveChannels = channels.some(channel => channel.state === 'joined');
-        
-        if (!hasActiveChannels) {
-          console.log('[RealtimeService] No active channels after visibility change, reconnecting');
-          this.reconnectAll();
-        } else {
-          console.log('[RealtimeService] Found active channels, connection is working');
-        }
-        
-        this.visibilityChangeTimeout = null;
-      }, 2000); // Wait 2 seconds after visibility change before checking connection
+      // Register in our subscription registry
+      subscriptionRegistry.register(subscriptionKey, channel);
+    } catch (error) {
+      console.error(`[RealtimeService] Error subscribing to interpreter status: ${error}`);
+      subscriptionRegistry.updateStatus(subscriptionKey, false);
     }
   }
-
-  public subscribeToInterpreterStatus = (interpreterId: string, onStatusChange?: (status: Profile['status']) => void) => {
-    return this.subscriptionManager.createInterpreterStatusSubscription(
-      interpreterId, 
-      this.eventDebouncer,
-      onStatusChange
-    );
-  };
   
-  public subscribeToTable = (
-    table: string, 
-    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*', 
-    filter: string | null,
-    callback: (payload: any) => void
-  ) => {
-    return this.subscriptionManager.createTableSubscription(
-      table,
-      event,
-      filter,
-      callback,
-      this.eventDebouncer
-    );
-  };
-
-  public reconnectAll() {
-    console.log('[RealtimeService] Manually reconnecting all channels');
+  /**
+   * Get the current connection status
+   */
+  public isConnected(): boolean {
+    if (!this.connectionMonitor) {
+      return false;
+    }
+    
+    return this.connectionMonitor.isConnected();
+  }
+  
+  /**
+   * Reconnect all subscriptions
+   */
+  public reconnectAll(): void {
+    if (!this.connectionMonitor) {
+      this.init();
+      return;
+    }
+    
     this.connectionMonitor.reconnectAll();
-  }
-  
-  public cleanup() {
-    console.log('[RealtimeService] Cleaning up all subscriptions');
-    
-    this.connectionMonitor.stop();
-    this.subscriptionManager.cleanupAll();
-    this.isInitialized = false;
-    
-    if (this.visibilityChangeTimeout) {
-      clearTimeout(this.visibilityChangeTimeout);
-      this.visibilityChangeTimeout = null;
-    }
-    
-    if (this.networkStateChangeTimeout) {
-      clearTimeout(this.networkStateChangeTimeout);
-      this.networkStateChangeTimeout = null;
-    }
-  }
-  
-  // Method to check if realtime service is connected
-  public isConnected() {
-    return this.isOnline;
   }
 }
 
-export const realtimeService = RealtimeService.getInstance();
+// Create singleton instance
+export const realtimeService = new RealtimeService();
