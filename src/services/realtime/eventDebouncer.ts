@@ -41,20 +41,21 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Check if this is a status update event
+    // Check if this is a status update event - always process these immediately
     const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
                           eventKey.includes('status');
                           
-    // Use an extremely short cooldown for status updates
-    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
+    // Skip debouncing entirely for status updates
+    if (isStatusUpdate) {
+      return true;
+    }
+    
+    const cooldownTime = this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      // Don't log for status updates to reduce console noise
-      if (!isStatusUpdate) {
-        console.log(`[RealtimeService] Debouncing event: ${eventKey}`);
-      }
+      console.log(`[RealtimeService] Debouncing event: ${eventKey}`);
       return false;
     }
     
@@ -69,9 +70,14 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use extremely short timeout for status updates
+    // Skip debouncing for status updates
     const isStatusUpdate = debounceKey.includes('status');
-    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
+    
+    if (isStatusUpdate) {
+      // Execute immediately without debouncing
+      callback();
+      return;
+    }
     
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {
@@ -82,7 +88,7 @@ export class EventDebouncer {
     const timer = setTimeout(() => {
       callback();
       this.debounceTimers.delete(debounceKey);
-    }, useTimeout);
+    }, timeout);
     
     this.debounceTimers.set(debounceKey, timer);
   }

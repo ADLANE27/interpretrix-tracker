@@ -26,5 +26,5 @@ export const TELEMETRY_BATCH_SIZE = 10;
 export const TELEMETRY_INTERVAL = 60000;
 
 // Status update-specific constants
-export const STATUS_UPDATE_DEBOUNCE = 10; // Extremely low debounce for status updates
+export const STATUS_UPDATE_DEBOUNCE = 0; // Set to 0 to prevent any debouncing for status updates
 export const STATUS_EVENT_PRIORITY = true; // Flag to indicate status events should be prioritized

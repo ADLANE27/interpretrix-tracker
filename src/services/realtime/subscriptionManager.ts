@@ -37,16 +37,18 @@ export class SubscriptionManager {
             filter: `id=eq.${interpreterId}`
           },
           (payload: any) => {
-            console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`);
-            
-            // Safety checks for payload properties
-            if (payload && payload.new && payload.old) {
-              // Check if status has changed
-              if (payload.new.status !== payload.old.status) {
+            if (payload && payload.new && typeof payload.new === 'object') {
+              console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload.new);
+              
+              // Check if status is defined in the payload
+              if (payload.new.status) {
                 const newStatus = payload.new.status as Profile['status'];
-                console.log(`[SubscriptionManager] Interpreter status changed from ${payload.old.status} to ${newStatus}`);
+                const oldStatus = payload.old?.status as Profile['status'] | undefined;
                 
-                // Immediately emit the status update event without any debouncing
+                // Always log status changes
+                console.log(`[SubscriptionManager] Interpreter ${interpreterId} status: ${oldStatus || 'unknown'} -> ${newStatus}`);
+                
+                // Always emit status updates, regardless of whether the status has changed
                 eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
                   interpreterId: interpreterId,
                   status: newStatus

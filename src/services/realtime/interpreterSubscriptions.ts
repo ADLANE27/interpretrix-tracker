@@ -27,32 +27,24 @@ export function createInterpreterStatusSubscription(
       filter: `id=eq.${interpreterId}`
     }, (payload: any) => {
       // Safety check for payload properties
-      if (payload?.new?.status) {
-        // Skip debounce for status updates - process immediately
-        const newStatus = payload.new.status as Profile['status'];
-        const oldStatus = payload.old?.status;
-        
-        if (oldStatus && newStatus !== oldStatus) {
-          console.log(`[RealtimeService] Status change for ${interpreterId}: ${oldStatus} -> ${newStatus}`);
+      if (payload?.new && typeof payload.new === 'object') {
+        if (payload.new.status) {
+          const newStatus = payload.new.status as Profile['status'];
+          const oldStatus = payload.old?.status;
+          
+          // Log all status updates for debugging
+          console.log(`[RealtimeService] Status for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
           
           // Call the callback immediately if provided
           if (onStatusChange) {
             onStatusChange(newStatus);
           }
           
-          // Broadcast the event for other components immediately
+          // Broadcast the event for other components immediately without debouncing
           eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
             interpreterId,
             status: newStatus
           });
-        } else {
-          // Only log status refresh if it's the same value
-          console.log(`[RealtimeService] Status refresh for ${interpreterId}: ${newStatus}`);
-          
-          // Still call the callback for non-changes (e.g. initial syncs)
-          if (onStatusChange) {
-            onStatusChange(newStatus);
-          }
         }
       }
     })
