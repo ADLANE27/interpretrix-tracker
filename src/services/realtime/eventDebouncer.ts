@@ -4,8 +4,9 @@ import { EVENT_COOLDOWN } from './constants';
 export class EventDebouncer {
   private recentEvents = new Map<string, number>();
   private cleanupTimeout: NodeJS.Timeout | null = null;
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   
-  constructor() {
+  constructor(private defaultDebounceTime: number = EVENT_COOLDOWN) {
     // Set up periodic cleanup to prevent memory leaks
     this.setupCleanupInterval();
   }
@@ -42,7 +43,7 @@ export class EventDebouncer {
   public shouldProcessEvent(eventKey: string, now: number): boolean {
     const lastProcessed = this.recentEvents.get(eventKey);
     
-    if (lastProcessed && now - lastProcessed < EVENT_COOLDOWN) {
+    if (lastProcessed && now - lastProcessed < this.defaultDebounceTime) {
       console.log(`[RealtimeService] Debouncing duplicate event: ${eventKey}`);
       return false;
     }
@@ -57,11 +58,32 @@ export class EventDebouncer {
     return true;
   }
   
+  public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
+    // Clear existing timer for this key if it exists
+    if (this.debounceTimers.has(debounceKey)) {
+      clearTimeout(this.debounceTimers.get(debounceKey)!);
+    }
+    
+    // Set new timer
+    const timer = setTimeout(() => {
+      callback();
+      this.debounceTimers.delete(debounceKey);
+    }, timeout);
+    
+    this.debounceTimers.set(debounceKey, timer);
+  }
+  
   public dispose() {
     if (this.cleanupTimeout) {
       clearTimeout(this.cleanupTimeout);
       this.cleanupTimeout = null;
     }
+    
+    // Clear all debounce timers
+    this.debounceTimers.forEach(timer => clearTimeout(timer));
+    this.debounceTimers.clear();
+    
+    // Clear all event tracking
     this.recentEvents.clear();
   }
 }

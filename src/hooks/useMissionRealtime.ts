@@ -1,6 +1,6 @@
 
 import { useEffect, useCallback } from 'react';
-import { realtimeService } from '@/services/realtimeService';
+import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 
 interface UseMissionRealtimeOptions {

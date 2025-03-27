@@ -67,20 +67,11 @@ export const useRealtimeStatus = ({
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     // Subscribe to real-time database updates
-    const handleStatusChange = (newStatus: Profile['status']) => {
-      setStatus(newStatus);
-      setLastUpdateTime(new Date());
-      
-      if (onStatusChange) {
-        onStatusChange(newStatus);
-      }
-    };
-    
-    const cleanup = realtimeService.subscribeToInterpreterStatus(interpreterId, handleStatusChange);
+    realtimeService.subscribeToInterpreterStatus(interpreterId);
     
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      cleanup();
+      // No explicit cleanup needed for subscribeToInterpreterStatus
     };
   }, [interpreterId, onStatusChange]);
   

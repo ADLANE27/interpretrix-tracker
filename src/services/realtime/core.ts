@@ -5,9 +5,11 @@ import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { ConnectionMonitor } from './connectionMonitor';
 import { CONNECTION_STATUS_DEBOUNCE_TIME } from './constants';
 import { EventDebouncer } from './eventDebouncer';
+import { SubscriptionManager } from './subscriptionManager';
 
 // Create our connection monitor
 const connectionStatusDebouncer = new EventDebouncer(CONNECTION_STATUS_DEBOUNCE_TIME);
+const subscriptionManager = new SubscriptionManager();
 
 /**
  * Core service for managing realtime subscriptions
@@ -15,6 +17,11 @@ const connectionStatusDebouncer = new EventDebouncer(CONNECTION_STATUS_DEBOUNCE_
 class RealtimeService {
   private connectionMonitor: ConnectionMonitor | null = null;
   private initialized: boolean = false;
+  private eventDebouncer: EventDebouncer;
+
+  constructor() {
+    this.eventDebouncer = new EventDebouncer();
+  }
 
   /**
    * Initialize the realtime service
@@ -65,7 +72,7 @@ class RealtimeService {
     connectionStatusDebouncer.debounce(() => {
       console.log(`[RealtimeService] Connection status changed: ${connected ? 'connected' : 'disconnected'}`);
       eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
-    });
+    }, 'connection-status', CONNECTION_STATUS_DEBOUNCE_TIME);
   }
   
   /**
@@ -77,6 +84,27 @@ class RealtimeService {
     if (key.startsWith('interpreter-status-')) {
       const interpreterId = key.replace('interpreter-status-', '');
       this.subscribeToInterpreterStatus(interpreterId);
+    } else if (key.startsWith('table-')) {
+      // For table subscriptions, extract the table, event, and filter from the key
+      const parts = key.split('-');
+      if (parts.length >= 3) {
+        const table = parts[1];
+        const event = parts[2] as 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+        // Recreate the subscription from registry data
+        const status = subscriptionRegistry.getStatus(key);
+        if (status) {
+          console.log(`[RealtimeService] Recreating table subscription for ${table}`);
+          // We'll need to register a new channel since we can't extract the callback
+          // This will be a placeholder that will be overridden when the user subscribes again
+          subscriptionManager.createTableSubscription(
+            table,
+            event,
+            null,
+            (payload) => console.log(`[RealtimeService] Received update for ${table}`, payload),
+            this.eventDebouncer
+          );
+        }
+      }
     } else {
       console.warn(`[RealtimeService] Unknown subscription type: ${key}`);
     }
@@ -140,6 +168,24 @@ class RealtimeService {
       console.error(`[RealtimeService] Error subscribing to interpreter status: ${error}`);
       subscriptionRegistry.updateStatus(subscriptionKey, false);
     }
+  }
+  
+  /**
+   * Subscribe to table changes
+   */
+  public subscribeToTable(
+    table: string,
+    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
+    filter: string | null,
+    callback: (payload: any) => void
+  ): () => void {
+    return subscriptionManager.createTableSubscription(
+      table,
+      event,
+      filter,
+      callback,
+      this.eventDebouncer
+    );
   }
   
   /**

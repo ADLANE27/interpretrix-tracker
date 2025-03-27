@@ -1,37 +1,59 @@
 
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { EventDebouncer } from './eventDebouncer';
 import { Profile } from '@/types/profile';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
-import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
-import { createTableSubscription } from './tableSubscriptions';
 
 /**
  * Manages all realtime subscriptions
  */
 export class SubscriptionManager {
+  /**
+   * Create a subscription to interpreter status
+   */
   public createInterpreterStatusSubscription(
-    interpreterId: string, 
-    eventDebouncer: EventDebouncer,
-    onStatusChange?: (status: Profile['status']) => void
-  ): () => void {
-    // Clean up existing subscription if any
-    this.unsubscribe(`interpreter-status-${interpreterId}`);
+    interpreterId: string,
+    eventDebouncer: EventDebouncer
+  ): void {
+    const key = `interpreter-status-${interpreterId}`;
+    const existingStatus = subscriptionRegistry.getStatus(key);
     
-    const [unsubscribe, key, channel] = createInterpreterStatusSubscription(
-      interpreterId,
-      eventDebouncer,
-      onStatusChange
-    );
+    if (existingStatus && existingStatus.channelRef) {
+      console.log(`[SubscriptionManager] Found existing subscription for ${key}`);
+      return;
+    }
     
-    // Register the new subscription
-    subscriptionRegistry.register(key, channel);
-    
-    return () => this.unsubscribe(key);
+    try {
+      const channel = supabase
+        .channel(key)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'interpreter_profiles',
+            filter: `id=eq.${interpreterId}`
+          },
+          (payload) => {
+            console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload);
+            subscriptionRegistry.updateStatus(key, true);
+          }
+        )
+        .subscribe();
+      
+      subscriptionRegistry.register(key, channel);
+    } catch (error) {
+      console.error(`[SubscriptionManager] Error creating interpreter status subscription: ${error}`);
+    }
   }
   
+  /**
+   * Create a subscription to table changes
+   */
   public createTableSubscription(
-    table: string, 
-    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*', 
+    table: string,
+    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
     filter: string | null,
     callback: (payload: any) => void,
     eventDebouncer: EventDebouncer
@@ -39,44 +61,53 @@ export class SubscriptionManager {
     const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
     const key = `table-${table}-${event}${filterSuffix}`;
     
-    // Clean up existing subscription if any
-    this.unsubscribe(key);
+    console.log(`[SubscriptionManager] Creating subscription: ${key}`);
     
-    const [unsubscribe, subscriptionKey, channel] = createTableSubscription(
-      table,
-      event,
-      filter,
-      callback,
-      eventDebouncer
-    );
-    
-    // Register the new subscription
-    subscriptionRegistry.register(key, channel);
-    
-    return () => this.unsubscribe(key);
-  }
-  
-  public updateSubscriptionStatus(key: string, connected: boolean, channel?: any): void {
-    subscriptionRegistry.updateStatus(key, connected, channel);
-  }
-  
-  public unsubscribe(key: string): void {
-    subscriptionRegistry.unregister(key);
-  }
-  
-  public reconnectAll(): void {
-    subscriptionRegistry.reconnectAll();
-  }
-  
-  public getStatus(key: string): any {
-    return subscriptionRegistry.getStatus(key);
-  }
-  
-  public getAllStatuses(): any {
-    return subscriptionRegistry.getAllStatuses();
-  }
-  
-  public cleanupAll(): void {
-    subscriptionRegistry.cleanupAll();
+    try {
+      const channel = supabase
+        .channel(key)
+        .on(
+          'postgres_changes',
+          {
+            event: event,
+            schema: 'public',
+            table: table,
+            filter: filter || undefined
+          },
+          (payload) => {
+            const now = Date.now();
+            const eventId = `${table}-${event}-${now}`;
+            
+            if (eventDebouncer.shouldProcessEvent(eventId, now)) {
+              console.log(`[SubscriptionManager] ${event} event on ${table}:`, payload);
+              callback(payload);
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log(`[SubscriptionManager] Subscription status for ${key}: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            subscriptionRegistry.updateStatus(key, true);
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+            subscriptionRegistry.updateStatus(key, false);
+          }
+        });
+      
+      subscriptionRegistry.register(key, channel);
+      
+      return () => {
+        console.log(`[SubscriptionManager] Unsubscribing from ${key}`);
+        try {
+          supabase.removeChannel(channel);
+          subscriptionRegistry.unregister(key);
+        } catch (error) {
+          console.error(`[SubscriptionManager] Error removing channel for ${key}:`, error);
+        }
+      };
+    } catch (error) {
+      console.error(`[SubscriptionManager] Error creating table subscription: ${error}`);
+      return () => {};
+    }
   }
 }
