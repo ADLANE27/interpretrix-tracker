@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -5,10 +6,9 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -47,34 +47,26 @@ const workLocationConfig = {
 };
 
 export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
-  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
-  const { updateStatus } = useInterpreterStatusSync({
+  
+  const {
+    status: interpreterStatus,
+    updateStatus,
+    isConnected
+  } = useRealtimeStatus({
     interpreterId: interpreter.id,
-    onStatusChange: (newStatus) => {
-      setInterpreterStatus(newStatus);
-    },
     initialStatus: interpreter.status,
-    isAdmin: true
+    onStatusChange: (newStatus) => {
+      console.log(`Status for ${interpreter.id} changed to ${newStatus}`);
+    }
   });
 
-  useEffect(() => {
-    if (interpreter.status !== interpreterStatus) {
-      setInterpreterStatus(interpreter.status);
-    }
-  }, [interpreter.status, interpreter.id, interpreterStatus]);
-
   const handleStatusChange = async (newStatus: Profile['status']) => {
-    setInterpreterStatus(newStatus);
-    
-    if (onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
-    }
-    
     const success = await updateStatus(newStatus);
     
-    if (!success) {
-      setInterpreterStatus(interpreter.status);
+    if (success && onStatusChange) {
+      onStatusChange(interpreter.id, newStatus);
+    } else if (!success) {
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
@@ -101,7 +93,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     interpreter.booth_number;
 
   return (
-    <Card className="hover-elevate gradient-border">
+    <Card className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`}>
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -112,6 +104,11 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               onStatusChange={handleStatusChange}
             />
             <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
+            {!isConnected && (
+              <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                Reconnexion...
+              </span>
+            )}
           </div>
 
           <div className="flex flex-1 flex-wrap items-center gap-2 justify-end">

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { RealtimeChannel } from "@supabase/supabase-js";
 import { Profile } from "@/types/profile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { EmploymentStatus } from "@/utils/employmentStatus";
@@ -9,7 +8,9 @@ import { StatisticsCards } from "@/components/admin/dashboard/StatisticsCards";
 import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { useTableSubscription } from "@/hooks/useTableSubscription";
+import { realtimeService } from "@/services/realtimeService";
 
 interface WorkHours {
   start_morning?: string;
@@ -36,8 +37,8 @@ interface Interpreter {
   tarif_5min: number | null;
   last_seen_at: string | null;
   booth_number?: string | null;
-  private_phone?: string | null;
-  professional_phone?: string | null;
+  private_phone: string | null;
+  professional_phone: string | null;
   work_hours?: WorkHours | null;
   connection_status?: Profile['status'];
   work_location?: WorkLocation | null;
@@ -57,7 +58,14 @@ export const InterpretersTab: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isConnected, setIsConnected] = useState(true);
   const { toast } = useToast();
+  
+  // Initialize realtime service
+  useEffect(() => {
+    const cleanup = realtimeService.init();
+    return cleanup;
+  }, []);
 
+  // Listen for connection status changes
   useEffect(() => {
     const handleConnectionStatusChange = (connected: boolean) => {
       setIsConnected(connected);
@@ -73,15 +81,21 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
+  // Subscribe to reservation changes
+  useTableSubscription(
+    'private_reservations',
+    '*',
+    null,
+    () => {
+      console.log('[InterpretersTab] Reservation update detected');
+      fetchInterpreters();
+      fetchTodayMissions();
+    }
+  );
+
   const handleInterpreterStatusChange = async (interpreterId: string, newStatus: Profile['status']) => {
     try {
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: newStatus
-      });
-      
-      if (error) throw error;
-      
+      // This is now handled by useRealtimeStatus, but we'll update our local state immediately for better UX
       setInterpreters(current => 
         current.map(interpreter => 
           interpreter.id === interpreterId 
@@ -97,11 +111,6 @@ export const InterpretersTab: React.FC = () => {
           description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour en ${newStatus}`,
         });
       }
-      
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-        interpreterId: interpreterId,
-        status: newStatus
-      });
     } catch (error) {
       console.error('Error updating interpreter status:', error);
       toast({
@@ -111,78 +120,41 @@ export const InterpretersTab: React.FC = () => {
       });
     }
   };
-
-  useEffect(() => {
-    let isComponentMounted = true;
-
-    const interpreterStatusChannel = supabase.channel('admin-interpreter-profiles-status')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
-      }, async payload => {
-        if (!isComponentMounted) return;
+  
+  // Subscribe to interpreter profile changes
+  useTableSubscription(
+    'interpreter_profiles',
+    'UPDATE',
+    'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause',
+    (payload) => {
+      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+        const interpreterId = payload.new.id;
+        const newStatus = payload.new.status;
         
-        if (payload.new && payload.old && payload.new.status !== payload.old.status) {
-          const interpreterId = payload.new.id;
-          const newStatus = payload.new.status;
-          
-          setInterpreters(current => 
-            current.map(interpreter => 
-              interpreter.id === interpreterId 
-                ? { ...interpreter, status: newStatus as Profile['status'] } 
-                : interpreter
-            )
-          );
-        }
-      })
-      .subscribe();
-    
-    const reservationsChannel = supabase.channel('admin-private-reservations')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'private_reservations'
-      }, async () => {
-        if (isComponentMounted) {
-          await fetchInterpreters();
-        }
-      })
-      .subscribe();
-
-    const handleStatusUpdate = ({ interpreterId, status }: { interpreterId: string, status: string }) => {
-      if (isComponentMounted) {
         setInterpreters(current => 
           current.map(interpreter => 
             interpreter.id === interpreterId 
-              ? { ...interpreter, status: status as Profile['status'] } 
+              ? { ...interpreter, status: newStatus as Profile['status'] } 
               : interpreter
           )
         );
       }
-    };
-    
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    }
+  );
+
+  useEffect(() => {
+    fetchInterpreters();
     
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isComponentMounted) {
+      if (document.visibilityState === 'visible') {
         fetchInterpreters();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    fetchInterpreters();
-    
     return () => {
-      isComponentMounted = false;
-      
-      supabase.removeChannel(interpreterStatusChannel);
-      supabase.removeChannel(reservationsChannel);
-      
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
   }, []);
 
@@ -205,7 +177,7 @@ export const InterpretersTab: React.FC = () => {
           )
         `);
       if (error) throw error;
-      console.log("[InterpretersTab] Raw data:", data);
+      
       const uniqueInterpreters = Array.from(new Map((data || []).map(item => [item.id, item])).values());
       const mappedInterpreters: Interpreter[] = uniqueInterpreters.map(interpreter => {
         let workHours = null;
@@ -221,10 +193,8 @@ export const InterpretersTab: React.FC = () => {
         const now = new Date();
 
         const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
-        console.log(`[InterpretersTab] Interpreter ${interpreter.first_name} ${interpreter.last_name} next reservation:`, nextReservation);
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
-        console.log(`[InterpretersTab] Interpreter ${interpreter.first_name} ${interpreter.last_name} work location:`, workLocation);
         
         return {
           id: interpreter.id || "",

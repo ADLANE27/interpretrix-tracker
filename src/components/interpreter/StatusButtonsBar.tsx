@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types/profile';
-import { useInterpreterStatusSync } from '@/hooks/useInterpreterStatusSync';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 
 type Status = Profile['status'];
 
@@ -25,23 +26,19 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
 
-  const { updateStatus } = useInterpreterStatusSync({
+  const {
+    status: localStatus,
+    updateStatus,
+    isConnected
+  } = useRealtimeStatus({
     interpreterId: interpreterId || '',
+    initialStatus: currentStatus,
     onStatusChange: (newStatus) => {
-      if (newStatus !== localStatus) {
-        setLocalStatus(newStatus);
-      }
-    },
-    initialStatus: currentStatus
-  });
-
-  useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
-      setLocalStatus(currentStatus);
+      // This handler is called when status is updated via realtime
+      console.log('Status updated via realtime:', newStatus);
     }
-  }, [currentStatus, localStatus]);
+  });
 
   const statusConfig = {
     available: {
@@ -80,12 +77,9 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     try {
       setIsUpdating(true);
       
-      setLocalStatus(newStatus);
-      
       const success = await updateStatus(newStatus);
       
       if (!success) {
-        setLocalStatus(currentStatus);
         throw new Error('Failed to update status');
       }
       
@@ -99,8 +93,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       });
     } catch (error) {
       console.error('Error changing status:', error);
-      
-      setLocalStatus(currentStatus);
       
       toast({
         title: "Erreur",
@@ -117,6 +109,12 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       "flex items-center gap-2 mx-auto w-full max-w-screen-sm overflow-x-auto hide-scrollbar py-1",
       variant === 'compact' ? 'px-1' : 'px-4'
     )}>
+      {!isConnected && (
+        <div className="w-full text-center py-1 px-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs">
+          Reconnexion en cours...
+        </div>
+      )}
+      
       {(Object.keys(statusConfig) as Status[]).map((statusKey) => {
         const config = statusConfig[statusKey];
         const Icon = config.icon;
@@ -133,13 +131,13 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
                 ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
               "backdrop-blur-sm",
-              isUpdating ? "opacity-70 cursor-not-allowed" : ""
+              isUpdating || !isConnected ? "opacity-70 cursor-not-allowed" : ""
             )}
             onClick={() => handleStatusChange(statusKey)}
             whileTap={{ scale: 0.95 }}
             animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
-            disabled={isUpdating}
+            disabled={isUpdating || !isConnected}
           >
             <Icon className={cn(
               "flex-shrink-0",

@@ -1,12 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from "@/lib/events";
+import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
+import { supabase } from "@/integrations/supabase/client";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -16,23 +16,23 @@ interface StatusManagerProps {
 }
 
 export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerProps = {}) => {
-  const [status, setStatus] = useState<Status>(currentStatus || "available");
-  const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { updateStatus } = useInterpreterStatusSync({
+  const {
+    status,
+    updateStatus,
+    isConnected
+  } = useRealtimeStatus({
     interpreterId: userId || '',
-    onStatusChange: (newStatus) => {
-      setStatus(newStatus);
-    },
-    initialStatus: status
+    initialStatus: currentStatus || 'available'
   });
 
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
-      setStatus(currentStatus);
+      // Handle external status updates
     }
   }, [currentStatus, status]);
 
@@ -86,12 +86,9 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     
     setIsLoading(true);
     try {
-      setStatus(newStatus);
-      
       const success = await updateStatus(newStatus);
       
       if (!success) {
-        setStatus(status);
         throw new Error('Failed to update status');
       }
 
@@ -114,6 +111,19 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       setIsLoading(false);
     }
   };
+
+  // Show connection status indicator if not connected
+  if (!isConnected) {
+    return (
+      <motion.div
+        className="flex items-center justify-center p-2 bg-amber-50 border border-amber-200 rounded-md mb-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <span className="text-amber-800 text-sm font-medium">Reconnexion en cours...</span>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
