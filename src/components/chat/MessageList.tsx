@@ -1,30 +1,30 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Message } from "@/types/messaging";
-import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight, Smile, MoreHorizontal } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { format, isToday, isYesterday } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import React, { Fragment, useRef, useEffect, useState } from 'react';
+import { MessageListProps, Message } from '@/types/messaging';
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useMessageVisibility } from '@/hooks/useMessageVisibility';
-import { useTimestampFormat } from '@/hooks/useTimestampFormat';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { MessageAttachment } from './MessageAttachment';
+import { 
+  Reply, 
+  MoreHorizontal, 
+  Smile, 
+  Trash2, 
+  MessageSquare 
+} from 'lucide-react';
+import { getInitials } from '@/lib/utils';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
-import { useTheme } from 'next-themes';
-import { ScrollArea } from '@/components/ui/scroll-area';
-
-interface MessageListProps {
-  messages: Message[];
-  currentUserId: string | null;
-  onDeleteMessage: (messageId: string) => Promise<void>;
-  onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
-  replyTo?: Message | null;
-  setReplyTo?: (message: Message | null) => void;
-  channelId: string;
-}
+import { format, isToday, isYesterday } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -35,357 +35,251 @@ export const MessageList: React.FC<MessageListProps> = ({
   setReplyTo,
   channelId,
 }) => {
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
-  const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const { observeMessage } = useMessageVisibility(channelId);
-  const { formatMessageTime } = useTimestampFormat();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const threadRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
-  const isMobile = useIsMobile();
-  const { theme } = useTheme();
-
-  // Auto scroll to the bottom when new messages are added
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
+  const [replyText, setReplyText] = useState<string>('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+  
+  // Scroll to bottom on mount or when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Scroll to the active thread when expanded
+  // Scroll to bottom when replying
   useEffect(() => {
-    if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
-      const threadElement = threadRefsMap.current.get(activeThreadId);
-      if (threadElement) {
-        setTimeout(() => {
-          threadElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
+    if (replyingToMessage && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
-  }, [activeThreadId, expandedThreads]);
+  }, [replyingToMessage]);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const formatMessageDate = (date: Date) => {
-    if (isToday(date)) {
-      return "Aujourd'hui";
-    } else if (isYesterday(date)) {
-      return "Hier";
+  // Group messages by date
+  const groupedMessages: { [key: string]: Message[] } = {};
+  
+  messages.forEach(message => {
+    const date = new Date(message.timestamp);
+    const dateStr = date.toDateString();
+    
+    if (!groupedMessages[dateStr]) {
+      groupedMessages[dateStr] = [];
     }
-    return format(date, 'EEEE d MMMM yyyy', { locale: fr });
+    
+    groupedMessages[dateStr].push(message);
+  });
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return 'Aujourd\'hui';
+    if (isYesterday(date)) return 'Hier';
+    return format(date, 'd MMMM yyyy', { locale: fr });
   };
 
-  const shouldShowDate = (currentMessage: Message, previousMessage?: Message) => {
-    if (!previousMessage) return true;
-    
-    const currentDate = new Date(currentMessage.timestamp);
-    const previousDate = new Date(previousMessage.timestamp);
-    
-    return (
-      currentDate.getDate() !== previousDate.getDate() ||
-      currentDate.getMonth() !== previousDate.getMonth() ||
-      currentDate.getFullYear() !== previousDate.getFullYear()
-    );
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm');
   };
 
-  const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
-    if (!previousMessage) return true;
-    
-    // If different senders, always show
-    if (currentMessage.sender.id !== previousMessage.sender.id) return true;
-    
-    // If same sender but messages are far apart in time (> 5 minutes), show sender again
-    const currentTime = new Date(currentMessage.timestamp).getTime();
-    const previousTime = new Date(previousMessage.timestamp).getTime();
-    const fiveMinutesInMs = 5 * 60 * 1000;
-    
-    return (currentTime - previousTime) > fiveMinutesInMs;
+  const handleReply = (message: Message) => {
+    if (setReplyTo) {
+      setReplyTo(message);
+    } else {
+      setReplyingToMessage(message);
+    }
   };
 
-  const toggleThread = (messageId: string) => {
-    setExpandedThreads(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(messageId)) {
-        newSet.delete(messageId);
-        setActiveThreadId(null);
-      } else {
-        newSet.add(messageId);
-        setActiveThreadId(messageId);
-      }
-      return newSet;
-    });
-  };
-
-  // Organize messages into threads
-  const processMessages = () => {
-    // Group messages by their parent or their own ID if they're a root message
-    const messageThreads: { [key: string]: Message[] } = {};
-    const displayMessages: Message[] = [];
-    const processedIds = new Set<string>();
-
-    // First pass: organize messages into thread groups
-    messages.forEach(message => {
-      const threadId = message.parent_message_id || message.id;
-      if (!messageThreads[threadId]) {
-        messageThreads[threadId] = [];
-      }
-      messageThreads[threadId].push(message);
-    });
-
-    // Second pass: add root messages and their replies to displayMessages
-    messages.forEach(message => {
-      if (processedIds.has(message.id)) return;
-
-      // If it's a root message (no parent) or its parent doesn't exist in our messages array
-      if (!message.parent_message_id || !messageThreads[message.parent_message_id]) {
-        displayMessages.push(message);
-        processedIds.add(message.id);
-
-        // If this message has replies, don't add them to the main display
-        // They'll be shown in the thread view
-        if (messageThreads[message.id] && messageThreads[message.id].length > 1) {
-          messageThreads[message.id].forEach(reply => {
-            if (reply.id !== message.id) {
-              processedIds.add(reply.id);
-            }
-          });
-        }
-      }
-    });
-
-    return { displayMessages, messageThreads };
-  };
-
-  const { displayMessages, messageThreads } = processMessages();
-
-  const renderReactions = (message: Message) => {
-    if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
-    
-    return (
-      <div className="flex flex-wrap gap-1 mt-1">
-        {Object.entries(message.reactions).map(([emoji, users]) => (
-          <div 
-            key={emoji} 
-            className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer ${
-              users.includes(currentUserId || '') 
-                ? 'bg-primary/20 dark:bg-primary/30' 
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-            onClick={() => onReactToMessage(message.id, emoji)}
-          >
-            <span>{emoji}</span>
-            <span className="text-gray-600 dark:text-gray-400">{users.length}</span>
-          </div>
-        ))}
-      </div>
-    );
+  const handleDeleteMessage = (messageId: string) => {
+    onDeleteMessage(messageId);
   };
 
   const handleEmojiSelect = (messageId: string, emoji: any) => {
     onReactToMessage(messageId, emoji.native);
-    setOpenEmojiPickerId(null); // Close the emoji picker after selection
-  };
-
-  const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
-    const showSender = shouldShowSender(message, previousMessage);
-    const isSelfMessage = message.sender.id === currentUserId;
-
-    return (
-      <div 
-        ref={(el) => {
-          if (el) {
-            observeMessage(el);
-            // Store references to thread containers for scrolling
-            if (!isThreadReply && messageThreads[message.id]?.length > 1) {
-              threadRefsMap.current.set(message.id, el);
-            }
-          }
-        }}
-        key={message.id}
-        data-message-id={message.id}
-        data-is-thread-reply={isThreadReply ? 'true' : 'false'}
-        onMouseEnter={() => setHoveredMessageId(message.id)}
-        onMouseLeave={() => setHoveredMessageId(null)}
-        className={`group px-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-          isThreadReply ? 'ml-10 pl-3' : ''
-        }`}
-      >
-        {/* Show date separator if needed */}
-        {!isThreadReply && index > 0 && shouldShowDate(message, previousMessage) && (
-          <div className="flex justify-center my-4">
-            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium">
-              {formatMessageDate(message.timestamp)}
-            </div>
-          </div>
-        )}
-
-        {/* Message content */}
-        <div className="flex items-start gap-2 relative">
-          {/* Avatar - only show for first message in a group */}
-          {showSender ? (
-            <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
-              <AvatarImage 
-                src={message.sender.avatarUrl} 
-                alt={message.sender.name}
-                className="object-cover"
-              />
-              <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
-                {getInitials(message.sender.name)}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="w-9 flex-shrink-0"></div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            {/* Sender info and timestamp - only for first message in group */}
-            {showSender && (
-              <div className="flex items-baseline mb-1">
-                <span className="font-semibold text-sm mr-2">{message.sender.name}</span>
-                <span className="text-xs text-gray-500">{formatMessageTime(message.timestamp)}</span>
-              </div>
-            )}
-
-            {/* Message content */}
-            <div className="text-sm break-words pr-10">
-              {message.content}
-            </div>
-
-            {/* Attachments */}
-            {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-2 max-w-sm">
-                {message.attachments.map((attachment, idx) => (
-                  <MessageAttachment
-                    key={idx}
-                    url={attachment.url}
-                    filename={attachment.filename}
-                    locale="fr"
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Reactions */}
-            {renderReactions(message)}
-
-            {/* Message actions */}
-            <div className={`flex items-center gap-1 mt-1 ${
-              hoveredMessageId === message.id || isMobile ? 'opacity-100' : 'opacity-0'
-            } transition-opacity`}>
-              <Popover 
-                open={openEmojiPickerId === message.id}
-                onOpenChange={(open) => {
-                  if (open) {
-                    setOpenEmojiPickerId(message.id);
-                  } else {
-                    setOpenEmojiPickerId(null);
-                  }
-                }}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                  >
-                    <Smile className="h-4 w-4 text-gray-500" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
-                  <Picker 
-                    data={data} 
-                    onEmojiSelect={(emoji: any) => handleEmojiSelect(message.id, emoji)}
-                    theme={theme === 'dark' ? 'dark' : 'light'}
-                    previewPosition="none"
-                    skinTonePosition="none"
-                    perLine={8}
-                  />
-                </PopoverContent>
-              </Popover>
-              
-              {setReplyTo && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setReplyTo(message)}
-                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                >
-                  <MessageCircle className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-              
-              {isSelfMessage && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeleteMessage(message.id)}
-                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                >
-                  <Trash2 className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Thread replies */}
-        {!isThreadReply && messageThreads[message.id]?.length > 1 && (
-          <div 
-            className="ml-11 mt-1 mb-2"
-            id={`thread-${message.id}`}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleThread(message.id)}
-              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2 py-1 h-auto"
-            >
-              {expandedThreads.has(message.id) ? (
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 mr-1" />
-              )}
-              {messageThreads[message.id].length - 1} réponses
-            </Button>
-            
-            {expandedThreads.has(message.id) && (
-              <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                <ScrollArea className="max-h-80">
-                  {messageThreads[message.id]
-                    .filter(reply => reply.id !== message.id)
-                    .map((reply, idx, replies) => renderMessage(
-                      reply, 
-                      idx, 
-                      true, 
-                      idx > 0 ? replies[idx - 1] : undefined
-                    ))}
-                </ScrollArea>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+    setShowEmojiPicker(null);
   };
 
   return (
-    <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
-      <div className="flex-1">
-        {displayMessages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {renderMessage(message, index, false, index > 0 ? displayMessages[index - 1] : undefined)}
-          </React.Fragment>
-        ))}
-      </div>
-      <div ref={messagesEndRef} />
+    <div ref={messagesContainerRef} className="flex-1 overflow-auto p-2 sm:p-4">
+      {Object.keys(groupedMessages).length === 0 && (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-500 text-center">
+            Aucun message. Commencez la conversation !
+          </p>
+        </div>
+      )}
+      
+      {Object.entries(groupedMessages).map(([dateStr, dateMessages]) => (
+        <Fragment key={dateStr}>
+          <div className="relative flex py-5 items-center">
+            <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+            <span className="flex-shrink mx-4 text-xs text-gray-500 dark:text-gray-400">
+              {formatDate(dateStr)}
+            </span>
+            <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+          </div>
+          
+          {dateMessages.map((message) => {
+            const isCurrentUser = message.sender.id === currentUserId;
+            const hasReplies = messages.some(m => m.parent_message_id === message.id);
+            const replyCount = messages.filter(m => m.parent_message_id === message.id).length;
+            
+            // Find parent message if this is a reply
+            const parentMessage = message.parent_message_id 
+              ? messages.find(m => m.id === message.parent_message_id) 
+              : null;
+              
+            return (
+              <Fragment key={message.id}>
+                <div className={`chat-message mb-4 ${message.parent_message_id ? 'ml-8 pl-4 border-l-2 border-gray-200 dark:border-gray-700' : ''}`}>
+                  {parentMessage && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      En réponse à {parentMessage.sender.name}
+                    </div>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <Avatar className="h-8 w-8">
+                      {message.sender.avatarUrl ? (
+                        <AvatarImage src={message.sender.avatarUrl} />
+                      ) : (
+                        <AvatarFallback>{getInitials(message.sender.name)}</AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">
+                          {message.sender.name}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {formatTime(new Date(message.timestamp))}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm">
+                        {message.content}
+                      </div>
+                      
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {message.attachments.map((attachment, index) => (
+                            <MessageAttachment key={index} attachment={attachment} />
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="mt-1 flex items-center gap-1">
+                        <div className="flex-1 flex flex-wrap gap-1 mt-1">
+                          {message.reactions && Object.entries(message.reactions).map(([emoji, users]) => (
+                            <Button
+                              key={emoji}
+                              variant="outline"
+                              size="sm"
+                              className={`h-6 rounded-full text-xs px-2 ${
+                                users.includes(currentUserId || '') ? 'bg-primary/10' : ''
+                              }`}
+                              onClick={() => onReactToMessage(message.id, emoji)}
+                            >
+                              {emoji} {users.length}
+                            </Button>
+                          ))}
+                        </div>
+                        
+                        <div className="flex gap-1">
+                          <Popover open={showEmojiPicker === message.id} onOpenChange={(open) => !open && setShowEmojiPicker(null)}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => setShowEmojiPicker(message.id)}
+                              >
+                                <Smile className="h-3.5 w-3.5" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                              <Picker
+                                data={data}
+                                onEmojiSelect={(emoji: any) => handleEmojiSelect(message.id, emoji)}
+                                theme="light"
+                                previewPosition="none"
+                                locale="fr"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleReply(message)}
+                          >
+                            <Reply className="h-3.5 w-3.5" />
+                          </Button>
+                          
+                          {isCurrentUser && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  className="text-destructive flex items-center gap-2 cursor-pointer"
+                                  onClick={() => handleDeleteMessage(message.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Supprimer</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {!message.parent_message_id && hasReplies && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-1 h-6 text-xs rounded-full flex items-center gap-1"
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          <span>{replyCount} {replyCount > 1 ? 'réponses' : 'réponse'}</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Fragment>
+            );
+          })}
+        </Fragment>
+      ))}
+      
+      {replyingToMessage && !setReplyTo && (
+        <div className="sticky bottom-0 bg-white dark:bg-gray-800 p-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+            Répondre à {replyingToMessage.sender.name}
+          </div>
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Écrivez votre réponse..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              className="min-h-[80px]"
+            />
+            <div className="flex flex-col gap-2">
+              <Button>Envoyer</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setReplyingToMessage(null)}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
