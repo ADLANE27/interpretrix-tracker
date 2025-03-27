@@ -19,7 +19,7 @@ export class EventDebouncer {
     this.cleanupTimeout = setTimeout(() => {
       this.cleanupOldEvents();
       this.setupCleanupInterval();
-    }, 15000); // Run cleanup every 15 seconds (reduced from 30s)
+    }, 30000); // Run cleanup every 30 seconds
   }
   
   private cleanupOldEvents() {
@@ -28,7 +28,7 @@ export class EventDebouncer {
     
     // Find old entries
     this.recentEvents.forEach((timestamp, key) => {
-      if (now - timestamp > 5000) { // 5 seconds (reduced from 10s)
+      if (now - timestamp > 10000) { // 10 seconds
         keysToDelete.push(key);
       }
     });
@@ -41,23 +41,26 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Special handling for status updates to make them nearly instant
+    // Prioritize status updates to make them nearly instant
     const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
                           (eventKey.includes('status') || eventKey.includes('STATUS'));
                           
-    // Zero cooldown for status updates for immediate processing
+    // Much shorter cooldown for status updates
     const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
+      if (!isStatusUpdate) {
+        console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
+      }
       return false;
     }
     
     this.recentEvents.set(eventKey, now);
     
     // Automatic cleanup if Map gets too large
-    if (this.recentEvents.size > 500) { // Reduced from 1000
+    if (this.recentEvents.size > 1000) {
       this.cleanupOldEvents();
     }
     
@@ -65,19 +68,13 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Zero timeout for status updates for immediate updates
+    // Use nearly zero timeout for status updates
     const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
     const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
     
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {
       clearTimeout(this.debounceTimers.get(debounceKey)!);
-    }
-    
-    // For status updates, execute immediately
-    if (isStatusUpdate && useTimeout === 0) {
-      callback();
-      return;
     }
     
     // Set new timer
