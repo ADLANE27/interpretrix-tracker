@@ -1,5 +1,5 @@
 
-import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE } from './constants';
+import { EVENT_COOLDOWN } from './constants';
 
 export class EventDebouncer {
   private recentEvents = new Map<string, number>();
@@ -41,19 +41,17 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Prioritize status updates to make them nearly instant
+    // Prioritize status updates by using identifier
     const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
-                          (eventKey.includes('status') || eventKey.includes('STATUS'));
+                          eventKey.includes('status');
                           
-    // Much shorter cooldown for status updates
-    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
+    // Shorter cooldown for status updates
+    const cooldownTime = isStatusUpdate ? 50 : this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      if (!isStatusUpdate) {
-        console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
-      }
+      console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
       return false;
     }
     
@@ -68,9 +66,8 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use nearly zero timeout for status updates
-    const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
-    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
+    // Use shorter timeout for status updates
+    const useTimeout = debounceKey.includes('status') ? Math.min(100, timeout) : timeout;
     
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {
