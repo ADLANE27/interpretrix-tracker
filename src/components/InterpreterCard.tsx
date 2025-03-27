@@ -122,8 +122,16 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
       >
         <CardContent className="p-2 relative flex flex-col h-full justify-between">
           <div className="mb-2 flex items-center gap-2">
-            <h3 className="text-base font-bold text-gradient-primary leading-tight truncate flex-grow">{lastName}</h3>
-            {firstName && <span className="text-sm text-muted-foreground truncate">{firstName}</span>}
+            <div className="flex items-center gap-2 w-full">
+              <h3 className="text-base font-bold text-gradient-primary leading-tight truncate">
+                {lastName}
+              </h3>
+              {firstName && (
+                <span className="text-sm text-muted-foreground truncate">
+                  {firstName}
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex flex-wrap gap-1 mb-2 items-center">

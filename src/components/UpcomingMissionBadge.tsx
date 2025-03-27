@@ -1,4 +1,3 @@
-
 import { Clock } from "lucide-react";
 import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -52,12 +51,10 @@ export const UpcomingMissionBadge = ({
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
-    // Use direct time extraction for consistent display
     const startHour = formatTimeString(startTime);
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
     
-    // Format the date - short format or regular format
     const missionDate = useShortDateFormat 
       ? format(parseISO(startTime), 'dd/MM/yyyy')
       : formatDateDisplay(startTime);
@@ -67,7 +64,7 @@ export const UpcomingMissionBadge = ({
         return {
           text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-amber-300 to-orange-500"
+          flashingClass: "animate-pulse bg-red-500 text-white"
         };
       case "in-progress":
         const remainingTime = formatDistanceToNow(missionEndDate, { 
@@ -76,14 +73,14 @@ export const UpcomingMissionBadge = ({
         });
         return {
           text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
-          variant: "default" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-orange-400 to-amber-300"
+          variant: "destructive" as const,
+          flashingClass: "animate-pulse bg-red-500 text-white"
         };
       case "ending-soon":
         return {
           text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
           variant: "destructive" as const,
-          flashingClass: "animate-pulse bg-gradient-to-r from-orange-500 to-amber-400"
+          flashingClass: "animate-pulse bg-red-500 text-white"
         };
       case "ended":
         return {
