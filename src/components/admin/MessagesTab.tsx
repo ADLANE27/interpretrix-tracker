@@ -230,9 +230,9 @@ export const MessagesTab = () => {
         <AnimatePresence>
           {(isMobile ? showChannelList : true) && (
             <motion.div 
-              initial={isMobile ? { x: -300, opacity: 0 } : false}
+              initial={isMobile ? { x: -300, opacity: 0 } : { opacity: 1 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={isMobile ? { x: -300, opacity: 0 } : false}
+              exit={isMobile ? { x: -300, opacity: 0 } : { opacity: 0 }}
               transition={{ duration: 0.3 }}
               className={`${
                 isMobile 
