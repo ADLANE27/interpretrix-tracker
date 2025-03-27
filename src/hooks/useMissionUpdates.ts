@@ -51,7 +51,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       } else {
         console.error('[useMissionUpdates] Realtime subscription issue. Will auto-retry.');
       }
-    }
+    },
+    // Use consistent channel names across the application
+    channelNamePrefix: 'admin-mission-updates'
   };
 
   // Subscribe to mission changes
@@ -79,7 +81,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
       onUpdate();
     },
-    subscriptionOptions
+    { ...subscriptionOptions, channelNamePrefix: 'admin-reservation-updates' }
   );
   
   // Use a more specific subscription for interpreter profile status changes
@@ -98,6 +100,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     {
       ...subscriptionOptions,
       retryInterval: 3000, // Shorter retry for status updates
+      channelNamePrefix: 'admin-interpreter-status-updates'
     }
   );
 };
