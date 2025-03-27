@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Status, StatusConfigItem } from "./types/status-types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,6 +26,30 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   const isMobile = useIsMobile();
   const StatusIcon = statusConfig.icon;
   const displayLabel = isMobile ? statusConfig.mobileLabel : statusConfig.label;
+  const triggerRef = useRef<HTMLDivElement>(null);
+  
+  // Add animation effect when status changes
+  useEffect(() => {
+    if (triggerRef.current) {
+      // Remove any existing animation class first
+      triggerRef.current.classList.remove('pulse-animation');
+      
+      // Force a reflow to ensure animation restarts
+      void triggerRef.current.offsetWidth;
+      
+      // Add animation class
+      triggerRef.current.classList.add('pulse-animation');
+      
+      // Remove animation class after animation completes
+      const timeout = setTimeout(() => {
+        if (triggerRef.current) {
+          triggerRef.current.classList.remove('pulse-animation');
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [status, statusConfig]);
   
   // Handle click with error prevention
   const handleClick = (e: React.MouseEvent) => {
@@ -45,12 +69,17 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
       ? "opacity-80 cursor-not-allowed" 
       : "cursor-pointer hover:opacity-95 transition-opacity";
   
-  // Add debug output for status debugging
-  console.log(`[StatusTrigger] Rendering status: ${status} with config:`, statusConfig);
+  // Log status updates with more details for debugging
+  console.log(`[StatusTrigger] Rendering status: ${status} with config:`, {
+    label: statusConfig.label,
+    color: statusConfig.color,
+    icon: statusConfig.icon.name
+  });
   
   if (displayFormat === "badge") {
     return (
       <div
+        ref={triggerRef}
         className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color} ${connectionStyles} ${className}`}
         onClick={handleClick}
         aria-disabled={disabled || !isConnected}
@@ -65,6 +94,7 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   } else {
     return (
       <div
+        ref={triggerRef}
         className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusConfig.color} ${connectionStyles} ${className}`}
         onClick={handleClick}
         aria-disabled={disabled || !isConnected}

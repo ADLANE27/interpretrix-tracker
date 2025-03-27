@@ -40,18 +40,20 @@ export function createInterpreterStatusSubscription(
             onStatusChange(newStatus);
           }
           
-          // Emit both badge update and status update events
-          // Badge update is for UI components that display badges
+          // IMPORTANT: Emit badge update FIRST for immediate UI refresh
+          // Badge update is specifically for UI components that display badges
           eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
             interpreterId,
             status: newStatus
           });
 
-          // General status update for any component watching status
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-            interpreterId,
-            status: newStatus
-          });
+          // Then emit general status update with a small delay to avoid race conditions
+          setTimeout(() => {
+            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+              interpreterId,
+              status: newStatus
+            });
+          }, 10);
         }
       }
     })

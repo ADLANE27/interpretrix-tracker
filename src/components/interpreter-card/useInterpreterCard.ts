@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Profile } from '@/types/profile';
 import { EmploymentStatus } from '@/utils/employmentStatus';
 import { WorkLocation } from '@/utils/workLocationStatus';
@@ -56,13 +56,15 @@ export function useInterpreterCard(
 ): UseInterpreterCardReturn {
   const [status, setStatus] = useState<Profile['status']>(interpreter.status);
   const [isFlipped, setIsFlipped] = useState(false);
+  const statusRef = useRef<Profile['status']>(interpreter.status);
 
   // Listen for badge-specific status updates
   useEffect(() => {
     const handleBadgeUpdate = ({ interpreterId, status: newStatus }: { interpreterId: string, status: Profile['status'] }) => {
-      if (interpreterId === interpreter.id && newStatus !== status) {
-        console.log(`[InterpreterCard] Updating badge for ${interpreterId} to ${newStatus}`);
+      if (interpreterId === interpreter.id && newStatus !== statusRef.current) {
+        console.log(`[InterpreterCard] Updating badge for ${interpreterId} to ${newStatus} (was ${statusRef.current})`);
         setStatus(newStatus);
+        statusRef.current = newStatus;
       }
     };
     
@@ -71,12 +73,16 @@ export function useInterpreterCard(
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
     };
-  }, [interpreter.id, status]);
+  }, [interpreter.id]);
 
   // Also update when the prop changes (for initial render)
   useEffect(() => {
-    setStatus(interpreter.status);
-  }, [interpreter.status]);
+    if (interpreter.status !== statusRef.current) {
+      setStatus(interpreter.status);
+      statusRef.current = interpreter.status;
+      console.log(`[InterpreterCard] Status prop updated for ${interpreter.id} to ${interpreter.status}`);
+    }
+  }, [interpreter.status, interpreter.id]);
 
   const flipCard = useCallback(() => {
     setIsFlipped(prev => !prev);
