@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -65,6 +64,7 @@ export const CardFront: React.FC<CardFrontProps> = ({
   flipCard
 }) => {
   const badgeRef = useRef<HTMLDivElement>(null);
+  const previousStatusRef = useRef<Profile['status']>(status);
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
@@ -74,18 +74,33 @@ export const CardFront: React.FC<CardFrontProps> = ({
   
   // Effect to highlight badge on status change
   useEffect(() => {
-    if (badgeRef.current) {
-      badgeRef.current.classList.add('pulse-animation');
+    console.log(`[CardFront] Status for ${interpreter.id} is now: ${status} (was: ${previousStatusRef.current})`);
+    
+    if (status !== previousStatusRef.current) {
+      console.log(`[CardFront] Status changed! Animating badge for ${interpreter.id}`);
+      previousStatusRef.current = status;
       
-      const timeout = setTimeout(() => {
-        if (badgeRef.current) {
-          badgeRef.current.classList.remove('pulse-animation');
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
+      if (badgeRef.current) {
+        // Remove any existing animation class first
+        badgeRef.current.classList.remove('pulse-animation');
+        
+        // Force a reflow to ensure animation restarts
+        void badgeRef.current.offsetWidth;
+        
+        // Add animation class
+        badgeRef.current.classList.add('pulse-animation');
+        
+        // Remove animation class after animation completes
+        const timeout = setTimeout(() => {
+          if (badgeRef.current) {
+            badgeRef.current.classList.remove('pulse-animation');
+          }
+        }, 2000);
+        
+        return () => clearTimeout(timeout);
+      }
     }
-  }, [status]);
+  }, [status, interpreter.id]);
 
   return (
     <Card
@@ -227,4 +242,4 @@ export const CardFront: React.FC<CardFrontProps> = ({
       </CardContent>
     </Card>
   );
-};
+}

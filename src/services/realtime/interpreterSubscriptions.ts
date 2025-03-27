@@ -31,29 +31,30 @@ export function createInterpreterStatusSubscription(
           const newStatus = payload.new.status as Profile['status'];
           const oldStatus = payload.old?.status;
           
-          // Log all status updates for debugging
-          console.log(`[RealtimeService] Status update received for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
+          // Always log updates for debugging
+          console.log(`[RealtimeService] STATUS UPDATE RECEIVED for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
           
           // Call the callback immediately if provided
           if (onStatusChange) {
-            console.log(`[RealtimeService] Calling onStatusChange callback for ${interpreterId}`);
+            console.log(`[RealtimeService] Calling onStatusChange callback for ${interpreterId} with status ${newStatus}`);
             onStatusChange(newStatus);
           }
           
-          // IMPORTANT: Emit badge update FIRST for immediate UI refresh
-          // Badge update is specifically for UI components that display badges
-          eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-            interpreterId,
-            status: newStatus
-          });
-
-          // Then emit general status update with a small delay to avoid race conditions
-          setTimeout(() => {
-            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+          // CRITICAL: First emit badge update IMMEDIATELY for UI components
+          if (oldStatus !== newStatus) {
+            console.log(`[RealtimeService] Emitting BADGE_UPDATE event for ${interpreterId} with ${newStatus}`);
+            eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
               interpreterId,
               status: newStatus
             });
-          }, 10);
+          }
+
+          // Then emit general status update (also immediately - no delay)
+          console.log(`[RealtimeService] Emitting STATUS_UPDATE event for ${interpreterId} with ${newStatus}`);
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+            interpreterId,
+            status: newStatus
+          });
         }
       }
     })

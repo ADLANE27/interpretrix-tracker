@@ -25,6 +25,7 @@ export const DEBUG_MODE = true;
 export const TELEMETRY_BATCH_SIZE = 10;
 export const TELEMETRY_INTERVAL = 60000;
 
-// Status update-specific constants - critical for fast UI updates
+// Status update-specific constants - CRITICAL for fast UI updates
 export const STATUS_UPDATE_DEBOUNCE = 0; // NEVER debounce status updates
 export const STATUS_EVENT_PRIORITY = true; // Prioritize status events
+

@@ -1,7 +1,7 @@
 
 import { STATUS_UPDATE_DEBOUNCE, EVENT_COOLDOWN } from './constants';
 import { Profile } from '@/types/profile';
-import { EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
 
 type EventCallback = {
   callback: Function;
@@ -24,22 +24,7 @@ export class EventDebouncer {
    */
   public debounce(key: string, callback: Function, debounceTime?: number): void {
     // For status updates, use zero debounce time to ensure immediate propagation
-    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE)) {
-      debounceTime = 0;
-    } else {
-      // Use provided debounce time or default
-      debounceTime = debounceTime !== undefined ? debounceTime : EVENT_COOLDOWN;
-    }
-    
-    // Clear existing timeout
-    const existingTimeout = this.eventTimeouts.get(key);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
-
-    // Special case for status events - execute immediately AND set a timeout
-    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE)) {
-      // If it's a status update, execute immediately
+    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE) || key.includes(EVENT_INTERPRETER_BADGE_UPDATE)) {
       console.log(`[EventDebouncer] Executing status event immediately: ${key}`);
       callback();
       
@@ -53,6 +38,14 @@ export class EventDebouncer {
     }
     
     // For non-status events, use normal debouncing
+    debounceTime = debounceTime !== undefined ? debounceTime : EVENT_COOLDOWN;
+    
+    // Clear existing timeout
+    const existingTimeout = this.eventTimeouts.get(key);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+    
     if (debounceTime <= 0) {
       // No debounce time means execute immediately
       callback();
@@ -83,6 +76,16 @@ export class EventDebouncer {
    * Executes an event if it's not on cooldown
    */
   public executeIfNotCooldown(key: string, callback: Function, cooldownTime: number = EVENT_COOLDOWN): boolean {
+    // Special case for status events - always execute immediately
+    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE) || key.includes(EVENT_INTERPRETER_BADGE_UPDATE)) {
+      callback();
+      this.eventCallbacks.set(key, {
+        callback,
+        lastExecuted: Date.now()
+      });
+      return true;
+    }
+    
     const event = this.eventCallbacks.get(key);
     const now = Date.now();
     
