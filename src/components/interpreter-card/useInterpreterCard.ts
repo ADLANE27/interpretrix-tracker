@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Profile } from '@/types/profile';
 import { EmploymentStatus } from '@/utils/employmentStatus';
 import { WorkLocation } from '@/utils/workLocationStatus';
-import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { LanguageMap } from '@/utils/languageUtils';
 
 interface Interpreter {
@@ -57,9 +58,9 @@ export function useInterpreterCard(
   const [isFlipped, setIsFlipped] = useState(false);
   const statusRef = useRef<Profile['status']>(interpreter.status);
 
-  // Listen for badge-specific status updates with improved monitoring
+  // Listen for badge-specific status updates and general status updates with improved monitoring
   useEffect(() => {
-    console.log(`[InterpreterCard] Setting up badge listener for ${interpreter.id}, initial status: ${interpreter.status}`);
+    console.log(`[InterpreterCard] 🔄 Setting up badge/status listeners for ${interpreter.id}, initial status: ${interpreter.status}`);
     
     const handleBadgeUpdate = ({ interpreterId, status: newStatus }: { interpreterId: string, status: Profile['status'] }) => {
       if (interpreterId === interpreter.id && newStatus !== statusRef.current) {
@@ -69,11 +70,22 @@ export function useInterpreterCard(
       }
     };
     
+    const handleStatusUpdate = ({ interpreterId, status: newStatus }: { interpreterId: string, status: Profile['status'] }) => {
+      if (interpreterId === interpreter.id && newStatus !== statusRef.current) {
+        console.log(`[InterpreterCard] 🔄 STATUS UPDATE for ${interpreterId}: ${statusRef.current} → ${newStatus}`);
+        setStatus(newStatus);
+        statusRef.current = newStatus;
+      }
+    };
+    
+    // Listen to both types of events to ensure we don't miss updates
     eventEmitter.on(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     return () => {
-      console.log(`[InterpreterCard] Removing badge listener for ${interpreter.id}`);
+      console.log(`[InterpreterCard] Removing badge/status listeners for ${interpreter.id}`);
       eventEmitter.off(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
   }, [interpreter.id]);
 
@@ -91,7 +103,7 @@ export function useInterpreterCard(
   }, []);
 
   const handleStatusChange = useCallback((newStatus: Profile['status']) => {
-    console.log(`[InterpreterCard] handleStatusChange called for ${interpreter.id} with ${newStatus}`);
+    console.log(`[InterpreterCard] 🛠️ handleStatusChange called for ${interpreter.id} with ${newStatus}`);
     
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);

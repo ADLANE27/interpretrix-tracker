@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -39,10 +40,9 @@ interface CardFrontProps {
   hasAnyPhoneNumber: boolean;
   workLocation: WorkLocation;
   locationConfig: {
-    [key in WorkLocation]: {
-      color: string;
-      icon: React.ElementType;
-    };
+    icon: string;
+    label: string;
+    color: string;
   };
   showTarif5min: boolean;
   showTarif15min: boolean;
@@ -74,10 +74,10 @@ export const CardFront: React.FC<CardFrontProps> = ({
   
   // Effect to highlight badge on status change
   useEffect(() => {
-    console.log(`[CardFront] Status for ${interpreter.id} is now: ${status} (was: ${previousStatusRef.current})`);
+    console.log(`[CardFront] 🔔 Status for ${interpreter.id} is now: ${status} (was: ${previousStatusRef.current})`);
     
     if (status !== previousStatusRef.current) {
-      console.log(`[CardFront] Status changed! Animating badge for ${interpreter.id}`);
+      console.log(`[CardFront] ✨ Status changed! Animating badge for ${interpreter.id}`);
       previousStatusRef.current = status;
       
       if (badgeRef.current) {
@@ -104,19 +104,12 @@ export const CardFront: React.FC<CardFrontProps> = ({
 
   return (
     <Card
-      asMotion
-      motionProps={{
-        animate: { 
-          rotateY: isFlipped ? 180 : 0 
-        },
-        transition: { 
-          duration: 0.6, 
-          type: "spring", 
-          stiffness: 260, 
-          damping: 20 
-        }
-      }}
       className={`hover-elevate gradient-border w-full h-full backface-hidden border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'invisible' : 'visible'}`}
+      style={{
+        transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
+        transition: 'transform 0.6s',
+        transformStyle: 'preserve-3d'
+      }}
     >
       <CardContent className="p-2 relative flex flex-col h-full justify-between">
         <div className="mb-2 flex items-center gap-2">

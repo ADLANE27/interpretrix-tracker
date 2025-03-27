@@ -16,7 +16,7 @@ export function createInterpreterStatusSubscription(
 ): [() => void, string, RealtimeChannel] {
   const key = `interpreter-status-${interpreterId}`;
   
-  console.log(`[RealtimeService] Subscribing to interpreter status for ${interpreterId}`);
+  console.log(`[RealtimeService] ⭐ Creating NEW status subscription for ${interpreterId}`);
   
   const channel = supabase.channel(key)
     .on('postgres_changes' as any, {
@@ -27,30 +27,28 @@ export function createInterpreterStatusSubscription(
     }, (payload: any) => {
       // Safety check for payload properties
       if (payload?.new && typeof payload.new === 'object') {
-        if (payload.new.status) {
+        if ('status' in payload.new) {
           const newStatus = payload.new.status as Profile['status'];
           const oldStatus = payload.old?.status;
           
           // Always log updates for debugging
-          console.log(`[RealtimeService] STATUS UPDATE RECEIVED for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
+          console.log(`[RealtimeService] ⚡ STATUS UPDATE RECEIVED for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
           
           // Call the callback immediately if provided
           if (onStatusChange) {
-            console.log(`[RealtimeService] Calling onStatusChange callback for ${interpreterId} with status ${newStatus}`);
+            console.log(`[RealtimeService] 📱 Calling onStatusChange callback for ${interpreterId} with status ${newStatus}`);
             onStatusChange(newStatus);
           }
           
           // CRITICAL: First emit badge update IMMEDIATELY for UI components
-          if (oldStatus !== newStatus) {
-            console.log(`[RealtimeService] Emitting BADGE_UPDATE event for ${interpreterId} with ${newStatus}`);
-            eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-              interpreterId,
-              status: newStatus
-            });
-          }
+          console.log(`[RealtimeService] 🔴 Emitting BADGE_UPDATE event for ${interpreterId} with ${newStatus}`);
+          eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+            interpreterId,
+            status: newStatus
+          });
 
           // Then emit general status update (also immediately - no delay)
-          console.log(`[RealtimeService] Emitting STATUS_UPDATE event for ${interpreterId} with ${newStatus}`);
+          console.log(`[RealtimeService] 🔄 Emitting STATUS_UPDATE event for ${interpreterId} with ${newStatus}`);
           eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
             interpreterId,
             status: newStatus

@@ -72,7 +72,7 @@ export const useRealtimeStatus = ({
     
     const handleStatusUpdate = ({ interpreterId: eventInterpreterId, status: newStatus }: { interpreterId: string, status: string }) => {
       if (eventInterpreterId === interpreterId) {
-        console.log(`[useRealtimeStatus] Received status update for ${interpreterId}: ${newStatus}`);
+        console.log(`[useRealtimeStatus] 🔄 Received status update for ${interpreterId}: ${newStatus}`);
         setStatus(newStatus as Profile['status']);
         setLastUpdateTime(new Date());
         
@@ -88,12 +88,48 @@ export const useRealtimeStatus = ({
     // Subscribe to real-time database updates
     realtimeService.subscribeToInterpreterStatus(interpreterId);
     
-    // Initial fetch of status
-    if (isInitialLoadRef.current) {
-      console.log(`[useRealtimeStatus] Initial load for ${interpreterId}`);
-      isInitialLoadRef.current = false;
+    // Initial fetch of status - this is critical to ensure we have the correct starting state
+    console.log(`[useRealtimeStatus] 🚀 Initial load for ${interpreterId}`);
+    
+    // Fetch current status
+    supabase
+      .from('interpreter_profiles')
+      .select('status')
+      .eq('id', interpreterId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          const fetchedStatus = data.status as Profile['status'];
+          console.log(`[useRealtimeStatus] ✅ Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
+          
+          if (fetchedStatus !== status) {
+            console.log(`[useRealtimeStatus] 🔄 Status update needed from ${status} to ${fetchedStatus}`);
+            setStatus(fetchedStatus);
+            setLastUpdateTime(new Date());
+            
+            if (onStatusChange) {
+              onStatusChange(fetchedStatus);
+            }
+          }
+        } else {
+          console.error(`[useRealtimeStatus] ❌ Error fetching initial status:`, error);
+        }
+      });
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+      // No explicit cleanup needed for subscribeToInterpreterStatus
+    };
+  }, [interpreterId, onStatusChange, status]);
+  
+  // Refresh status when connected
+  useEffect(() => {
+    if (!interpreterId) return;
+    
+    if (isConnected) {
+      console.log(`[useRealtimeStatus] 🔍 Checking latest status for ${interpreterId}`);
       
-      // Fetch current status
+      // Fetch the current status directly
       supabase
         .from('interpreter_profiles')
         .select('status')
@@ -102,65 +138,28 @@ export const useRealtimeStatus = ({
         .then(({ data, error }) => {
           if (!error && data) {
             const fetchedStatus = data.status as Profile['status'];
-            console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
+            console.log(`[useRealtimeStatus] 📊 Status refresh for ${interpreterId}: ${fetchedStatus} (current: ${status})`);
             
             if (fetchedStatus !== status) {
+              console.log(`[useRealtimeStatus] 🔄 Updating status: ${status} → ${fetchedStatus}`);
               setStatus(fetchedStatus);
               setLastUpdateTime(new Date());
+              
+              // Broadcast the status update to ensure all components are in sync
+              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+                interpreterId,
+                status: fetchedStatus
+              });
               
               if (onStatusChange) {
                 onStatusChange(fetchedStatus);
               }
             }
+          } else {
+            console.error('[useRealtimeStatus] Error fetching status:', error);
           }
         });
     }
-    
-    return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      // No explicit cleanup needed for subscribeToInterpreterStatus
-    };
-  }, [interpreterId, onStatusChange, status]);
-  
-  // Refresh status if connection is restored
-  useEffect(() => {
-    if (!interpreterId) return;
-    
-    let timeoutId: NodeJS.Timeout;
-    
-    if (isConnected) {
-      // If we're connected, refresh the status after a short delay
-      timeoutId = setTimeout(async () => {
-        try {
-          // Fetch the current status directly
-          const { data, error } = await supabase
-            .from('interpreter_profiles')
-            .select('status')
-            .eq('id', interpreterId)
-            .single();
-          
-          if (!error && data) {
-            const fetchedStatus = data.status as Profile['status'];
-            console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
-            
-            if (fetchedStatus !== status) {
-              setStatus(fetchedStatus);
-              setLastUpdateTime(new Date());
-              
-              if (onStatusChange) {
-                onStatusChange(fetchedStatus);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[useRealtimeStatus] Error fetching status:', error);
-        }
-      }, 500); // Shorter delay for faster updates
-    }
-    
-    return () => {
-      clearTimeout(timeoutId);
-    };
   }, [interpreterId, isConnected, onStatusChange, status]);
   
   /**
@@ -175,6 +174,7 @@ export const useRealtimeStatus = ({
       const now = Date.now();
       
       // Broadcast status change immediately for other components 
+      console.log(`[useRealtimeStatus] 📡 Broadcasting status update for ${interpreterId}: ${newStatus}`);
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: newStatus
@@ -183,17 +183,18 @@ export const useRealtimeStatus = ({
       // If not connected, store the pending update
       if (!isConnected) {
         pendingUpdateRef.current = { status: newStatus, timestamp: now };
-        console.log(`[useRealtimeStatus] Connection down, storing pending update: ${newStatus}`);
+        console.log(`[useRealtimeStatus] 📶 Connection down, storing pending update: ${newStatus}`);
         return false;
       }
       
+      console.log(`[useRealtimeStatus] 📝 Saving status to database: ${interpreterId} → ${newStatus}`);
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: newStatus
       });
       
       if (error) {
-        console.error('[useRealtimeStatus] Error updating status:', error);
+        console.error('[useRealtimeStatus] ❌ Error updating status:', error);
         // Don't revert on error - optimistic update is shown
         // Will be fixed when next realtime update comes in
         return false;
@@ -201,10 +202,11 @@ export const useRealtimeStatus = ({
       
       // Update last update time
       setLastUpdateTime(new Date());
+      console.log(`[useRealtimeStatus] ✅ Status successfully updated: ${interpreterId} → ${newStatus}`);
       
       return true;
     } catch (error) {
-      console.error('[useRealtimeStatus] Unexpected error:', error);
+      console.error('[useRealtimeStatus] ❌ Unexpected error:', error);
       // Don't revert on error - optimistic update is shown
       return false;
     }

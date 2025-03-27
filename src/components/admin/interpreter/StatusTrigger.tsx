@@ -1,17 +1,22 @@
 
-import React, { useEffect, useRef } from 'react';
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Status, StatusConfigItem } from "./types/status-types";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import React from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface StatusTriggerProps {
   displayFormat: "badge" | "button";
-  statusConfig: StatusConfigItem;
-  status: Status;
+  statusConfig: {
+    label: string;
+    color: string;
+    icon: React.ElementType;
+  };
+  status: string;
   className?: string;
-  onClick?: () => void;
   disabled?: boolean;
   isConnected?: boolean;
+  onClick?: () => void;
 }
 
 export const StatusTrigger: React.FC<StatusTriggerProps> = ({
@@ -19,93 +24,76 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   statusConfig,
   status,
   className = "",
-  onClick,
   disabled = false,
-  isConnected = true
+  isConnected = true,
+  onClick
 }) => {
-  const isMobile = useIsMobile();
-  const StatusIcon = statusConfig.icon;
-  const displayLabel = isMobile ? statusConfig.mobileLabel : statusConfig.label;
-  const triggerRef = useRef<HTMLDivElement>(null);
-  
-  // Add animation effect when status changes
-  useEffect(() => {
-    if (triggerRef.current) {
-      // Remove any existing animation class first
-      triggerRef.current.classList.remove('pulse-animation');
-      
-      // Force a reflow to ensure animation restarts
-      void triggerRef.current.offsetWidth;
-      
-      // Add animation class
-      triggerRef.current.classList.add('pulse-animation');
-      
-      // Remove animation class after animation completes
-      const timeout = setTimeout(() => {
-        if (triggerRef.current) {
-          triggerRef.current.classList.remove('pulse-animation');
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
-    }
-  }, [status, statusConfig]);
-  
-  // Handle click with error prevention
-  const handleClick = (e: React.MouseEvent) => {
-    if (disabled || !isConnected) return;
-    
-    if (onClick) {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-    }
-  };
-  
-  // Add visual indicator for connection status
-  const connectionStyles = !isConnected 
-    ? "opacity-70 cursor-not-allowed" 
-    : disabled 
-      ? "opacity-80 cursor-not-allowed" 
-      : "cursor-pointer hover:opacity-95 transition-opacity";
-  
-  // Log status updates with more details for debugging
-  console.log(`[StatusTrigger] Rendering status: ${status} with config:`, {
-    label: statusConfig.label,
-    color: statusConfig.color,
-    icon: statusConfig.icon.name
-  });
-  
+  const Icon = statusConfig.icon;
+
+  const badgeClasses = cn(
+    "bg-opacity-90 hover:bg-opacity-100 transition-all font-medium flex items-center gap-1",
+    statusConfig.color,
+    !isConnected ? "opacity-60" : "",
+    className
+  );
+
+  const buttonClasses = cn(
+    "font-medium flex items-center gap-1.5 shadow-sm",
+    statusConfig.color,
+    !isConnected ? "opacity-60" : "",
+    className
+  );
+
   if (displayFormat === "badge") {
     return (
-      <div
-        ref={triggerRef}
-        className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color} ${connectionStyles} ${className}`}
-        onClick={handleClick}
-        aria-disabled={disabled || !isConnected}
-        role="button"
-        tabIndex={disabled || !isConnected ? -1 : 0}
-        data-status={status} // Add data attribute for debugging
+      <motion.div
+        initial={{ scale: 1 }}
+        whileHover={{ scale: 1.03 }}
+        className="relative"
       >
-        {displayLabel}
-        {!isConnected && <span className="ml-1 inline-block animate-pulse">•</span>}
-      </div>
-    );
-  } else {
-    return (
-      <div
-        ref={triggerRef}
-        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusConfig.color} ${connectionStyles} ${className}`}
-        onClick={handleClick}
-        aria-disabled={disabled || !isConnected}
-        role="button"
-        tabIndex={disabled || !isConnected ? -1 : 0}
-        data-status={status} // Add data attribute for debugging
-      >
-        <StatusIcon className="h-4 w-4" />
-        <span>{displayLabel}</span>
-        {!isConnected && <span className="ml-1 inline-block animate-pulse">•</span>}
-      </div>
+        <Badge 
+          className={badgeClasses}
+          onClick={onClick}
+          style={{
+            cursor: disabled ? 'not-allowed' : 'pointer',
+          }}
+        >
+          <Icon className="h-3 w-3" />
+          <span>{statusConfig.label}</span>
+        </Badge>
+        
+        <style jsx global>{`
+          @keyframes pulse-badge {
+            0% {
+              box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
+            }
+            70% {
+              box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+            }
+          }
+          
+          .pulse-animation {
+            animation: pulse-badge 1s ease-out;
+            animation-iteration-count: 2;
+          }
+        `}</style>
+      </motion.div>
     );
   }
+
+  return (
+    <Button
+      variant="default"
+      size="sm"
+      className={buttonClasses}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon className="h-4 w-4" />
+      <span>{statusConfig.label}</span>
+    </Button>
+  );
 };

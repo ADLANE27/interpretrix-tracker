@@ -25,7 +25,7 @@ export class EventDebouncer {
   public debounce(key: string, callback: Function, debounceTime?: number): void {
     // For status updates, use zero debounce time to ensure immediate propagation
     if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE) || key.includes(EVENT_INTERPRETER_BADGE_UPDATE)) {
-      console.log(`[EventDebouncer] Executing status event immediately: ${key}`);
+      console.log(`[EventDebouncer] ⚡ Executing status event immediately: ${key}`);
       callback();
       
       // Store last executed timestamp
@@ -70,6 +70,29 @@ export class EventDebouncer {
       
       this.eventTimeouts.set(key, timeout);
     }
+  }
+
+  /**
+   * Determines if an event should be processed now
+   */
+  public shouldProcessEvent(eventId: string, now: number): boolean {
+    const event = this.eventCallbacks.get(eventId);
+    
+    // If it's a status event, always process it
+    if (eventId.includes('status') || eventId.includes('interpreter-profiles')) {
+      return true;
+    }
+    
+    // If we haven't seen this event before, or it's been long enough, process it
+    if (!event || (now - event.lastExecuted) > EVENT_COOLDOWN) {
+      this.eventCallbacks.set(eventId, {
+        callback: () => {},
+        lastExecuted: now
+      });
+      return true;
+    }
+    
+    return false;
   }
 
   /**
