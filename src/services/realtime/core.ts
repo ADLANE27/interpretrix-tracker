@@ -12,10 +12,12 @@ import { Profile } from '@/types/profile';
 class RealtimeService {
   private static instance: RealtimeService;
   private isInitialized = false;
-  private isOnline = true;
+  private isOnline = navigator.onLine;
   private subscriptionManager: SubscriptionManager;
   private connectionMonitor: ConnectionMonitor;
   private eventDebouncer: EventDebouncer;
+  private visibilityChangeTimeout: NodeJS.Timeout | null = null;
+  private networkStateChangeTimeout: NodeJS.Timeout | null = null;
   
   private constructor() {
     this.subscriptionManager = new SubscriptionManager();
@@ -82,6 +84,7 @@ class RealtimeService {
     // Setup global connection status handling
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
     
     // Initial status check
     this.isOnline = navigator.onLine;
@@ -89,19 +92,68 @@ class RealtimeService {
     return () => {
       window.removeEventListener('online', this.handleOnline);
       window.removeEventListener('offline', this.handleOffline);
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
       this.cleanup();
     };
   }
   
   private handleOnline = () => {
-    console.log('[RealtimeService] Network online, reconnecting all channels');
-    this.reconnectAll();
-    this.updateConnectionStatus(true);
+    console.log('[RealtimeService] Network online event received');
+    
+    // Debounce network state changes to avoid multiple rapid reconnections
+    if (this.networkStateChangeTimeout) {
+      clearTimeout(this.networkStateChangeTimeout);
+    }
+    
+    this.networkStateChangeTimeout = setTimeout(() => {
+      console.log('[RealtimeService] Network online, reconnecting all channels');
+      this.reconnectAll();
+      this.updateConnectionStatus(true);
+      this.networkStateChangeTimeout = null;
+    }, 1000); // Debounce network events by 1 second
   }
   
   private handleOffline = () => {
-    console.log('[RealtimeService] Network offline');
-    this.updateConnectionStatus(false);
+    console.log('[RealtimeService] Network offline event received');
+    
+    // Debounce network state changes
+    if (this.networkStateChangeTimeout) {
+      clearTimeout(this.networkStateChangeTimeout);
+    }
+    
+    this.networkStateChangeTimeout = setTimeout(() => {
+      console.log('[RealtimeService] Network offline confirmed');
+      this.updateConnectionStatus(false);
+      this.networkStateChangeTimeout = null;
+    }, 1000); // Debounce network events by 1 second
+  }
+  
+  private handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      console.log('[RealtimeService] Document became visible');
+      
+      // Debounce visibility changes to prevent unnecessary reconnections
+      if (this.visibilityChangeTimeout) {
+        clearTimeout(this.visibilityChangeTimeout);
+      }
+      
+      this.visibilityChangeTimeout = setTimeout(() => {
+        console.log('[RealtimeService] Checking connection status after visibility change');
+        
+        // Check current Supabase channels state
+        const channels = supabase.getChannels();
+        const hasActiveChannels = channels.some(channel => channel.state === 'joined');
+        
+        if (!hasActiveChannels) {
+          console.log('[RealtimeService] No active channels after visibility change, reconnecting');
+          this.reconnectAll();
+        } else {
+          console.log('[RealtimeService] Found active channels, connection is working');
+        }
+        
+        this.visibilityChangeTimeout = null;
+      }, 2000); // Wait 2 seconds after visibility change before checking connection
+    }
   }
 
   public subscribeToInterpreterStatus = (interpreterId: string, onStatusChange?: (status: Profile['status']) => void) => {
@@ -128,7 +180,7 @@ class RealtimeService {
   };
 
   public reconnectAll() {
-    console.log('[RealtimeService] Reconnecting all channels');
+    console.log('[RealtimeService] Manually reconnecting all channels');
     this.connectionMonitor.reconnectAll();
   }
   
@@ -138,6 +190,16 @@ class RealtimeService {
     this.connectionMonitor.stop();
     this.subscriptionManager.cleanupAll();
     this.isInitialized = false;
+    
+    if (this.visibilityChangeTimeout) {
+      clearTimeout(this.visibilityChangeTimeout);
+      this.visibilityChangeTimeout = null;
+    }
+    
+    if (this.networkStateChangeTimeout) {
+      clearTimeout(this.networkStateChangeTimeout);
+      this.networkStateChangeTimeout = null;
+    }
   }
   
   // Method to check if realtime service is connected

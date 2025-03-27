@@ -4,7 +4,8 @@ import {
   RETRY_MAX, 
   RETRY_DELAY_BASE, 
   CONNECTION_TIMEOUT, 
-  HEALTH_CHECK_INTERVAL 
+  HEALTH_CHECK_INTERVAL,
+  CONNECTION_STATUS_DEBOUNCE_TIME
 } from './constants';
 
 export class ConnectionMonitor {
@@ -12,6 +13,8 @@ export class ConnectionMonitor {
   private retrySubscription: (key: string) => void;
   private updateConnectionStatus: (connected: boolean) => void;
   private isReconnecting: boolean = false;
+  private lastConnectionStatusChange: number = 0;
+  private globalConnectionState: boolean = false;
   
   constructor(
     retrySubscription: (key: string) => void,
@@ -77,29 +80,50 @@ export class ConnectionMonitor {
       }
     }
     
-    // If no active connections or we found stale ones, update global status
-    if (!hasActiveConnection || hasStaleConnection) {
-      this.updateConnectionStatus(false);
+    // Debounce connection status changes to prevent UI flashing
+    if (now - this.lastConnectionStatusChange > CONNECTION_STATUS_DEBOUNCE_TIME) {
+      const newConnectionState = hasActiveConnection && !hasStaleConnection;
       
-      // If we don't have any working connections, try to reconnect all
-      if (!hasActiveConnection) {
-        console.log('[ConnectionMonitor] No active connections, attempting global reconnect');
-        try {
-          this.isReconnecting = true;
-          subscriptionRegistry.reconnectAll();
-          
-          // Give some time for reconnection to complete
-          setTimeout(() => {
-            this.isReconnecting = false;
-          }, RETRY_DELAY_BASE);
-        } catch (error) {
-          console.error('[ConnectionMonitor] Error during global reconnect:', error);
-          this.isReconnecting = false;
+      if (newConnectionState !== this.globalConnectionState) {
+        this.globalConnectionState = newConnectionState;
+        this.lastConnectionStatusChange = now;
+        this.updateConnectionStatus(newConnectionState);
+        
+        // If we don't have any working connections, try to reconnect all
+        if (!newConnectionState) {
+          console.log('[ConnectionMonitor] No active connections, attempting global reconnect');
+          this.attemptGlobalReconnection();
         }
       }
-    } else {
-      // We have active, non-stale connections
-      this.updateConnectionStatus(true);
+    }
+  }
+  
+  private attemptGlobalReconnection() {
+    try {
+      this.isReconnecting = true;
+      // Emit status change immediately to update UI
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, false);
+      
+      console.log('[ConnectionMonitor] Starting global reconnection process');
+      subscriptionRegistry.reconnectAll();
+      
+      // Give some time for reconnection to complete
+      setTimeout(() => {
+        this.isReconnecting = false;
+        
+        // Final check after reconnection attempt
+        const statuses = subscriptionRegistry.getAllStatuses();
+        const hasActiveConnection = Object.values(statuses).some(status => status.connected);
+        
+        this.globalConnectionState = hasActiveConnection;
+        this.lastConnectionStatusChange = Date.now();
+        this.updateConnectionStatus(hasActiveConnection);
+        
+        console.log(`[ConnectionMonitor] Global reconnection finished, success: ${hasActiveConnection}`);
+      }, RETRY_DELAY_BASE * 2);
+    } catch (error) {
+      console.error('[ConnectionMonitor] Error during global reconnect:', error);
+      this.isReconnecting = false;
     }
   }
   
@@ -107,7 +131,11 @@ export class ConnectionMonitor {
     if (!status) return;
     
     status.retryCount++;
-    const delay = RETRY_DELAY_BASE * Math.pow(1.5, status.retryCount - 1);
+    // Implement exponential backoff for retries
+    const delay = Math.min(
+      RETRY_DELAY_BASE * Math.pow(1.5, status.retryCount - 1),
+      RETRY_DELAY_BASE * 10 // Cap maximum delay
+    );
     
     console.log(`[ConnectionMonitor] Retry ${status.retryCount}/${RETRY_MAX} for ${key} in ${delay}ms`);
     
@@ -129,24 +157,6 @@ export class ConnectionMonitor {
     }
     
     console.log('[ConnectionMonitor] Forcing reconnection of all subscriptions');
-    this.isReconnecting = true;
-    
-    try {
-      this.updateConnectionStatus(false);
-      subscriptionRegistry.reconnectAll();
-      
-      // Give some time for reconnection to complete
-      setTimeout(() => {
-        this.isReconnecting = false;
-        
-        // Check if reconnection was successful
-        const statuses = subscriptionRegistry.getAllStatuses();
-        let hasActiveConnection = Object.values(statuses).some(status => status.connected);
-        this.updateConnectionStatus(hasActiveConnection);
-      }, RETRY_DELAY_BASE * 2);
-    } catch (error) {
-      console.error('[ConnectionMonitor] Error during forced reconnect:', error);
-      this.isReconnecting = false;
-    }
+    this.attemptGlobalReconnection();
   }
 }

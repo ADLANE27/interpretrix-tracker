@@ -2,12 +2,14 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionStatus, createSubscriptionStatus } from './types';
+import { RECONNECT_STAGGER_INTERVAL, RECONNECT_STAGGER_MAX_DELAY } from './constants';
 
 /**
  * Registry to manage and track all active subscriptions
  */
 export class SubscriptionRegistry {
   private subscriptionStatuses: Record<string, SubscriptionStatus> = {};
+  private reconnectInProgress: boolean = false;
   
   /**
    * Register a new subscription in the registry
@@ -61,27 +63,81 @@ export class SubscriptionRegistry {
   }
   
   /**
-   * Reconnect all registered subscriptions
+   * Reconnect all registered subscriptions with staggered timing
    */
   public reconnectAll(): void {
+    if (this.reconnectInProgress) {
+      console.log('[RealtimeService] Reconnection already in progress, skipping');
+      return;
+    }
+    
+    this.reconnectInProgress = true;
     const keys = Object.keys(this.subscriptionStatuses);
-    console.log(`[RealtimeService] Attempting to reconnect ${keys.length} subscriptions`);
+    
+    if (keys.length === 0) {
+      console.log('[RealtimeService] No subscriptions to reconnect');
+      this.reconnectInProgress = false;
+      return;
+    }
+    
+    console.log(`[RealtimeService] Attempting to reconnect ${keys.length} subscriptions with staggered timing`);
+    
+    // First, mark all subscriptions as disconnected
+    keys.forEach(key => {
+      const status = this.subscriptionStatuses[key];
+      if (status) {
+        status.connected = false;
+      }
+    });
+    
+    // Then reconnect with staggered timing to avoid overwhelming the server
+    let reconnectedCount = 0;
     
     keys.forEach((key, index) => {
       const status = this.subscriptionStatuses[key];
-      if (status.channelRef) {
-        try {
-          // Stagger reconnection attempts to avoid overwhelming the server
-          setTimeout(() => {
+      const delay = Math.min(
+        index * RECONNECT_STAGGER_INTERVAL, 
+        RECONNECT_STAGGER_MAX_DELAY
+      );
+      
+      setTimeout(() => {
+        if (status && status.channelRef) {
+          try {
             console.log(`[RealtimeService] Reconnecting ${key}`);
-            if (status.channelRef && status.channelRef.state !== 'joined') {
-              status.channelRef.subscribe();
+            
+            // Check if channel is in a state that needs reconnection
+            if (status.channelRef.state !== 'joined') {
+              // Remove the old channel and create a new subscription if it's in a bad state
+              try {
+                // Just attempt to reconnect first
+                status.channelRef.subscribe((status) => {
+                  console.log(`[RealtimeService] Resubscription status for ${key}: ${status}`);
+                  if (status === 'SUBSCRIBED') {
+                    this.updateStatus(key, true, status.channelRef);
+                  }
+                });
+              } catch (error) {
+                console.error(`[RealtimeService] Error during resubscription for ${key}:`, error);
+              }
+            } else {
+              console.log(`[RealtimeService] Channel ${key} is already joined, skipping reconnection`);
+              this.updateStatus(key, true);
             }
-          }, index * 300); // Stagger by 300ms per subscription
-        } catch (error) {
-          console.error(`[RealtimeService] Error reconnecting ${key}:`, error);
+          } catch (error) {
+            console.error(`[RealtimeService] Error reconnecting ${key}:`, error);
+          }
         }
-      }
+        
+        reconnectedCount++;
+        
+        // When all reconnections have been attempted, reset the flag
+        if (reconnectedCount >= keys.length) {
+          setTimeout(() => {
+            this.reconnectInProgress = false;
+            console.log('[RealtimeService] Reconnection process completed');
+          }, 1000); // Give a second for connections to establish
+        }
+      }, delay);
     });
   }
   
@@ -129,6 +185,13 @@ export class SubscriptionRegistry {
    */
   public getTotalCount(): number {
     return Object.keys(this.subscriptionStatuses).length;
+  }
+  
+  /**
+   * Is reconnection in progress
+   */
+  public isReconnecting(): boolean {
+    return this.reconnectInProgress;
   }
 }
 
