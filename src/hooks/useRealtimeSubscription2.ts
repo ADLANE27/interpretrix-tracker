@@ -34,6 +34,7 @@ export function useRealtimeSubscription2(
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
+        // Add a type assertion to resolve the TypeScript error
         'postgres_changes' as any, 
         {
           event: opt.event,

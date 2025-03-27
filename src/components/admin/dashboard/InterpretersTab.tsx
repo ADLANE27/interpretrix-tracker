@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +9,7 @@ import { StatisticsCards } from "@/components/admin/dashboard/StatisticsCards";
 import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface WorkHours {
   start_morning?: string;
@@ -107,12 +107,14 @@ export const InterpretersTab: React.FC = () => {
     });
     channels.push(reservationsChannel);
     
-    // Listen for interpreter status update events from useMissionUpdates
+    // Listen for interpreter status update events from the event emitter
     const handleStatusUpdate = () => {
       console.log("[InterpretersTab] Received interpreter status update event");
       fetchInterpreters();
     };
-    window.addEventListener('interpreter-status-update', handleStatusUpdate);
+    
+    // Use mitt event emitter instead of window event listener
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -139,7 +141,10 @@ export const InterpretersTab: React.FC = () => {
         supabase.removeChannel(channel);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
+      
+      // Clean up mitt event listener instead of window event listener
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+      
       clearInterval(connectionCheckInterval);
     };
   }, []);

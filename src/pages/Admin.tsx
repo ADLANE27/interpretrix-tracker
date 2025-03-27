@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -16,8 +17,9 @@ const Admin = () => {
   useMissionUpdates(() => {
     // Reset connection error state on successful updates
     if (connectionError) setConnectionError(false);
-    // Dispatch a custom event that the AdminDashboard will listen for
-    window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+    
+    // Emit event using mitt instead of DOM CustomEvent
+    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
   });
 
   // Handle connection status
