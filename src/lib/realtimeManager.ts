@@ -18,7 +18,7 @@ export interface SubscriptionOptions {
 }
 
 // Cache to track enabled tables
-const enabledTablesCache = new Set<string>();
+export const enabledTablesCache = new Set<string>();
 // Cache to track active channels for deduplication
 const activeChannels = new Map<string, {
   channel: RealtimeChannel;
@@ -66,7 +66,7 @@ export const subscribeToTable = async (
   config: SubscriptionConfig,
   callback: (payload: any) => void,
   options: SubscriptionOptions = {}
-): Promise<() => void> {
+): Promise<() => void> => {
   const { 
     enabled = true, 
     debounceTime = 0,
