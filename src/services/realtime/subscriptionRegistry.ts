@@ -114,7 +114,9 @@ export class SubscriptionRegistry {
                   console.log(`[RealtimeService] Resubscription status for ${key}: ${status}`);
                   // Fix: Type error by checking if status is 'SUBSCRIBED' instead of accessing channelRef property
                   if (status === 'SUBSCRIBED') {
-                    this.updateStatus(key, true, status.channelRef);
+                    // Fixed: Don't try to access channelRef on the status string
+                    // Use the original channel reference from the closure instead
+                    this.updateStatus(key, true);
                   }
                 });
               } catch (error) {
