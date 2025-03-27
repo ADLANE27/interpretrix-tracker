@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { Profile } from '@/types/profile';
@@ -9,6 +9,7 @@ interface UseRealtimeStatusOptions {
   interpreterId?: string;
   onStatusChange?: (status: Profile['status']) => void;
   initialStatus?: Profile['status'];
+  onConnectionStateChange?: (connected: boolean) => void;
 }
 
 /**
@@ -17,10 +18,12 @@ interface UseRealtimeStatusOptions {
 export const useRealtimeStatus = ({
   interpreterId,
   onStatusChange,
-  initialStatus = 'available'
+  initialStatus = 'available',
+  onConnectionStateChange
 }: UseRealtimeStatusOptions = {}) => {
   const [status, setStatus] = useState<Profile['status']>(initialStatus);
   const [isConnected, setIsConnected] = useState(true);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   
   // Initialize the realtime service once
   useEffect(() => {
@@ -32,6 +35,10 @@ export const useRealtimeStatus = ({
   useEffect(() => {
     const handleConnectionChange = (connected: boolean) => {
       setIsConnected(connected);
+      
+      if (onConnectionStateChange) {
+        onConnectionStateChange(connected);
+      }
     };
     
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
@@ -39,7 +46,7 @@ export const useRealtimeStatus = ({
     return () => {
       eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
     };
-  }, []);
+  }, [onConnectionStateChange]);
   
   // Subscribe to status events for a specific interpreter
   useEffect(() => {
@@ -48,6 +55,8 @@ export const useRealtimeStatus = ({
     const handleStatusUpdate = ({ interpreterId: eventInterpreterId, status: newStatus }: { interpreterId: string, status: string }) => {
       if (eventInterpreterId === interpreterId) {
         setStatus(newStatus as Profile['status']);
+        setLastUpdateTime(new Date());
+        
         if (onStatusChange) {
           onStatusChange(newStatus as Profile['status']);
         }
@@ -60,6 +69,8 @@ export const useRealtimeStatus = ({
     // Subscribe to real-time database updates
     const handleStatusChange = (newStatus: Profile['status']) => {
       setStatus(newStatus);
+      setLastUpdateTime(new Date());
+      
       if (onStatusChange) {
         onStatusChange(newStatus);
       }
@@ -73,10 +84,46 @@ export const useRealtimeStatus = ({
     };
   }, [interpreterId, onStatusChange]);
   
+  // Refresh status if connection is restored
+  useEffect(() => {
+    if (!interpreterId) return;
+    
+    let timeoutId: NodeJS.Timeout;
+    
+    if (isConnected && lastUpdateTime === null) {
+      // If we're connected but haven't received an update, refresh the status
+      timeoutId = setTimeout(async () => {
+        try {
+          // Fetch the current status directly
+          const { data, error } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', interpreterId)
+            .single();
+          
+          if (!error && data) {
+            setStatus(data.status as Profile['status']);
+            setLastUpdateTime(new Date());
+            
+            if (onStatusChange) {
+              onStatusChange(data.status as Profile['status']);
+            }
+          }
+        } catch (error) {
+          console.error('[useRealtimeStatus] Error fetching status:', error);
+        }
+      }, 2000);
+    }
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [interpreterId, isConnected, lastUpdateTime, onStatusChange]);
+  
   /**
    * Update an interpreter's status
    */
-  const updateStatus = async (newStatus: Profile['status']): Promise<boolean> => {
+  const updateStatus = useCallback(async (newStatus: Profile['status']): Promise<boolean> => {
     if (!interpreterId) return false;
     
     try {
@@ -89,11 +136,14 @@ export const useRealtimeStatus = ({
       });
       
       if (error) {
-        console.error('Error updating status:', error);
+        console.error('[useRealtimeStatus] Error updating status:', error);
         // Revert on error
         setStatus(status);
         return false;
       }
+      
+      // Update last update time
+      setLastUpdateTime(new Date());
       
       // Broadcast status change for other components 
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
@@ -103,16 +153,17 @@ export const useRealtimeStatus = ({
       
       return true;
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('[useRealtimeStatus] Unexpected error:', error);
       // Revert on error
       setStatus(status);
       return false;
     }
-  };
+  }, [interpreterId, status]);
   
   return {
     status,
     updateStatus,
-    isConnected
+    isConnected,
+    lastUpdateTime
   };
 };

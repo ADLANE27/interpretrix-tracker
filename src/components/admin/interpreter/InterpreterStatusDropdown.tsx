@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -12,6 +12,8 @@ import { Status } from "./types/status-types";
 import { statusConfig } from "./config/status-config";
 import { useStatusDropdown } from "./hooks/useStatusDropdown";
 import { StatusTrigger } from "./StatusTrigger";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertCircle } from "lucide-react";
 
 interface InterpreterStatusDropdownProps {
   interpreterId: string;
@@ -35,21 +37,77 @@ export const InterpreterStatusDropdown = ({
     pendingStatus,
     isConfirmDialogOpen,
     isUpdating,
+    isConnected,
     handleStatusSelect,
     handleConfirm,
-    handleCancel
+    handleCancel,
+    retryConnection
   } = useStatusDropdown(interpreterId, currentStatus, onStatusChange);
+
+  const [hasConnectionError, setHasConnectionError] = useState(false);
+  
+  // Track ongoing connection issues
+  useEffect(() => {
+    if (!isConnected) {
+      // Only show error after a short delay to avoid flickering during reconnection attempts
+      const timer = setTimeout(() => {
+        setHasConnectionError(true);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setHasConnectionError(false);
+    }
+  }, [isConnected]);
+  
+  // Force a connection retry if needed
+  const handleForceRetry = () => {
+    retryConnection();
+  };
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild>
-          <StatusTrigger 
-            displayFormat={displayFormat}
-            statusConfig={statusConfig[localStatus]}
-            status={localStatus}
-            className={className}
-          />
+      <DropdownMenu open={isConnected && isOpen} onOpenChange={isConnected ? setIsOpen : undefined}>
+        <DropdownMenuTrigger asChild disabled={!isConnected || isUpdating}>
+          <div>
+            {hasConnectionError ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative inline-block">
+                    <StatusTrigger 
+                      displayFormat={displayFormat}
+                      statusConfig={statusConfig[localStatus]}
+                      status={localStatus}
+                      className={className}
+                      disabled={!isConnected || isUpdating}
+                      isConnected={isConnected}
+                      onClick={handleForceRetry}
+                    />
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="bg-red-50 border-red-200 text-red-800">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Problème de connexion</span>
+                  </div>
+                  <p className="text-xs mt-1">Cliquez pour réessayer</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <StatusTrigger 
+                displayFormat={displayFormat}
+                statusConfig={statusConfig[localStatus]}
+                status={localStatus}
+                className={className}
+                disabled={!isConnected || isUpdating}
+                isConnected={isConnected}
+              />
+            )}
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[180px]">
           {Object.entries(statusConfig).map(([status, config]) => {

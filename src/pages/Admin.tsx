@@ -5,15 +5,17 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { realtimeService } from '@/services/realtimeService';
+import { Button } from '@/components/ui/button';
+import { Loader2, RefreshCw, WifiOff } from 'lucide-react';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
   const [reconnectingFor, setReconnectingFor] = useState(0);
+  const [isForceReconnecting, setIsForceReconnecting] = useState(false);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectStartTimeRef = useRef<number | null>(null);
@@ -32,10 +34,10 @@ const Admin = () => {
         // Connection is back, reset error state
         if (connectionError) {
           setConnectionError(false);
+          setIsForceReconnecting(false);
           toast({
             title: "Connexion rétablie",
             description: "La connexion temps réel a été rétablie",
-            variant: "success",
           });
         }
         reconnectAttemptRef.current = 0;
@@ -72,6 +74,12 @@ const Admin = () => {
     };
     
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
+    
+    // Initial connection check
+    setTimeout(() => {
+      const isConnected = realtimeService.isConnected();
+      handleConnectionStatusChange(isConnected);
+    }, 3000);
     
     return () => {
       eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
@@ -143,11 +151,26 @@ const Admin = () => {
   // Manual force reconnect handler
   const handleForceReconnect = () => {
     console.log('[Admin] Manual reconnection requested');
+    setIsForceReconnecting(true);
+    
+    // Reset timers for tracking reconnection time
+    if (reconnectStartTimeRef.current) {
+      reconnectStartTimeRef.current = Date.now();
+      setReconnectingFor(0);
+    }
+    
+    // Attempt full service reconnection
     realtimeService.reconnectAll();
+    
     toast({
       title: "Reconnexion initiée",
       description: "Tentative de reconnexion en cours...",
     });
+    
+    // Reset force reconnecting state after a timeout
+    setTimeout(() => {
+      setIsForceReconnecting(false);
+    }, 8000);
   };
 
   return (
@@ -155,16 +178,36 @@ const Admin = () => {
       {connectionError && (
         <div className="fixed top-4 right-4 bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded-md shadow-lg z-50 flex flex-col">
           <div className="flex items-center justify-between">
-            <span className="font-medium">Reconnexion en cours...</span>
-            <span className="text-xs ml-2">({reconnectingFor}s)</span>
+            <div className="flex items-center">
+              {isForceReconnecting ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : (
+                <WifiOff className="h-4 w-4 mr-2" />
+              )}
+              <span className="font-medium">Reconnexion en cours...</span>
+            </div>
+            <span className="text-xs ml-2 bg-amber-200 px-1.5 py-0.5 rounded-full">{reconnectingFor}s</span>
           </div>
-          {reconnectingFor > 15 && (
-            <button 
+          {reconnectingFor > 10 && !isForceReconnecting && (
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={handleForceReconnect}
-              className="mt-2 text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 px-2 py-1 rounded transition-colors"
+              className="mt-2 text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 border-amber-300"
+              disabled={isForceReconnecting}
             >
-              Forcer la reconnexion
-            </button>
+              {isForceReconnecting ? (
+                <>
+                  <Loader2 className="animate-spin h-3 w-3 mr-1" />
+                  Reconnexion...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Forcer la reconnexion
+                </>
+              )}
+            </Button>
           )}
         </div>
       )}
