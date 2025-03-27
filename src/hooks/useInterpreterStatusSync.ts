@@ -1,7 +1,6 @@
-
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
 import { Profile } from '@/types/profile';
 
 interface UseInterpreterStatusSyncOptions {
@@ -49,6 +48,12 @@ export const useInterpreterStatusSync = ({
           const newStatus = payload.new.status as Profile['status'];
           console.log(`[useInterpreterStatusSync] Triggering status change to ${newStatus}`);
           onStatusChange(newStatus);
+          
+          // Emit a badge update event
+          eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+            interpreterId: interpreterId,
+            status: newStatus
+          });
         }
       })
       .subscribe(status => {
@@ -136,8 +141,14 @@ export const useInterpreterStatusSync = ({
         return false;
       }
       
-      console.log(`[useInterpreterStatusSync] Status updated successfully, emitting event`);
+      console.log(`[useInterpreterStatusSync] Status updated successfully, emitting events`);
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      
+      // Also emit a specific badge update event
+      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+        interpreterId: interpreterId,
+        status: newStatus
+      });
       
       // Verify the update after a delay
       statusUpdateTimeoutRef.current = setTimeout(async () => {

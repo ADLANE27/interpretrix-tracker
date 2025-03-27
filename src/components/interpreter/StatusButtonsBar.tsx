@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -7,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types/profile';
 import { useInterpreterStatusSync } from '@/hooks/useInterpreterStatusSync';
+import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
 
 type Status = Profile['status'];
 
@@ -29,7 +29,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const lastUpdateRef = useRef<string | null>(null);
 
-  // Get the status sync hook
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: interpreterId || '',
     onStatusChange: (newStatus) => {
@@ -41,12 +40,10 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     initialStatus: currentStatus
   });
 
-  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       const updateId = `${currentStatus}-${Date.now()}`;
       
-      // Prevent duplicate updates
       if (updateId === lastUpdateRef.current) return;
       lastUpdateRef.current = updateId;
       
@@ -93,26 +90,27 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
-      // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Use the status sync hook to update
       const success = await updateStatus(newStatus);
       
       if (!success) {
         console.error('[StatusButtonsBar] Failed to update status');
-        setLocalStatus(currentStatus); // Revert on error
+        setLocalStatus(currentStatus);
         throw new Error('Failed to update status');
       }
       
-      // Call the parent handler if provided
+      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+        interpreterId: interpreterId,
+        status: newStatus
+      });
+      
       if (onStatusChange) {
         await onStatusChange(newStatus);
       }
       
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
-      // Show success toast
       toast({
         title: "Statut mis à jour",
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
@@ -120,10 +118,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       
-      // Revert to previous status on error
       setLocalStatus(currentStatus);
       
-      // Show error toast
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",

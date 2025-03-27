@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -9,7 +8,7 @@ import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from "@/lib/events";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from "@/lib/events";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -69,7 +68,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
 
   useEffect(() => {
     const handleExternalStatusUpdate = async () => {
-      // Using timeout to prevent excessive re-renders
       setTimeout(() => {
         console.log(`[InterpreterListItem] External status update event received for ${interpreter.id}`);
         if (interpreter.status !== interpreterStatus) {
@@ -78,29 +76,39 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
       }, 100);
     };
 
+    const handleBadgeUpdate = (data: {interpreterId: string, status: string}) => {
+      if (data.interpreterId === interpreter.id && data.status !== interpreterStatus) {
+        console.log(`[InterpreterListItem] Badge update event received for ${interpreter.id}:`, data.status);
+        setInterpreterStatus(data.status as Profile['status']);
+      }
+    };
+
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+    eventEmitter.on(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
     
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+      eventEmitter.off(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
     };
   }, [interpreter.id, interpreter.status, interpreterStatus]);
 
   const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
     
-    // Update local state immediately for UI responsiveness
     setInterpreterStatus(newStatus);
     
-    // Call parent callback if provided
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
     }
     
-    // Update status in database through our hook
     const success = await updateStatus(newStatus);
     
-    if (!success) {
-      // Revert on failure
+    if (success) {
+      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+        interpreterId: interpreter.id,
+        status: newStatus
+      });
+    } else {
       setInterpreterStatus(interpreter.status);
       toast({
         title: "Erreur",

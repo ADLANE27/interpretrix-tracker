@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +6,7 @@ import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
+import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE } from "@/lib/events";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -22,7 +22,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Use our custom hook for status sync
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: userId || '',
     onStatusChange: (newStatus) => {
@@ -32,7 +31,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     initialStatus: status
   });
 
-  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
@@ -40,7 +38,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     }
   }, [currentStatus, status]);
 
-  // Get current user ID
   useEffect(() => {
     const getCurrentUserId = async () => {
       try {
@@ -93,17 +90,20 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
-      // Optimistically update local state
       setStatus(newStatus);
       
-      // Use our custom hook to update status
       const success = await updateStatus(newStatus);
       
       if (!success) {
         console.error('[StatusManager] Failed to update status');
-        setStatus(status); // Revert on error
+        setStatus(status);
         throw new Error('Failed to update status');
       }
+
+      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+        interpreterId: userId,
+        status: newStatus
+      });
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
