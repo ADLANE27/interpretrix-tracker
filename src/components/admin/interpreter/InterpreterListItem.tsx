@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -7,6 +8,8 @@ import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from "@/lib/events";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -47,6 +50,15 @@ const workLocationConfig = {
 export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
+  const { updateStatus } = useInterpreterStatusSync({
+    interpreterId: interpreter.id,
+    onStatusChange: (newStatus) => {
+      console.log(`[InterpreterListItem] Status sync changed for ${interpreter.id}:`, newStatus);
+      setInterpreterStatus(newStatus);
+    },
+    initialStatus: interpreter.status,
+    isAdmin: true
+  });
 
   useEffect(() => {
     if (interpreter.status !== interpreterStatus) {
@@ -55,11 +67,46 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
-  const handleStatusChange = (newStatus: Profile['status']) => {
+  useEffect(() => {
+    const handleExternalStatusUpdate = async () => {
+      // Using timeout to prevent excessive re-renders
+      setTimeout(() => {
+        console.log(`[InterpreterListItem] External status update event received for ${interpreter.id}`);
+        if (interpreter.status !== interpreterStatus) {
+          setInterpreterStatus(interpreter.status);
+        }
+      }, 100);
+    };
+
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
+    };
+  }, [interpreter.id, interpreter.status, interpreterStatus]);
+
+  const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
+    
+    // Update local state immediately for UI responsiveness
     setInterpreterStatus(newStatus);
+    
+    // Call parent callback if provided
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
+    }
+    
+    // Update status in database through our hook
+    const success = await updateStatus(newStatus);
+    
+    if (!success) {
+      // Revert on failure
+      setInterpreterStatus(interpreter.status);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
+        variant: "destructive",
+      });
     }
   };
 

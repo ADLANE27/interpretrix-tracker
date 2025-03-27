@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -23,11 +23,12 @@ const Admin = () => {
     if (connectionError) {
       setConnectionError(false);
       console.log('[Admin] Connection restored via mission updates');
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
     }
     reconnectAttemptRef.current = 0;
     lastSuccessfulConnectionRef.current = Date.now();
     
-    // Emit event using mitt instead of DOM CustomEvent
+    // Emit event using mitt
     eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
   });
 
@@ -47,6 +48,7 @@ const Admin = () => {
         if (!connectionError && reconnectAttemptRef.current >= 1) {
           console.log('[Admin] Connection issue detected, showing reconnection message');
           setConnectionError(true);
+          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, false);
         }
         
         // Try to reconnect by subscribing to a health check channel
@@ -58,6 +60,7 @@ const Admin = () => {
           if (status === 'SUBSCRIBED') {
             console.log('[Admin] Successfully reconnected');
             setConnectionError(false);
+            eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
             reconnectAttemptRef.current = 0;
             lastSuccessfulConnectionRef.current = Date.now();
             supabase.removeChannel(healthChannel);
@@ -68,6 +71,7 @@ const Admin = () => {
       } else if (connected && connectionError) {
         console.log('[Admin] Connection restored via channel check');
         setConnectionError(false);
+        eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
         reconnectAttemptRef.current = 0;
         lastSuccessfulConnectionRef.current = Date.now();
       }
