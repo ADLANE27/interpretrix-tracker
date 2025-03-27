@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { MentionSuggestions } from './MentionSuggestions';
 import { supabase } from "@/integrations/supabase/client";
+import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number>(0);
+  const { formatMessage } = useMessageFormatter();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -183,17 +185,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
       
-      const normalizeString = (str: string) => {
-        return str.toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-z0-9]/g, "");
-      };
-      
       const filteredSuggestions = searchTerm 
         ? combinedSuggestions.filter(suggestion => {
-            const normalizedName = normalizeString(suggestion.name);
-            const normalizedSearch = normalizeString(searchTerm);
+            const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return normalizedName.includes(normalizedSearch);
           })
         : combinedSuggestions;
@@ -215,7 +210,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const textBeforeMention = message.substring(0, mentionStartIndex);
     const textAfterCursor = message.substring(cursorPos);
     
-    const insertText = `@${(suggestion as MemberSuggestion).name} `;
+    let insertText = '';
+    
+    if ('type' in suggestion && suggestion.type === 'language') {
+      insertText = `@${suggestion.name} `;
+    } else {
+      insertText = `@${suggestion.name} `;
+    }
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;
     setMessage(newMessage);
@@ -283,6 +284,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
+                  
+                  const formattedMessage = formatMessage(message);
+                  setMessage(formattedMessage);
+                  
                   onSendMessage();
                 }
               }}
@@ -370,7 +375,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               size="icon"
               className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
-              onClick={onSendMessage}
+              onClick={() => {
+                const formattedMessage = formatMessage(message);
+                setMessage(formattedMessage);
+                onSendMessage();
+              }}
             >
               <Send className="h-4 w-4" />
             </Button>

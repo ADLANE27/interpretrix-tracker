@@ -1,4 +1,5 @@
-import { Message as MessageType } from '@/types/messaging';
+
+import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
   id: string;
@@ -67,6 +68,7 @@ export interface MessageListProps {
   channelId: string;
 }
 
+// Add dedicated mention interfaces
 export interface MemberSuggestion {
   id: string;
   name: string;
@@ -75,4 +77,9 @@ export interface MemberSuggestion {
   avatarUrl?: string;
 }
 
-export type Suggestion = MemberSuggestion;
+export interface LanguageSuggestion {
+  name: string;
+  type: 'language';
+}
+
+export type Suggestion = MemberSuggestion | LanguageSuggestion;
