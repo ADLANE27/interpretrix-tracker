@@ -1,7 +1,7 @@
 
 import { EventDebouncer } from './eventDebouncer';
 import { Profile } from '@/types/profile';
-import { subscriptionRegistry } from './subscriptionRegistry';
+import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
 import { createTableSubscription } from './tableSubscriptions';
 
