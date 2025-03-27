@@ -112,8 +112,9 @@ export class SubscriptionRegistry {
                 // Just attempt to reconnect first
                 status.channelRef.subscribe((status) => {
                   console.log(`[RealtimeService] Resubscription status for ${key}: ${status}`);
+                  // Fixed this line: don't access channelRef property on status, use the existing channel reference
                   if (status === 'SUBSCRIBED') {
-                    this.updateStatus(key, true, status.channelRef);
+                    this.updateStatus(key, true);
                   }
                 });
               } catch (error) {

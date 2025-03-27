@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -35,7 +34,7 @@ const Admin = () => {
           toast({
             title: "Connexion rétablie",
             description: "La connexion temps réel a été rétablie",
-            variant: "success",
+            variant: "default",
           });
         }
         reconnectAttemptRef.current = 0;
