@@ -1,4 +1,3 @@
-
 import React, { Fragment, useRef, useEffect, useState } from 'react';
 import { MessageListProps, Message } from '@/types/messaging';
 import { Textarea } from "@/components/ui/textarea";
@@ -40,21 +39,18 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [replyText, setReplyText] = useState<string>('');
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
   
-  // Scroll to bottom on mount or when messages change
   useEffect(() => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Scroll to bottom when replying
   useEffect(() => {
     if (replyingToMessage && messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [replyingToMessage]);
 
-  // Group messages by date
   const groupedMessages: { [key: string]: Message[] } = {};
   
   messages.forEach(message => {
@@ -121,7 +117,6 @@ export const MessageList: React.FC<MessageListProps> = ({
             const hasReplies = messages.some(m => m.parent_message_id === message.id);
             const replyCount = messages.filter(m => m.parent_message_id === message.id).length;
             
-            // Find parent message if this is a reply
             const parentMessage = message.parent_message_id 
               ? messages.find(m => m.id === message.parent_message_id) 
               : null;
@@ -158,7 +153,13 @@ export const MessageList: React.FC<MessageListProps> = ({
                       {message.attachments && message.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                           {message.attachments.map((attachment, index) => (
-                            <MessageAttachment key={index} attachment={attachment} />
+                            <MessageAttachment 
+                              key={index}
+                              url={attachment.url}
+                              filename={attachment.filename}
+                              type={attachment.type}
+                              size={attachment.size}
+                            />
                           ))}
                         </div>
                       )}
