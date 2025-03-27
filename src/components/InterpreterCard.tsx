@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -127,9 +128,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 {lastName}
               </h3>
               {firstName && (
-                <span className="text-sm text-muted-foreground truncate">
+                <h3 className="text-base text-gradient-primary leading-tight truncate">
                   {firstName}
-                </span>
+                </h3>
               )}
             </div>
           </div>

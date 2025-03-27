@@ -1,4 +1,3 @@
-
 import React from "react";
 import InterpreterCard from "@/components/InterpreterCard";
 import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterListItem";
@@ -38,28 +37,16 @@ interface Interpreter {
 
 interface InterpretersListProps {
   interpreters: Interpreter[];
-  viewMode: "grid" | "list";
   onStatusChange: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
 export const InterpretersList: React.FC<InterpretersListProps> = ({
   interpreters,
-  viewMode,
   onStatusChange,
 }) => {
-  // Ajout d'un log pour vérifier les données des tarifs
-  console.log("[InterpretersList] Rendering interpreters with tarifs:", 
-    interpreters.map(i => ({ 
-      id: i.id, 
-      name: `${i.first_name} ${i.last_name}`, 
-      tarif_5min: i.tarif_5min, 
-      tarif_15min: i.tarif_15min 
-    }))
-  );
-  
   return (
-    <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" : "space-y-2"}>
-      {interpreters.map(interpreter => viewMode === "grid" ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      {interpreters.map(interpreter => (
         <div key={interpreter.id} className="h-auto">
           <InterpreterCard 
             interpreter={{
@@ -85,27 +72,6 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
             onStatusChange={onStatusChange}
           />
         </div>
-      ) : (
-        <InterpreterListItem 
-          key={interpreter.id} 
-          interpreter={{
-            id: interpreter.id,
-            name: `${interpreter.first_name} ${interpreter.last_name}`,
-            status: interpreter.status || "unavailable",
-            employment_status: interpreter.employment_status,
-            languages: interpreter.languages,
-            next_mission_start: interpreter.next_mission_start,
-            next_mission_duration: interpreter.next_mission_duration,
-            work_location: interpreter.work_location as WorkLocation,
-            phone_number: interpreter.phone_number,
-            booth_number: interpreter.booth_number,
-            private_phone: interpreter.private_phone,
-            professional_phone: interpreter.professional_phone,
-            landline_phone: interpreter.landline_phone,
-            work_hours: interpreter.work_hours
-          }}
-          onStatusChange={onStatusChange}
-        />
       ))}
     </div>
   );
