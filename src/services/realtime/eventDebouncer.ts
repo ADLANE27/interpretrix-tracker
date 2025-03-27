@@ -43,7 +43,7 @@ export class EventDebouncer {
   public shouldProcessEvent(eventKey: string, now: number): boolean {
     // Special handling for status updates to make them nearly instant
     const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
-                          (eventKey.includes('status') || eventKey.includes('STATUS'));
+                          eventKey.includes('status');
                           
     // Zero cooldown for status updates for immediate processing
     const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
@@ -66,7 +66,7 @@ export class EventDebouncer {
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
     // Zero timeout for status updates for immediate updates
-    const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
+    const isStatusUpdate = debounceKey.includes('status');
     const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
     
     // Clear existing timer for this key if it exists

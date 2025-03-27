@@ -8,7 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { MentionSuggestions } from './MentionSuggestions';
 import { supabase } from "@/integrations/supabase/client";
-import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
 
@@ -46,7 +45,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number>(0);
-  const { formatMessage } = useMessageFormatter();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -210,13 +208,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const textBeforeMention = message.substring(0, mentionStartIndex);
     const textAfterCursor = message.substring(cursorPos);
     
-    let insertText = '';
-    
-    if ('type' in suggestion && suggestion.type === 'language') {
-      insertText = `@${suggestion.name} `;
-    } else {
-      insertText = `@${suggestion.name} `;
-    }
+    const insertText = `@${(suggestion as MemberSuggestion).name} `;
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;
     setMessage(newMessage);
@@ -284,10 +276,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  
-                  const formattedMessage = formatMessage(message);
-                  setMessage(formattedMessage);
-                  
                   onSendMessage();
                 }
               }}
@@ -375,11 +363,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               size="icon"
               className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
-              onClick={() => {
-                const formattedMessage = formatMessage(message);
-                setMessage(formattedMessage);
-                onSendMessage();
-              }}
+              onClick={onSendMessage}
             >
               <Send className="h-4 w-4" />
             </Button>
