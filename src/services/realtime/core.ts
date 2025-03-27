@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
@@ -196,7 +195,7 @@ class RealtimeService {
       return false;
     }
     
-    return this.connectionMonitor.isConnected();
+    return this.connectionMonitor.getConnectionStatus();
   }
   
   /**
