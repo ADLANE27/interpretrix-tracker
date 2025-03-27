@@ -92,6 +92,15 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
+  // Log tarif values to debug
+  console.log(`[InterpreterCard] ${interpreter.name} tarifs:`, {
+    tarif_5min: interpreter.tarif_5min,
+    tarif_15min: interpreter.tarif_15min,
+    showTarif5min,
+    showTarif15min,
+    showAnyTarif
+  });
+
   // Check if mission is still active (not in the past)
   const hasFutureMission = interpreter.next_mission_start && 
     !isPast(addMinutes(
