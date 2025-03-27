@@ -1,5 +1,7 @@
 
 import { useRef, useEffect } from 'react';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Mission } from '@/types/mission';
@@ -11,6 +13,7 @@ export const useMissionSubscription = (
   currentUserId: string | null,
   onMissionUpdate: () => void
 ) => {
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -19,7 +22,7 @@ export const useMissionSubscription = (
     requestPermission();
   }, [requestPermission]);
 
-  // Use the enhanced realtime subscription hook with consistent channel naming
+  // Use the enhanced realtime subscription hook
   useRealtimeSubscription(
     {
       event: 'INSERT',
@@ -76,8 +79,7 @@ export const useMissionSubscription = (
       retryInterval: 5000,
       onError: (error) => {
         console.error('[useMissionSubscription] Subscription error:', error);
-      },
-      channelNamePrefix: 'interpreter-mission-notifications'
+      }
     }
   );
 
@@ -89,17 +91,12 @@ export const useMissionSubscription = (
       }
     };
 
-    const handleOnline = () => {
-      console.log('[useMissionSubscription] Network connection restored');
-      onMissionUpdate();
-    };
-
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       console.log('[useMissionSubscription] Cleaning up event listeners');
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onMissionUpdate]);

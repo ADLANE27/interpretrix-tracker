@@ -22,12 +22,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    const handleOnline = () => {
-      console.log('[useMissionUpdates] Network connection restored, triggering update');
-      onUpdate();
-    };
-
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Listen for interpreter status update events
@@ -39,7 +34,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
@@ -59,7 +54,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     }
   };
 
-  // Subscribe to mission changes - this single subscription works for all mission changes
+  // Subscribe to mission changes
   useRealtimeSubscription(
     {
       event: '*',
@@ -70,10 +65,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
       onUpdate();
     },
-    {
-      ...subscriptionOptions,
-      channelNamePrefix: 'admin-mission-updates'
-    }
+    subscriptionOptions
   );
 
   // Subscribe to reservation changes
@@ -87,10 +79,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
       onUpdate();
     },
-    {
-      ...subscriptionOptions,
-      channelNamePrefix: 'admin-reservation-updates'
-    }
+    subscriptionOptions
   );
   
   // Use a more specific subscription for interpreter profile status changes
@@ -103,12 +92,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
       onUpdate();
     },
     {
       ...subscriptionOptions,
       retryInterval: 3000, // Shorter retry for status updates
-      channelNamePrefix: 'admin-interpreter-status-updates'
     }
   );
 };

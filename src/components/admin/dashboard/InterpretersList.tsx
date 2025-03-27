@@ -1,11 +1,9 @@
-
-import React, { useEffect } from "react";
+import React from "react";
 import InterpreterCard from "@/components/InterpreterCard";
 import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterListItem";
 import { Profile } from "@/types/profile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { EmploymentStatus } from "@/utils/employmentStatus";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Interpreter {
   id: string;
@@ -46,33 +44,6 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   interpreters,
   onStatusChange,
 }) => {
-  // Setup event listener for interpreter status updates
-  useEffect(() => {
-    const handleStatusUpdate = () => {
-      console.log('[InterpretersList] Received interpreter-status-update event');
-    };
-    
-    window.addEventListener('interpreter-status-update', handleStatusUpdate);
-    
-    // Enable realtime for interpreter_profiles table on component mount
-    const enableRealtime = async () => {
-      try {
-        const response = await supabase.functions.invoke('enable-realtime', {
-          body: { table: 'interpreter_profiles' }
-        });
-        console.log('[InterpretersList] Enable realtime response:', response);
-      } catch (error) {
-        console.error('[InterpretersList] Error enabling realtime:', error);
-      }
-    };
-    
-    enableRealtime();
-    
-    return () => {
-      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
-    };
-  }, []);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {interpreters.map(interpreter => (

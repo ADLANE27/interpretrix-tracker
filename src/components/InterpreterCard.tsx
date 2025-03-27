@@ -1,13 +1,15 @@
 
-import React, { useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Globe, MapPin, Phone, Calendar, Clock } from 'lucide-react';
-import { UpcomingMissionBadge } from '@/components/UpcomingMissionBadge';
+import React, { useState } from 'react';
+import { Card, CardContent } from './ui/card';
+import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
+import { UpcomingMissionBadge } from './UpcomingMissionBadge';
+import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
 import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
-import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
-import { formatPhoneNumber } from '@/utils/formatters';
-import { InterpreterStatusDropdown } from '@/components/admin/interpreter/InterpreterStatusDropdown';
+import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { format, parseISO, isPast, addMinutes } from 'date-fns';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -16,11 +18,11 @@ interface InterpreterCardProps {
     status: Profile['status'];
     employment_status: EmploymentStatus;
     languages: string[];
-    tarif_15min?: number | null;
-    tarif_5min?: number | null;
-    phone_number?: string | null;
-    next_mission_start?: string | null;
-    next_mission_duration?: number | null;
+    tarif_15min: number | null;
+    tarif_5min: number | null;
+    phone_number: string | null;
+    next_mission_start: string | null;
+    next_mission_duration: number | null;
     next_mission_source_language?: string | null;
     next_mission_target_language?: string | null;
     booth_number?: string | null;
@@ -38,120 +40,256 @@ interface InterpreterCardProps {
   onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
+const workLocationConfig = {
+  remote: {
+    color: 'bg-purple-100 text-purple-800 border border-purple-300',
+    icon: Home
+  },
+  on_site: {
+    color: 'bg-blue-100 text-blue-800 border border-blue-300',
+    icon: Building
+  }
+};
+
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
-  // Set up event listener to help force refresh when needed
-  useEffect(() => {
-    const handleForceRefresh = (event: CustomEvent) => {
-      if (event.detail && event.detail.interpreterId === interpreter.id) {
-        console.log(`[InterpreterCard] Force refresh triggered for interpreter ${interpreter.id}`);
-      }
-    };
-    
-    window.addEventListener('interpreter-force-refresh' as any, handleForceRefresh);
-    
-    return () => {
-      window.removeEventListener('interpreter-force-refresh' as any, handleForceRefresh);
-    };
-  }, [interpreter.id]);
+  const [isFlipped, setIsFlipped] = useState(false);
+  
+  const nameParts = interpreter.name.split(' ');
+  const lastName = nameParts.shift() || '';
+  const firstName = nameParts.join(' ');
+
+  const parsedLanguages = interpreter.languages
+    .map(lang => {
+      const [source, target] = lang.split('→').map(l => l.trim());
+      return { source, target };
+    })
+    .filter(lang => lang.source && lang.target);
+
+  const hasAnyPhoneNumber = Boolean(
+    interpreter.phone_number || 
+    interpreter.landline_phone || 
+    interpreter.private_phone || 
+    interpreter.professional_phone || 
+    interpreter.booth_number
+  );
+
+  const workLocation = interpreter.work_location || "on_site";
+  const LocationIcon = workLocationConfig[workLocation].icon;
 
   const handleStatusChange = (newStatus: Profile['status']) => {
-    console.log(`[InterpreterCard] Status change requested for ${interpreter.id}:`, newStatus);
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
     }
   };
 
+  const flipCard = () => {
+    setIsFlipped(!isFlipped);
+  };
+
+  const showTarif5min = interpreter.tarif_5min !== null && interpreter.tarif_5min > 0;
+  const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
+  const showAnyTarif = showTarif5min || showTarif15min;
+
+  console.log(`[InterpreterCard] ${interpreter.name} tarifs:`, {
+    tarif_5min: interpreter.tarif_5min,
+    tarif_15min: interpreter.tarif_15min,
+    showTarif5min,
+    showTarif15min,
+    showAnyTarif
+  });
+
+  const hasFutureMission = interpreter.next_mission_start && 
+    !isPast(addMinutes(
+      parseISO(interpreter.next_mission_start), 
+      interpreter.next_mission_duration || 0
+    ));
+
   return (
-    <Card className="h-full hover:shadow-md transition-shadow duration-300">
-      <CardContent className="p-4">
-        <div className="flex flex-col space-y-3">
-          {/* Header with name and status */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{interpreter.name}</h3>
-            
-            <InterpreterStatusDropdown
+    <div className="preserve-3d perspective-1000 w-full h-full relative">
+      <Card
+        asMotion
+        motionProps={{
+          animate: { 
+            rotateY: isFlipped ? 180 : 0 
+          },
+          transition: { 
+            duration: 0.6, 
+            type: "spring", 
+            stiffness: 260, 
+            damping: 20 
+          }
+        }}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'invisible' : 'visible'}`}
+      >
+        <CardContent className="p-2 relative flex flex-col h-full justify-between">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
+              <h3 className="text-base font-bold text-gradient-primary leading-tight truncate">
+                {lastName}
+              </h3>
+              {firstName && (
+                <h3 className="text-base text-gradient-primary leading-tight truncate">
+                  {firstName}
+                </h3>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-1 mb-2 items-center">
+            <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
               currentStatus={interpreter.status}
+              displayFormat="badge"
               onStatusChange={handleStatusChange}
+              className="text-[10px] px-1.5 py-0.5"
             />
+            
+            <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-2.5 w-2.5" />
+              <span>{workLocationLabels[workLocation]}</span>
+            </Badge>
+            
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-gray-50">
+              {employmentStatusLabels[interpreter.employment_status]}
+            </Badge>
           </div>
           
-          {/* Employment type */}
-          <div className="text-sm text-gray-600 bg-gray-100 dark:bg-gray-800 dark:text-gray-300 px-2 py-1 rounded-md inline-block">
-            {employmentStatusLabels[interpreter.employment_status]}
-          </div>
-          
-          {/* Languages */}
-          <div className="flex items-start gap-2">
-            <Globe className="h-4 w-4 text-gray-500 mt-1 flex-shrink-0" />
-            <div className="flex flex-wrap gap-1">
-              {interpreter.languages.map((lang, index) => {
-                const [source, target] = lang.split('→').map(l => l.trim());
-                return (
-                  <div 
-                    key={index} 
-                    className="bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100 text-xs px-2 py-0.5 rounded">
-                    {source} → {target}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          
-          {/* Work location */}
-          {interpreter.work_location && (
-            <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-gray-500" />
-              <span>{workLocationLabels[interpreter.work_location]}</span>
+          {showAnyTarif && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {showTarif5min && (
+                <Badge variant="outline" className="text-[10px] bg-gray-50">
+                  5min: {interpreter.tarif_5min}€
+                </Badge>
+              )}
+              
+              {showTarif15min && (
+                <Badge variant="outline" className="text-[10px] bg-gray-50">
+                  15min: {interpreter.tarif_15min}€
+                </Badge>
+              )}
             </div>
           )}
-          
-          {/* Phone number */}
-          {interpreter.phone_number && (
-            <div className="flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-gray-500" />
-              <span>{formatPhoneNumber(interpreter.phone_number)}</span>
-            </div>
-          )}
-          
-          {/* Work hours if available */}
-          {interpreter.work_hours && (interpreter.work_hours.start_morning || interpreter.work_hours.start_afternoon) && (
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <span>
-                {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                  `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
-                {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
-                  interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
-                  ' | '}
-                {interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon &&
-                  `${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
-              </span>
-            </div>
-          )}
-          
-          {/* Next mission */}
-          {interpreter.next_mission_start && (
-            <div className="mt-2">
-              <div className="flex items-center gap-2 mb-1 text-sm font-medium">
-                <Calendar className="h-4 w-4 text-gray-500" />
-                <span>Prochaine mission</span>
-              </div>
-              <UpcomingMissionBadge
-                startTime={interpreter.next_mission_start}
-                estimatedDuration={interpreter.next_mission_duration || 0}
-                className="ml-6"
-              />
-              {interpreter.next_mission_source_language && interpreter.next_mission_target_language && (
-                <div className="ml-6 mt-1 bg-blue-50 text-blue-800 dark:bg-blue-900 dark:text-blue-100 text-xs px-2 py-0.5 rounded inline-block">
-                  {interpreter.next_mission_source_language} → {interpreter.next_mission_target_language}
+
+          {hasAnyPhoneNumber && (
+            <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-xs text-foreground mb-2">
+              {interpreter.booth_number && (
+                <div className="flex items-center gap-1">
+                  <User className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">Cabine {interpreter.booth_number}</span>
+                </div>
+              )}
+              {interpreter.phone_number && (
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.phone_number}</span>
+                </div>
+              )}
+              {interpreter.landline_phone && (
+                <div className="flex items-center gap-1">
+                  <PhoneCall className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.landline_phone}</span>
+                </div>
+              )}
+              {interpreter.private_phone && (
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.private_phone}</span>
+                </div>
+              )}
+              {interpreter.professional_phone && (
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">{interpreter.professional_phone}</span>
+                </div>
+              )}
+              {interpreter.work_hours && (
+                <div className="flex items-center gap-1 col-span-2">
+                  <Clock className="h-3 w-3 text-palette-ocean-blue" />
+                  <span className="text-[11px]">
+                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                      `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
+                    {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
+                      interpreter.work_hours.start_afternoon && interpreter.work_hours.end_afternoon && 
+                      `, ${interpreter.work_hours.start_afternoon}-${interpreter.work_hours.end_afternoon}`}
+                  </span>
                 </div>
               )}
             </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          {hasFutureMission && interpreter.next_mission_start && (
+            <div className="mb-1">
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                sourceLang={interpreter.next_mission_source_language}
+                targetLang={interpreter.next_mission_target_language}
+                useShortDateFormat={true}
+                className="bg-red-500 text-white"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-end text-xs mt-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 rounded-full" 
+              onClick={flipCard}
+            >
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        asMotion
+        motionProps={{
+          animate: { 
+            rotateY: isFlipped ? 0 : -180 
+          },
+          transition: { 
+            duration: 0.6, 
+            type: "spring", 
+            stiffness: 260, 
+            damping: 20 
+          }
+        }}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'visible' : 'invisible'}`}
+      >
+        <CardContent className="p-2 relative flex flex-col h-full">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
+              {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0 rounded-full" 
+              onClick={flipCard}
+            >
+              <RotateCw className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </div>
+          
+          <div className="mb-1 text-xs font-medium text-muted-foreground">Combinaisons de langues:</div>
+          <div className="flex flex-wrap gap-1 max-h-[calc(100%-60px)] overflow-y-auto pr-1 hide-scrollbar">
+            {parsedLanguages.map((lang, index) => (
+              <div
+                key={index}
+                className="px-1.5 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded text-[11px] flex items-center gap-0.5"
+              >
+                <span>{lang.source}</span>
+                <span className="text-palette-vivid-purple">→</span>
+                <span>{lang.target}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

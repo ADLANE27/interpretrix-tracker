@@ -12,7 +12,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 type Status = Profile['status'];
 
@@ -73,7 +72,6 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
-  const updateCountRef = useRef(0);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -88,50 +86,6 @@ export const InterpreterStatusDropdown = ({
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, interpreterId, localStatus]);
-
-  // Subscribe to realtime updates for this specific interpreter
-  useEffect(() => {
-    if (!interpreterId) return;
-    
-    const channel = supabase.channel(`interpreter-status-${interpreterId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${interpreterId}`
-        },
-        (payload) => {
-          // Only process if the new row contains a status
-          if (payload.new && payload.new.status) {
-            const newStatus = payload.new.status as Status;
-            updateCountRef.current += 1;
-            
-            console.log(
-              `[InterpreterStatusDropdown] Realtime update received for interpreter ${interpreterId}:`, 
-              newStatus, 
-              `(update #${updateCountRef.current})`
-            );
-            
-            // Update local state with the new status from the database
-            setLocalStatus(newStatus);
-            
-            // Notify parent component of the status change if callback is provided
-            if (onStatusChange) {
-              onStatusChange(newStatus);
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log(`[InterpreterStatusDropdown] Subscription status for ${interpreterId}:`, status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [interpreterId, onStatusChange]);
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
@@ -171,9 +125,6 @@ export const InterpreterStatusDropdown = ({
         throw error;
       }
 
-      // Emit a global event for the status update
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
-      
       toast({
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,

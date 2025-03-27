@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +16,6 @@ interface UseRealtimeSubscriptionOptions {
   onError?: (error: any) => void;
   debugMode?: boolean;
   enableRealtimeConfig?: boolean;
-  channelNamePrefix?: string;
 }
 
 // Global cache to track which tables have had realtime enabled
@@ -31,99 +29,11 @@ const circuitBreakerState = {
   failureThreshold: 3
 };
 
-// Cache for active channel subscriptions to prevent duplicate subscriptions
-type ChannelKey = string;
-const activeChannels = new Map<ChannelKey, { 
-  channel: RealtimeChannel, 
-  refCount: number,
-  callbacks: Map<string, (payload: any) => void>
-}>();
-
 // Determine if we're in production mode based on URL or environment
 const isProduction = () => {
   return window.location.hostname !== 'localhost' && 
          window.location.hostname !== '127.0.0.1' &&
          !window.location.hostname.includes('preview');
-};
-
-// Generate a consistent channel key for deduplication
-const generateChannelKey = (config: SubscriptionConfig, prefix?: string): ChannelKey => {
-  const { event, schema = 'public', table, filter = '' } = config;
-  return `${prefix || 'default'}-${schema}-${table}-${event}${filter ? `-${filter}` : ''}`;
-};
-
-// Function to create a new channel if one doesn't exist
-const getOrCreateChannel = (
-  channelKey: string, 
-  config: SubscriptionConfig, 
-  callback: (payload: any) => void,
-  callbackId: string,
-  log: (message: string, ...args: any[]) => void
-): RealtimeChannel => {
-  // Check if we already have this channel
-  const existing = activeChannels.get(channelKey);
-  
-  if (existing) {
-    log(`Reusing existing channel: ${channelKey}, current refCount: ${existing.refCount}`);
-    existing.refCount++;
-    existing.callbacks.set(callbackId, callback);
-    return existing.channel;
-  }
-  
-  // Create a new channel
-  log(`Creating new channel: ${channelKey}`);
-  const channel = supabase.channel(channelKey);
-  
-  // Set up the channel for postgres changes
-  channel.on(
-    'postgres_changes' as any, 
-    { 
-      event: config.event, 
-      schema: config.schema || 'public', 
-      table: config.table, 
-      filter: config.filter 
-    }, 
-    (payload) => {
-      const activeChannelData = activeChannels.get(channelKey);
-      if (activeChannelData) {
-        // Dispatch payload to all registered callbacks
-        activeChannelData.callbacks.forEach(cb => cb(payload));
-      }
-    }
-  );
-  
-  // Store the new channel
-  activeChannels.set(channelKey, { 
-    channel, 
-    refCount: 1,
-    callbacks: new Map([[callbackId, callback]])
-  });
-  
-  return channel;
-};
-
-// Function to release a channel reference
-const releaseChannel = (
-  channelKey: string, 
-  callbackId: string,
-  log: (message: string, ...args: any[]) => void
-) => {
-  const existing = activeChannels.get(channelKey);
-  if (!existing) return;
-  
-  // Remove this specific callback
-  existing.callbacks.delete(callbackId);
-  
-  // Decrease reference count
-  existing.refCount--;
-  log(`Releasing channel: ${channelKey}, new refCount: ${existing.refCount}`);
-  
-  // If no more references, remove the channel
-  if (existing.refCount <= 0 || existing.callbacks.size === 0) {
-    log(`Removing channel entirely: ${channelKey}`);
-    supabase.removeChannel(existing.channel);
-    activeChannels.delete(channelKey);
-  }
 };
 
 export function useRealtimeSubscription(
@@ -137,18 +47,14 @@ export function useRealtimeSubscription(
     maxRetries = isProduction() ? 10 : 3, // Increased retries in production
     onError,
     debugMode = isProduction() ? false : true, // Disable debug mode in production
-    enableRealtimeConfig = true,
-    channelNamePrefix = 'default'
+    enableRealtimeConfig = true
   } = options;
 
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const retryCountRef = useRef(0);
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
-  
-  // Generate a channel key for this subscription
-  const channelKey = generateChannelKey(config, channelNamePrefix);
-  const callbackId = useRef<string>(instanceIdRef.current).current;
 
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
@@ -247,21 +153,64 @@ export function useRealtimeSubscription(
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    let channel: RealtimeChannel | null = null;
 
-    const setupSubscription = async () => {
+    const setupChannel = async () => {
       if (!enabled) return;
 
       try {
+        if (channelRef.current) {
+          log('Removing existing channel');
+          await supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+
         // Try to enable realtime for this table, but proceed with subscription even if it fails
+        // This allows reconnection attempts even if the realtime enablement failed
         await enableRealtimeForTable(config.table);
 
-        // Get or create a channel
-        channel = getOrCreateChannel(channelKey, config, callback, callbackId, log);
+        // Use a more stable channel name in production to avoid creating too many channels
+        const channelName = isProduction() 
+          ? `${config.table}-${config.event}${config.filter ? '-filtered' : ''}`
+          : `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
         
-        // Subscribe to the channel
-        channel.subscribe((status) => {
-          log(`Subscription status for ${config.table} (${channelKey}): ${status}`);
+        log(`Setting up new channel with name: ${channelName}`);
+        
+        const channel = supabase.channel(channelName);
+        
+        channel.on(
+          'postgres_changes' as any, 
+          { 
+            event: config.event, 
+            schema: config.schema || 'public', 
+            table: config.table, 
+            filter: config.filter 
+          }, 
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const eventId = `${payload.eventType}-${
+              payload.eventType === 'DELETE' ? 
+              (payload.old as any)?.id : 
+              (payload.new as any)?.id
+            }-${payload.commit_timestamp}`;
+            
+            if (seenEvents.current.has(eventId)) {
+              log(`Skipping duplicate event: ${eventId}`);
+              return;
+            }
+            
+            seenEvents.current.add(eventId);
+            
+            if (seenEvents.current.size > 100) {
+              const eventsArray = Array.from(seenEvents.current);
+              seenEvents.current = new Set(eventsArray.slice(-50));
+            }
+            
+            log(`Received ${config.event} event for ${config.table}:`, payload);
+            callback(payload);
+          }
+        );
+
+        channelRef.current = channel.subscribe((status) => {
+          log(`Subscription status for ${config.table}: ${status}`);
           
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
@@ -274,7 +223,7 @@ export function useRealtimeSubscription(
               const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1);
               log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
               retryCountRef.current = currentRetry;
-              timeoutId = setTimeout(setupSubscription, delayMs);
+              timeoutId = setTimeout(setupChannel, delayMs);
             } else {
               logError(`Max retries reached for ${config.table}`);
               if (onError) {
@@ -287,19 +236,19 @@ export function useRealtimeSubscription(
         });
 
       } catch (error) {
-        logError(`Error setting up subscription for ${config.table}:`, error);
+        logError(`Error setting up channel for ${config.table}:`, error);
         if (onError) onError(error);
       }
     };
 
-    setupSubscription();
+    setupChannel();
 
     return () => {
-      log(`Cleaning up subscription for ${config.table} (${channelKey})`);
+      log(`Cleaning up subscription for ${config.table}`);
       clearTimeout(timeoutId);
-      
-      // Release this subscription's reference to the channel
-      releaseChannel(channelKey, callbackId, log);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
   }, [
     enabled, 
@@ -313,9 +262,7 @@ export function useRealtimeSubscription(
     onError, 
     enableRealtimeForTable,
     log,
-    logError,
-    channelKey,
-    callbackId
+    logError
   ]);
 
   return { isConnected };
