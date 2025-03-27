@@ -1,5 +1,5 @@
 
-import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE } from './constants';
+import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE, STATUS_EVENT_PRIORITY } from './constants';
 
 export class EventDebouncer {
   private recentEvents = new Map<string, number>();
@@ -41,21 +41,27 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Check if this is a status update event - always process these immediately
-    const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
-                          eventKey.includes('status');
+    // Status updates should ALWAYS be processed immediately
+    // Check if this is a status update event (interpreter_profiles table with status field)
+    const isStatusUpdate = eventKey.includes('interpreter_profiles') && 
+                           eventKey.includes('status');
                           
-    // Skip debouncing entirely for status updates
-    if (isStatusUpdate) {
+    if (isStatusUpdate && STATUS_EVENT_PRIORITY) {
+      console.log(`[EventDebouncer] Status update detected, processing immediately: ${eventKey}`);
       return true;
     }
     
     const cooldownTime = this.defaultDebounceTime;
     
+    if (cooldownTime <= 0) {
+      // No debouncing when cooldown is 0 or negative
+      return true;
+    }
+    
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      console.log(`[RealtimeService] Debouncing event: ${eventKey}`);
+      console.log(`[EventDebouncer] Debouncing event: ${eventKey}`);
       return false;
     }
     
@@ -73,8 +79,9 @@ export class EventDebouncer {
     // Skip debouncing for status updates
     const isStatusUpdate = debounceKey.includes('status');
     
-    if (isStatusUpdate) {
+    if (isStatusUpdate || timeout <= 0) {
       // Execute immediately without debouncing
+      console.log(`[EventDebouncer] Executing immediately (no debounce): ${debounceKey}`);
       callback();
       return;
     }

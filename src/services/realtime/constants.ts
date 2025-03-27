@@ -3,7 +3,7 @@
 export const RETRY_MAX = 20; 
 export const RETRY_DELAY_BASE = 500; // Further reduced for faster reconnections
 export const CONNECTION_TIMEOUT = 10000; // Reduced for faster timeout detection
-export const EVENT_COOLDOWN = 10; // Dramatically reduced from 100ms for near-instant response
+export const EVENT_COOLDOWN = 0; // Set to 0 for immediate response
 
 // Health check constants
 export const HEALTH_CHECK_INTERVAL = 3000; // More frequent health checks
@@ -11,7 +11,7 @@ export const HEARTBEAT_INTERVAL = 10000; // More frequent heartbeats
 export const HEARTBEAT_TIMEOUT = 15000; // Shorter timeout for heartbeats
 
 // Connection status change debounce to prevent UI flickering
-export const CONNECTION_STATUS_DEBOUNCE_TIME = 150; // Reduced from 300ms
+export const CONNECTION_STATUS_DEBOUNCE_TIME = 0; // Set to 0 to prevent debouncing
 
 // Staggered reconnection parameters
 export const RECONNECT_STAGGER_INTERVAL = 25; // Reduced for faster reconnections

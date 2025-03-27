@@ -45,6 +45,9 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
       ? "opacity-80 cursor-not-allowed" 
       : "cursor-pointer hover:opacity-95 transition-opacity";
   
+  // Add debug output for status debugging
+  console.log(`[StatusTrigger] Rendering status: ${status} with config:`, statusConfig);
+  
   if (displayFormat === "badge") {
     return (
       <div
@@ -53,6 +56,7 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
         aria-disabled={disabled || !isConnected}
         role="button"
         tabIndex={disabled || !isConnected ? -1 : 0}
+        data-status={status} // Add data attribute for debugging
       >
         {displayLabel}
         {!isConnected && <span className="ml-1 inline-block animate-pulse">•</span>}
@@ -66,6 +70,7 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
         aria-disabled={disabled || !isConnected}
         role="button"
         tabIndex={disabled || !isConnected ? -1 : 0}
+        data-status={status} // Add data attribute for debugging
       >
         <StatusIcon className="h-4 w-4" />
         <span>{displayLabel}</span>

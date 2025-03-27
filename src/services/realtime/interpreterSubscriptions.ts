@@ -1,9 +1,8 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
 import { EventDebouncer } from './eventDebouncer';
-import { SubscriptionStatus, createSubscriptionStatus } from './types';
 import { Profile } from '@/types/profile';
 import { STATUS_UPDATE_DEBOUNCE } from './constants';
 
@@ -33,14 +32,22 @@ export function createInterpreterStatusSubscription(
           const oldStatus = payload.old?.status;
           
           // Log all status updates for debugging
-          console.log(`[RealtimeService] Status for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
+          console.log(`[RealtimeService] Status update received for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
           
           // Call the callback immediately if provided
           if (onStatusChange) {
+            console.log(`[RealtimeService] Calling onStatusChange callback for ${interpreterId}`);
             onStatusChange(newStatus);
           }
           
-          // Broadcast the event for other components immediately without debouncing
+          // Emit both badge update and status update events
+          // Badge update is for UI components that display badges
+          eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
+            interpreterId,
+            status: newStatus
+          });
+
+          // General status update for any component watching status
           eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
             interpreterId,
             status: newStatus
