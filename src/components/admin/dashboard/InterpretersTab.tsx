@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +30,8 @@ interface Interpreter {
   birth_country: string | null;
   next_mission_start: string | null;
   next_mission_duration: number | null;
+  next_mission_source_language?: string | null;
+  next_mission_target_language?: string | null;
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
@@ -37,8 +40,6 @@ interface Interpreter {
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
   connection_status?: Profile['status'];
-  next_mission_source_language?: string | null;
-  next_mission_target_language?: string | null;
   work_location?: WorkLocation | null;
 }
 
@@ -53,6 +54,7 @@ export const InterpretersTab: React.FC = () => {
   const [rateSort, setRateSort] = useState<string>("none");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [todayMissionsCount, setTodayMissionsCount] = useState(0);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast } = useToast();
 
   const handleInterpreterStatusChange = (interpreterId: string, newStatus: Profile['status']) => {
@@ -297,6 +299,8 @@ export const InterpretersTab: React.FC = () => {
       <InterpreterFilterBar
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
       />
 
       <AdvancedFilters
@@ -319,6 +323,7 @@ export const InterpretersTab: React.FC = () => {
       <InterpretersList
         interpreters={filteredInterpreters}
         onStatusChange={handleInterpreterStatusChange}
+        viewMode={viewMode}
       />
     </div>
   );
