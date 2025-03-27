@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -46,14 +45,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   const isMobile = useIsMobile();
   const { theme } = useTheme();
 
-  // Auto scroll to the bottom when new messages are added
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages]);
 
-  // Scroll to the active thread when expanded
   useEffect(() => {
     if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
       const threadElement = threadRefsMap.current.get(activeThreadId);
@@ -99,10 +96,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
     if (!previousMessage) return true;
     
-    // If different senders, always show
     if (currentMessage.sender.id !== previousMessage.sender.id) return true;
     
-    // If same sender but messages are far apart in time (> 5 minutes), show sender again
     const currentTime = new Date(currentMessage.timestamp).getTime();
     const previousTime = new Date(previousMessage.timestamp).getTime();
     const fiveMinutesInMs = 5 * 60 * 1000;
@@ -124,14 +119,11 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  // Organize messages into threads
   const processMessages = () => {
-    // Group messages by their parent or their own ID if they're a root message
     const messageThreads: { [key: string]: Message[] } = {};
     const displayMessages: Message[] = [];
     const processedIds = new Set<string>();
 
-    // First pass: organize messages into thread groups
     messages.forEach(message => {
       const threadId = message.parent_message_id || message.id;
       if (!messageThreads[threadId]) {
@@ -140,17 +132,13 @@ export const MessageList: React.FC<MessageListProps> = ({
       messageThreads[threadId].push(message);
     });
 
-    // Second pass: add root messages and their replies to displayMessages
     messages.forEach(message => {
       if (processedIds.has(message.id)) return;
 
-      // If it's a root message (no parent) or its parent doesn't exist in our messages array
       if (!message.parent_message_id || !messageThreads[message.parent_message_id]) {
         displayMessages.push(message);
         processedIds.add(message.id);
 
-        // If this message has replies, don't add them to the main display
-        // They'll be shown in the thread view
         if (messageThreads[message.id] && messageThreads[message.id].length > 1) {
           messageThreads[message.id].forEach(reply => {
             if (reply.id !== message.id) {
@@ -170,11 +158,11 @@ export const MessageList: React.FC<MessageListProps> = ({
     if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
     
     return (
-      <div className="flex flex-wrap gap-1 mt-1">
+      <div className="flex flex-wrap gap-1 mt-1.5">
         {Object.entries(message.reactions).map(([emoji, users]) => (
           <div 
             key={emoji} 
-            className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer ${
+            className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer transition-colors ${
               users.includes(currentUserId || '') 
                 ? 'bg-primary/20 dark:bg-primary/30' 
                 : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -191,7 +179,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const handleEmojiSelect = (messageId: string, emoji: any) => {
     onReactToMessage(messageId, emoji.native);
-    setOpenEmojiPickerId(null); // Close the emoji picker after selection
+    setOpenEmojiPickerId(null);
   };
 
   const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
@@ -203,7 +191,6 @@ export const MessageList: React.FC<MessageListProps> = ({
         ref={(el) => {
           if (el) {
             observeMessage(el);
-            // Store references to thread containers for scrolling
             if (!isThreadReply && messageThreads[message.id]?.length > 1) {
               threadRefsMap.current.set(message.id, el);
             }
@@ -214,24 +201,21 @@ export const MessageList: React.FC<MessageListProps> = ({
         data-is-thread-reply={isThreadReply ? 'true' : 'false'}
         onMouseEnter={() => setHoveredMessageId(message.id)}
         onMouseLeave={() => setHoveredMessageId(null)}
-        className={`group px-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
+        className={`group px-3 py-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
           isThreadReply ? 'ml-10 pl-3' : ''
         }`}
       >
-        {/* Show date separator if needed */}
         {!isThreadReply && index > 0 && shouldShowDate(message, previousMessage) && (
           <div className="flex justify-center my-4">
-            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium">
+            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium shadow-sm">
               {formatMessageDate(message.timestamp)}
             </div>
           </div>
         )}
 
-        {/* Message content */}
-        <div className="flex items-start gap-2 relative">
-          {/* Avatar - only show for first message in a group */}
+        <div className="flex items-start gap-2.5 relative">
           {showSender ? (
-            <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
+            <Avatar className="h-9 w-9 mt-1 flex-shrink-0 border border-gray-200 dark:border-gray-700">
               <AvatarImage 
                 src={message.sender.avatarUrl} 
                 alt={message.sender.name}
@@ -246,7 +230,6 @@ export const MessageList: React.FC<MessageListProps> = ({
           )}
 
           <div className="flex-1 min-w-0">
-            {/* Sender info and timestamp - only for first message in group */}
             {showSender && (
               <div className="flex items-baseline mb-1">
                 <span className="font-semibold text-sm mr-2">{message.sender.name}</span>
@@ -254,14 +237,12 @@ export const MessageList: React.FC<MessageListProps> = ({
               </div>
             )}
 
-            {/* Message content */}
-            <div className="text-sm break-words pr-10">
+            <div className="text-sm break-words pr-10 leading-relaxed">
               {message.content}
             </div>
 
-            {/* Attachments */}
             {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-2 max-w-sm">
+              <div className="mt-2.5 max-w-sm">
                 {message.attachments.map((attachment, idx) => (
                   <MessageAttachment
                     key={idx}
@@ -273,13 +254,11 @@ export const MessageList: React.FC<MessageListProps> = ({
               </div>
             )}
 
-            {/* Reactions */}
             {renderReactions(message)}
 
-            {/* Message actions */}
-            <div className={`flex items-center gap-1 mt-1 ${
+            <div className={`flex items-center gap-1.5 mt-1.5 ${
               hoveredMessageId === message.id || isMobile ? 'opacity-100' : 'opacity-0'
-            } transition-opacity`}>
+            } transition-opacity duration-200`}>
               <Popover 
                 open={openEmojiPickerId === message.id}
                 onOpenChange={(open) => {
@@ -336,22 +315,21 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
 
-        {/* Thread replies */}
         {!isThreadReply && messageThreads[message.id]?.length > 1 && (
           <div 
-            className="ml-11 mt-1 mb-2"
+            className="ml-11 mt-2 mb-2"
             id={`thread-${message.id}`}
           >
             <Button
               variant="ghost"
               size="sm"
               onClick={() => toggleThread(message.id)}
-              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2 py-1 h-auto"
+              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2.5 py-1 h-auto transition-colors"
             >
               {expandedThreads.has(message.id) ? (
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
               ) : (
-                <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
               )}
               {messageThreads[message.id].length - 1} réponses
             </Button>
