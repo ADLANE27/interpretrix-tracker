@@ -8,7 +8,7 @@ import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from "@/lib/events";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -52,7 +52,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: interpreter.id,
     onStatusChange: (newStatus) => {
-      console.log(`[InterpreterListItem] Status sync changed for ${interpreter.id}:`, newStatus);
       setInterpreterStatus(newStatus);
     },
     initialStatus: interpreter.status,
@@ -61,40 +60,11 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
 
   useEffect(() => {
     if (interpreter.status !== interpreterStatus) {
-      console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
-  useEffect(() => {
-    const handleExternalStatusUpdate = async () => {
-      setTimeout(() => {
-        console.log(`[InterpreterListItem] External status update event received for ${interpreter.id}`);
-        if (interpreter.status !== interpreterStatus) {
-          setInterpreterStatus(interpreter.status);
-        }
-      }, 100);
-    };
-
-    const handleBadgeUpdate = (data: {interpreterId: string, status: string}) => {
-      if (data.interpreterId === interpreter.id && data.status !== interpreterStatus) {
-        console.log(`[InterpreterListItem] Badge update event received for ${interpreter.id}:`, data.status);
-        setInterpreterStatus(data.status as Profile['status']);
-      }
-    };
-
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
-    eventEmitter.on(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleExternalStatusUpdate);
-      eventEmitter.off(EVENT_INTERPRETER_BADGE_UPDATE, handleBadgeUpdate);
-    };
-  }, [interpreter.id, interpreter.status, interpreterStatus]);
-
   const handleStatusChange = async (newStatus: Profile['status']) => {
-    console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
-    
     setInterpreterStatus(newStatus);
     
     if (onStatusChange) {
@@ -103,12 +73,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     
     const success = await updateStatus(newStatus);
     
-    if (success) {
-      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-        interpreterId: interpreter.id,
-        status: newStatus
-      });
-    } else {
+    if (!success) {
       setInterpreterStatus(interpreter.status);
       toast({
         title: "Erreur",

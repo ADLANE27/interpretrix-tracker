@@ -10,11 +10,12 @@ export const EVENT_INTERPRETER_BADGE_UPDATE = 'interpreter-badge-update';
 
 // Create a typed event emitter
 type Events = {
-  [EVENT_INTERPRETER_STATUS_UPDATE]: void;
+  [EVENT_INTERPRETER_STATUS_UPDATE]: { interpreterId: string, status: string };
   [EVENT_UNREAD_MENTIONS_UPDATED]: number;
   [EVENT_NEW_MESSAGE_RECEIVED]: any;
   [EVENT_CONNECTION_STATUS_CHANGE]: boolean;
-  [EVENT_INTERPRETER_BADGE_UPDATE]: {interpreterId: string, status: string};
+  [EVENT_INTERPRETER_BADGE_UPDATE]: { interpreterId: string, status: string };
 };
 
+// Single event emitter instance for the entire application
 export const eventEmitter = mitt<Events>();

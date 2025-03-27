@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useInterpreterStatusSync } from "@/hooks/useInterpreterStatusSync";
-import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE } from "@/lib/events";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from "@/lib/events";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -25,7 +25,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: userId || '',
     onStatusChange: (newStatus) => {
-      console.log('[StatusManager] Status sync updated status to:', newStatus);
       setStatus(newStatus);
     },
     initialStatus: status
@@ -33,7 +32,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
-      console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
   }, [currentStatus, status]);
@@ -43,13 +41,13 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.error('[StatusManager] No authenticated user found');
+          console.error('No authenticated user found');
           return;
         }
 
         setUserId(user.id);
       } catch (error) {
-        console.error('[StatusManager] Error getting user:', error);
+        console.error('Error getting user:', error);
       }
     };
 
@@ -88,22 +86,14 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     
     setIsLoading(true);
     try {
-      console.log('[StatusManager] Attempting status update for user:', userId);
-      
       setStatus(newStatus);
       
       const success = await updateStatus(newStatus);
       
       if (!success) {
-        console.error('[StatusManager] Failed to update status');
         setStatus(status);
         throw new Error('Failed to update status');
       }
-
-      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-        interpreterId: userId,
-        status: newStatus
-      });
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
@@ -114,7 +104,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
         description: `Votre statut est maintenant "${statusConfig[newStatus].label}"`,
       });
     } catch (error: any) {
-      console.error('[StatusManager] Error updating status:', error);
+      console.error('Error updating status:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour votre statut",

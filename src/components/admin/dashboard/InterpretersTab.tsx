@@ -74,8 +74,6 @@ export const InterpretersTab: React.FC = () => {
   }, []);
 
   const handleInterpreterStatusChange = async (interpreterId: string, newStatus: Profile['status']) => {
-    console.log(`[InterpretersTab] Status change for interpreter ${interpreterId}: ${newStatus}`);
-    
     try {
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
@@ -100,9 +98,12 @@ export const InterpretersTab: React.FC = () => {
         });
       }
       
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId: interpreterId,
+        status: newStatus
+      });
     } catch (error) {
-      console.error('[InterpretersTab] Error updating interpreter status:', error);
+      console.error('Error updating interpreter status:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut de l'interprète",
@@ -112,8 +113,6 @@ export const InterpretersTab: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log("[InterpretersTab] Setting up real-time subscriptions and event listeners");
-    const channels: RealtimeChannel[] = [];
     let isComponentMounted = true;
 
     const interpreterStatusChannel = supabase.channel('admin-interpreter-profiles-status')
@@ -125,7 +124,6 @@ export const InterpretersTab: React.FC = () => {
       }, async payload => {
         if (!isComponentMounted) return;
         
-        console.log(`[InterpretersTab] Interpreter status changed:`, payload);
         if (payload.new && payload.old && payload.new.status !== payload.old.status) {
           const interpreterId = payload.new.id;
           const newStatus = payload.new.status;
@@ -137,44 +135,31 @@ export const InterpretersTab: React.FC = () => {
                 : interpreter
             )
           );
-          
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
         }
       })
-      .subscribe(status => {
-        console.log(`[InterpretersTab] Interpreter status subscription status:`, status);
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[InterpretersTab] Channel error, attempting recovery');
-          setTimeout(() => {
-            if (isComponentMounted) {
-              interpreterStatusChannel.subscribe();
-            }
-          }, 5000);
-        }
-      });
+      .subscribe();
     
-    channels.push(interpreterStatusChannel);
-
     const reservationsChannel = supabase.channel('admin-private-reservations')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'private_reservations'
-      }, async payload => {
-        console.log(`[InterpretersTab] Private reservations changed:`, payload);
+      }, async () => {
         if (isComponentMounted) {
           await fetchInterpreters();
         }
       })
-      .subscribe(status => {
-        console.log(`[InterpretersTab] Private reservations subscription status:`, status);
-      });
-    
-    const handleStatusUpdate = () => {
-      console.log("[InterpretersTab] Received interpreter status update event");
+      .subscribe();
+
+    const handleStatusUpdate = ({ interpreterId, status }: { interpreterId: string, status: string }) => {
       if (isComponentMounted) {
-        fetchInterpreters();
+        setInterpreters(current => 
+          current.map(interpreter => 
+            interpreter.id === interpreterId 
+              ? { ...interpreter, status: status as Profile['status'] } 
+              : interpreter
+          )
+        );
       }
     };
     
@@ -182,44 +167,22 @@ export const InterpretersTab: React.FC = () => {
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isComponentMounted) {
-        console.log("[InterpretersTab] Tab became visible, refreshing data");
         fetchInterpreters();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    const handleConnectionState = () => {
-      if (!isComponentMounted) return;
-      
-      const connectionState = supabase.getChannels().some(channel => channel.state === 'joined');
-      console.log("[InterpretersTab] Connection state:", connectionState ? "connected" : "disconnected");
-      
-      if (!connectionState) {
-        console.log("[InterpretersTab] Attempting to reconnect channels...");
-        channels.forEach(channel => {
-          if (channel.state !== 'joined') {
-            channel.subscribe();
-          }
-        });
-      }
-    };
-    
-    const connectionCheckInterval = setInterval(handleConnectionState, 15000);
-
     fetchInterpreters();
     
     return () => {
-      console.log("[InterpretersTab] Cleaning up subscriptions and event listeners");
       isComponentMounted = false;
       
-      channels.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
+      supabase.removeChannel(interpreterStatusChannel);
+      supabase.removeChannel(reservationsChannel);
       
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      clearInterval(connectionCheckInterval);
     };
   }, []);
 

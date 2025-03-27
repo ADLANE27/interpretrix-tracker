@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -6,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -22,14 +21,10 @@ const Admin = () => {
     // Reset connection error state on successful updates
     if (connectionError) {
       setConnectionError(false);
-      console.log('[Admin] Connection restored via mission updates');
       eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
     }
     reconnectAttemptRef.current = 0;
     lastSuccessfulConnectionRef.current = Date.now();
-    
-    // Emit event using mitt
-    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
   });
 
   // Improved connection health monitoring
@@ -46,19 +41,14 @@ const Admin = () => {
       if (!connected || timeSinceLastSuccess > connectionTimeout) {
         // Only show reconnection message after failed attempts
         if (!connectionError && reconnectAttemptRef.current >= 1) {
-          console.log('[Admin] Connection issue detected, showing reconnection message');
           setConnectionError(true);
           eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, false);
         }
         
         // Try to reconnect by subscribing to a health check channel
-        console.log(`[Admin] Reconnection attempt ${reconnectAttemptRef.current + 1}`);
-        
         const healthChannel = supabase.channel('admin-connection-health-check');
         healthChannel.subscribe((status) => {
-          console.log('[Admin] Health channel status:', status);
           if (status === 'SUBSCRIBED') {
-            console.log('[Admin] Successfully reconnected');
             setConnectionError(false);
             eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
             reconnectAttemptRef.current = 0;
@@ -69,7 +59,6 @@ const Admin = () => {
         
         reconnectAttemptRef.current += 1;
       } else if (connected && connectionError) {
-        console.log('[Admin] Connection restored via channel check');
         setConnectionError(false);
         eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
         reconnectAttemptRef.current = 0;
@@ -84,7 +73,6 @@ const Admin = () => {
     const heartbeatChannel = supabase.channel('admin-heartbeat-channel')
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Admin] Heartbeat channel established');
           lastSuccessfulConnectionRef.current = Date.now();
         }
       });

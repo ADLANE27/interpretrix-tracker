@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types/profile';
 import { useInterpreterStatusSync } from '@/hooks/useInterpreterStatusSync';
-import { eventEmitter, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
 
 type Status = Profile['status'];
 
@@ -27,13 +26,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
-  const lastUpdateRef = useRef<string | null>(null);
 
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: interpreterId || '',
     onStatusChange: (newStatus) => {
       if (newStatus !== localStatus) {
-        console.log(`[StatusButtonsBar] Status sync updated status to: ${newStatus}`);
         setLocalStatus(newStatus);
       }
     },
@@ -42,12 +39,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
 
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
-      const updateId = `${currentStatus}-${Date.now()}`;
-      
-      if (updateId === lastUpdateRef.current) return;
-      lastUpdateRef.current = updateId;
-      
-      console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, localStatus]);
@@ -88,35 +79,26 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     
     try {
       setIsUpdating(true);
-      console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
       setLocalStatus(newStatus);
       
       const success = await updateStatus(newStatus);
       
       if (!success) {
-        console.error('[StatusButtonsBar] Failed to update status');
         setLocalStatus(currentStatus);
         throw new Error('Failed to update status');
       }
       
-      eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-        interpreterId: interpreterId,
-        status: newStatus
-      });
-      
       if (onStatusChange) {
         await onStatusChange(newStatus);
       }
-      
-      console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
       toast({
         title: "Statut mis à jour",
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
       });
     } catch (error) {
-      console.error('[StatusButtonsBar] Error changing status:', error);
+      console.error('Error changing status:', error);
       
       setLocalStatus(currentStatus);
       
