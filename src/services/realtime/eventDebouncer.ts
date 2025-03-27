@@ -1,5 +1,5 @@
 
-import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE } from './constants';
+import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE, DEBUG_MODE } from './constants';
 
 export class EventDebouncer {
   private recentEvents = new Map<string, number>();
@@ -19,7 +19,7 @@ export class EventDebouncer {
     this.cleanupTimeout = setTimeout(() => {
       this.cleanupOldEvents();
       this.setupCleanupInterval();
-    }, 30000); // Run cleanup every 30 seconds
+    }, 60000); // Run cleanup every 60 seconds
   }
   
   private cleanupOldEvents() {
@@ -28,13 +28,13 @@ export class EventDebouncer {
     
     // Find old entries
     this.recentEvents.forEach((timestamp, key) => {
-      if (now - timestamp > 10000) { // 10 seconds
+      if (now - timestamp > 30000) { // 30 seconds instead of 10
         keysToDelete.push(key);
       }
     });
     
     // Delete old entries
-    if (keysToDelete.length > 0) {
+    if (keysToDelete.length > 0 && DEBUG_MODE) {
       console.log(`[EventDebouncer] Cleaning up ${keysToDelete.length} old events`);
       keysToDelete.forEach(key => this.recentEvents.delete(key));
     }
@@ -42,8 +42,7 @@ export class EventDebouncer {
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
     // Prioritize status updates to make them nearly instant
-    const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
-                          (eventKey.includes('status') || eventKey.includes('STATUS'));
+    const isStatusUpdate = eventKey.includes('status') || eventKey.includes('STATUS');
                           
     // Much shorter cooldown for status updates
     const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
@@ -51,8 +50,8 @@ export class EventDebouncer {
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      if (!isStatusUpdate) {
-        console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
+      if (DEBUG_MODE && !isStatusUpdate) {
+        console.log(`[EventDebouncer] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
       }
       return false;
     }
@@ -60,7 +59,7 @@ export class EventDebouncer {
     this.recentEvents.set(eventKey, now);
     
     // Automatic cleanup if Map gets too large
-    if (this.recentEvents.size > 1000) {
+    if (this.recentEvents.size > 500) { // Reduced from 1000
       this.cleanupOldEvents();
     }
     

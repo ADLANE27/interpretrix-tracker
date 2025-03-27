@@ -8,6 +8,7 @@ import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { useConnectionMonitor } from '@/hooks/useConnectionMonitor';
 import { ConnectionStatusNotification } from '@/components/admin/ConnectionStatusNotification';
+import { realtimeService } from '@/services/realtimeService';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -17,6 +18,12 @@ const Admin = () => {
     isForceReconnecting, 
     handleForceReconnect 
   } = useConnectionMonitor();
+
+  // Initialize realtime service on admin page load
+  useEffect(() => {
+    const cleanup = realtimeService.init();
+    return cleanup;
+  }, []);
 
   // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
@@ -71,6 +78,26 @@ const Admin = () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Monitor page visibility to handle reconnection when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Admin] Page visibility changed to visible, checking connection');
+        
+        // Check connection and attempt reconnect if needed
+        if (connectionError || !realtimeService.isConnected()) {
+          realtimeService.reconnectAll();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [connectionError]);
 
   return (
     <TooltipProvider>
