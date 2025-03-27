@@ -1,3 +1,4 @@
 
 export { realtimeService } from './core';
-export { SubscriptionStatus } from './types';
+export type { SubscriptionStatus } from './types';
+export { createSubscriptionStatus } from './types';

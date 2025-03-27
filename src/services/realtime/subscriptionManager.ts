@@ -1,4 +1,3 @@
-
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
@@ -11,8 +10,8 @@ export class SubscriptionManager {
   
   public createInterpreterStatusSubscription(
     interpreterId: string, 
-    onStatusChange?: (status: Profile['status']) => void,
-    eventDebouncer: EventDebouncer
+    eventDebouncer: EventDebouncer,
+    onStatusChange?: (status: Profile['status']) => void
   ): () => void {
     const key = `interpreter-status-${interpreterId}`;
     
