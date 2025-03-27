@@ -22,7 +22,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionUpdates] Network connection restored, triggering update');
+      onUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Listen for interpreter status update events
@@ -34,7 +39,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
@@ -51,12 +56,10 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       } else {
         console.error('[useMissionUpdates] Realtime subscription issue. Will auto-retry.');
       }
-    },
-    // Use consistent channel names across the application
-    channelNamePrefix: 'admin-mission-updates'
+    }
   };
 
-  // Subscribe to mission changes
+  // Subscribe to mission changes - this single subscription works for all mission changes
   useRealtimeSubscription(
     {
       event: '*',
@@ -67,7 +70,10 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
       onUpdate();
     },
-    subscriptionOptions
+    {
+      ...subscriptionOptions,
+      channelNamePrefix: 'admin-mission-updates'
+    }
   );
 
   // Subscribe to reservation changes
@@ -81,7 +87,10 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
       onUpdate();
     },
-    { ...subscriptionOptions, channelNamePrefix: 'admin-reservation-updates' }
+    {
+      ...subscriptionOptions,
+      channelNamePrefix: 'admin-reservation-updates'
+    }
   );
   
   // Use a more specific subscription for interpreter profile status changes
@@ -94,7 +103,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      // This is a status update, trigger the refresh
       onUpdate();
     },
     {

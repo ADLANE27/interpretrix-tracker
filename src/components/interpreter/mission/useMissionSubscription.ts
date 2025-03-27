@@ -89,12 +89,17 @@ export const useMissionSubscription = (
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionSubscription] Network connection restored');
+      onMissionUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       console.log('[useMissionSubscription] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onMissionUpdate]);
