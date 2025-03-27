@@ -37,29 +37,24 @@ export class SubscriptionManager {
             filter: `id=eq.${interpreterId}`
           },
           (payload: any) => {
-            if (payload && payload.new && typeof payload.new === 'object') {
-              console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload.new);
+            console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload);
+            
+            // Direct status update broadcasting without debounce
+            if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+              const newStatus = payload.new.status as Profile['status'];
+              console.log(`[SubscriptionManager] Interpreter status changed from ${payload.old.status} to ${newStatus}`);
               
-              // Check if status is defined in the payload
-              if (payload.new.status) {
-                const newStatus = payload.new.status as Profile['status'];
-                const oldStatus = payload.old?.status as Profile['status'] | undefined;
-                
-                // Always log status changes
-                console.log(`[SubscriptionManager] Interpreter ${interpreterId} status: ${oldStatus || 'unknown'} -> ${newStatus}`);
-                
-                // Always emit status updates, regardless of whether the status has changed
-                eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-                  interpreterId: interpreterId,
-                  status: newStatus
-                });
-              }
+              // Immediately emit the status update event for faster UI updates
+              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+                interpreterId: interpreterId,
+                status: newStatus
+              });
             }
             
             subscriptionRegistry.updateStatus(key, true);
           }
         )
-        .subscribe((status: string) => {
+        .subscribe((status) => {
           console.log(`[SubscriptionManager] Subscription status for ${key}: ${status}`);
           
           if (status === 'SUBSCRIBED') {
@@ -108,19 +103,17 @@ export class SubscriptionManager {
             // Skip debounce for status-related updates
             const isStatusUpdate = 
               table === 'interpreter_profiles' && 
-              payload?.new?.status !== payload?.old?.status;
+              payload.new && 
+              payload.old && 
+              payload.new.status !== payload.old.status;
             
             if (isStatusUpdate || eventDebouncer.shouldProcessEvent(eventId, now)) {
-              if (isStatusUpdate) {
-                console.log(`[SubscriptionManager] Priority status change on ${table}: ${payload?.old?.status} -> ${payload?.new?.status}`);
-              } else {
-                console.log(`[SubscriptionManager] ${event} event on ${table}`);
-              }
+              console.log(`[SubscriptionManager] ${event} event on ${table}:`, payload);
               callback(payload);
             }
           }
         )
-        .subscribe((status: string) => {
+        .subscribe((status) => {
           console.log(`[SubscriptionManager] Subscription status for ${key}: ${status}`);
           
           if (status === 'SUBSCRIBED') {

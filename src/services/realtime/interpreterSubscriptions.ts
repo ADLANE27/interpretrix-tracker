@@ -1,10 +1,10 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { EventDebouncer } from './eventDebouncer';
+import { SubscriptionStatus, createSubscriptionStatus } from './types';
 import { Profile } from '@/types/profile';
-import { STATUS_UPDATE_DEBOUNCE } from './constants';
 
 /**
  * Creates a subscription to an interpreter's status changes
@@ -16,7 +16,7 @@ export function createInterpreterStatusSubscription(
 ): [() => void, string, RealtimeChannel] {
   const key = `interpreter-status-${interpreterId}`;
   
-  console.log(`[RealtimeService] ⭐ Creating NEW status subscription for ${interpreterId}`);
+  console.log(`[RealtimeService] Subscribing to interpreter status for ${interpreterId}`);
   
   const channel = supabase.channel(key)
     .on('postgres_changes' as any, {
@@ -24,39 +24,30 @@ export function createInterpreterStatusSubscription(
       schema: 'public',
       table: 'interpreter_profiles',
       filter: `id=eq.${interpreterId}`
-    }, (payload: any) => {
-      // Safety check for payload properties
-      if (payload?.new && typeof payload.new === 'object') {
-        if ('status' in payload.new) {
-          const newStatus = payload.new.status as Profile['status'];
-          const oldStatus = payload.old?.status;
-          
-          // Always log updates for debugging
-          console.log(`[RealtimeService] ⚡ STATUS UPDATE RECEIVED for ${interpreterId}: ${oldStatus || 'unknown'} -> ${newStatus}`);
-          
-          // Call the callback immediately if provided
-          if (onStatusChange) {
-            console.log(`[RealtimeService] 📱 Calling onStatusChange callback for ${interpreterId} with status ${newStatus}`);
-            onStatusChange(newStatus);
-          }
-          
-          // CRITICAL: First emit badge update IMMEDIATELY for UI components
-          console.log(`[RealtimeService] 🔴 Emitting BADGE_UPDATE event for ${interpreterId} with ${newStatus}`);
-          eventEmitter.emit(EVENT_INTERPRETER_BADGE_UPDATE, {
-            interpreterId,
-            status: newStatus
-          });
-
-          // Then emit general status update (also immediately - no delay)
-          console.log(`[RealtimeService] 🔄 Emitting STATUS_UPDATE event for ${interpreterId} with ${newStatus}`);
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-            interpreterId,
-            status: newStatus
-          });
+    }, (payload) => {
+      if (payload.new && payload.new.status) {
+        // Avoid duplicate events within cooldown period
+        const eventKey = `status-${interpreterId}-${payload.new.status}`;
+        const now = Date.now();
+        
+        if (!eventDebouncer.shouldProcessEvent(eventKey, now)) {
+          return;
         }
+        
+        console.log(`[RealtimeService] Status update for ${interpreterId}: ${payload.new.status}`);
+        
+        if (onStatusChange) {
+          onStatusChange(payload.new.status as Profile['status']);
+        }
+        
+        // Broadcast the event for other components
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+          interpreterId,
+          status: payload.new.status
+        });
       }
     })
-    .subscribe((status: string) => {
+    .subscribe((status) => {
       console.log(`[RealtimeService] Subscription status for ${key}: ${status}`);
     });
   

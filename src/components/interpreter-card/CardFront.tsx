@@ -40,9 +40,10 @@ interface CardFrontProps {
   hasAnyPhoneNumber: boolean;
   workLocation: WorkLocation;
   locationConfig: {
-    icon: string;
-    label: string;
-    color: string;
+    [key in WorkLocation]: {
+      color: string;
+      icon: React.ElementType;
+    };
   };
   showTarif5min: boolean;
   showTarif15min: boolean;
@@ -64,7 +65,6 @@ export const CardFront: React.FC<CardFrontProps> = ({
   flipCard
 }) => {
   const badgeRef = useRef<HTMLDivElement>(null);
-  const previousStatusRef = useRef<Profile['status']>(status);
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
@@ -74,42 +74,34 @@ export const CardFront: React.FC<CardFrontProps> = ({
   
   // Effect to highlight badge on status change
   useEffect(() => {
-    console.log(`[CardFront] 🔔 Status for ${interpreter.id} is now: ${status} (was: ${previousStatusRef.current})`);
-    
-    if (status !== previousStatusRef.current) {
-      console.log(`[CardFront] ✨ Status changed! Animating badge for ${interpreter.id}`);
-      previousStatusRef.current = status;
+    if (badgeRef.current) {
+      badgeRef.current.classList.add('pulse-animation');
       
-      if (badgeRef.current) {
-        // Remove any existing animation class first
-        badgeRef.current.classList.remove('pulse-animation');
-        
-        // Force a reflow to ensure animation restarts
-        void badgeRef.current.offsetWidth;
-        
-        // Add animation class
-        badgeRef.current.classList.add('pulse-animation');
-        
-        // Remove animation class after animation completes
-        const timeout = setTimeout(() => {
-          if (badgeRef.current) {
-            badgeRef.current.classList.remove('pulse-animation');
-          }
-        }, 2000);
-        
-        return () => clearTimeout(timeout);
-      }
+      const timeout = setTimeout(() => {
+        if (badgeRef.current) {
+          badgeRef.current.classList.remove('pulse-animation');
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
     }
-  }, [status, interpreter.id]);
+  }, [status]);
 
   return (
     <Card
-      className={`hover-elevate gradient-border w-full h-full backface-hidden border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'invisible' : 'visible'}`}
-      style={{
-        transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
-        transition: 'transform 0.6s',
-        transformStyle: 'preserve-3d'
+      asMotion
+      motionProps={{
+        animate: { 
+          rotateY: isFlipped ? 180 : 0 
+        },
+        transition: { 
+          duration: 0.6, 
+          type: "spring", 
+          stiffness: 260, 
+          damping: 20 
+        }
       }}
+      className={`hover-elevate gradient-border w-full h-full backface-hidden border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'invisible' : 'visible'}`}
     >
       <CardContent className="p-2 relative flex flex-col h-full justify-between">
         <div className="mb-2 flex items-center gap-2">
@@ -235,4 +227,4 @@ export const CardFront: React.FC<CardFrontProps> = ({
       </CardContent>
     </Card>
   );
-}
+};

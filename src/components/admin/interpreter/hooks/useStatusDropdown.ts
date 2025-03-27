@@ -4,7 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { realtimeService } from "@/services/realtimeService";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from "@/lib/events";
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -49,13 +48,7 @@ export function useStatusDropdown(
     
     try {
       setIsUpdating(true);
-      console.log(`[StatusDropdown] ⚡ Updating status of ${interpreterId} to ${pendingStatus}`);
-      
-      // Optimistically update UI and broadcast to other components immediately
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-        interpreterId,
-        status: pendingStatus
-      });
+      console.log(`[StatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
       // Call parent callback if provided
       if (onStatusChange) {

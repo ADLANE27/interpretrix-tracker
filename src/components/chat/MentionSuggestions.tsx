@@ -16,39 +16,6 @@ interface MentionSuggestionsProps {
   searchTerm?: string;
 }
 
-// Helper function to normalize text for comparison (remove diacritics)
-const normalizeText = (text: string): string => {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-};
-
-// Helper function to perform better fuzzy matching
-const fuzzyMatch = (query: string, target: string): number => {
-  const normalizedQuery = normalizeText(query);
-  const normalizedTarget = normalizeText(target);
-  
-  // Direct match gets highest score
-  if (normalizedTarget === normalizedQuery) return 1;
-  
-  // Starting with query gets high score
-  if (normalizedTarget.startsWith(normalizedQuery)) return 0.8;
-  
-  // Contains query gets medium score
-  if (normalizedTarget.includes(normalizedQuery)) return 0.5;
-  
-  // Word boundary match
-  const words = normalizedTarget.split(/\s+/);
-  for (const word of words) {
-    if (word.startsWith(normalizedQuery)) return 0.3;
-  }
-  
-  // No match
-  return 0;
-};
-
 export const MentionSuggestions = ({ 
   suggestions = [], 
   onSelect, 
@@ -68,7 +35,9 @@ export const MentionSuggestions = ({
   
   // Filter language suggestions based on search term if provided
   const languageSuggestions = searchTerm 
-    ? standardLanguageSuggestions.filter(lang => fuzzyMatch(searchTerm, lang.name) > 0)
+    ? standardLanguageSuggestions.filter(lang => 
+        lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
     : standardLanguageSuggestions;
 
   if (loading) {
@@ -128,8 +97,14 @@ export const MentionSuggestions = ({
       <Command
         className="rounded-lg"
         filter={(value, search) => {
-          // Custom filtering with improved fuzzy matching
-          return fuzzyMatch(search, value);
+          // Improved search to handle diacritics and case
+          const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          
+          // Check if value starts with or contains the search term
+          if (normalizedValue.startsWith(normalizedSearch)) return 1;
+          if (normalizedValue.includes(normalizedSearch)) return 0.5;
+          return 0;
         }}
       >
         <CommandInput 
@@ -145,7 +120,7 @@ export const MentionSuggestions = ({
                 {memberSuggestions.map((member) => (
                   <CommandItem
                     key={member.id}
-                    value={`${member.name} ${member.email}`}
+                    value={`${member.name.toLowerCase()} ${member.email.toLowerCase()}`}
                     onSelect={() => onSelect(member)}
                     className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
                   >
@@ -177,7 +152,7 @@ export const MentionSuggestions = ({
               {languageSuggestions.map((lang) => (
                 <CommandItem
                   key={lang.name}
-                  value={lang.name}
+                  value={lang.name.toLowerCase()}
                   onSelect={() => onSelect(lang)}
                   className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
                 >

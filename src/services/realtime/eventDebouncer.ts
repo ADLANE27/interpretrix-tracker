@@ -1,139 +1,102 @@
 
-import { STATUS_UPDATE_DEBOUNCE, EVENT_COOLDOWN } from './constants';
-import { Profile } from '@/types/profile';
-import { EVENT_INTERPRETER_STATUS_UPDATE, EVENT_INTERPRETER_BADGE_UPDATE } from '@/lib/events';
+import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE } from './constants';
 
-type EventCallback = {
-  callback: Function;
-  lastExecuted: number;
-}
-
-/**
- * Prevents event spam by debouncing events
- */
 export class EventDebouncer {
-  private eventTimeouts: Map<string, number> = new Map();
-  private eventCallbacks: Map<string, EventCallback> = new Map();
+  private recentEvents = new Map<string, number>();
+  private cleanupTimeout: NodeJS.Timeout | null = null;
+  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   
-  constructor() {
-    console.log('[EventDebouncer] Initialized with STATUS_UPDATE_DEBOUNCE:', STATUS_UPDATE_DEBOUNCE);
+  constructor(private defaultDebounceTime: number = EVENT_COOLDOWN) {
+    // Set up periodic cleanup to prevent memory leaks
+    this.setupCleanupInterval();
   }
-
-  /**
-   * Debounces an event
-   */
-  public debounce(key: string, callback: Function, debounceTime?: number): void {
-    // For status updates, use zero debounce time to ensure immediate propagation
-    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE) || key.includes(EVENT_INTERPRETER_BADGE_UPDATE)) {
-      console.log(`[EventDebouncer] ⚡ Executing status event immediately: ${key}`);
-      callback();
-      
-      // Store last executed timestamp
-      this.eventCallbacks.set(key, {
-        callback,
-        lastExecuted: Date.now()
-      });
-      
-      return;
+  
+  private setupCleanupInterval() {
+    if (this.cleanupTimeout) {
+      clearTimeout(this.cleanupTimeout);
     }
     
-    // For non-status events, use normal debouncing
-    debounceTime = debounceTime !== undefined ? debounceTime : EVENT_COOLDOWN;
-    
-    // Clear existing timeout
-    const existingTimeout = this.eventTimeouts.get(key);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
-    
-    if (debounceTime <= 0) {
-      // No debounce time means execute immediately
-      callback();
-      
-      // Store last executed timestamp
-      this.eventCallbacks.set(key, {
-        callback,
-        lastExecuted: Date.now()
-      });
-    } else {
-      // Set timeout for debounced execution
-      const timeout = window.setTimeout(() => {
-        callback();
-        this.eventTimeouts.delete(key);
-        
-        // Store last executed timestamp
-        this.eventCallbacks.set(key, {
-          callback,
-          lastExecuted: Date.now()
-        });
-      }, debounceTime);
-      
-      this.eventTimeouts.set(key, timeout);
-    }
+    this.cleanupTimeout = setTimeout(() => {
+      this.cleanupOldEvents();
+      this.setupCleanupInterval();
+    }, 30000); // Run cleanup every 30 seconds
   }
-
-  /**
-   * Determines if an event should be processed now
-   */
-  public shouldProcessEvent(eventId: string, now: number): boolean {
-    const event = this.eventCallbacks.get(eventId);
-    
-    // If it's a status event, always process it
-    if (eventId.includes('status') || eventId.includes('interpreter-profiles')) {
-      return true;
-    }
-    
-    // If we haven't seen this event before, or it's been long enough, process it
-    if (!event || (now - event.lastExecuted) > EVENT_COOLDOWN) {
-      this.eventCallbacks.set(eventId, {
-        callback: () => {},
-        lastExecuted: now
-      });
-      return true;
-    }
-    
-    return false;
-  }
-
-  /**
-   * Executes an event if it's not on cooldown
-   */
-  public executeIfNotCooldown(key: string, callback: Function, cooldownTime: number = EVENT_COOLDOWN): boolean {
-    // Special case for status events - always execute immediately
-    if (key.includes(EVENT_INTERPRETER_STATUS_UPDATE) || key.includes(EVENT_INTERPRETER_BADGE_UPDATE)) {
-      callback();
-      this.eventCallbacks.set(key, {
-        callback,
-        lastExecuted: Date.now()
-      });
-      return true;
-    }
-    
-    const event = this.eventCallbacks.get(key);
+  
+  private cleanupOldEvents() {
     const now = Date.now();
+    const keysToDelete: string[] = [];
     
-    if (!event || (now - event.lastExecuted) > cooldownTime) {
-      callback();
-      
-      // Store last executed timestamp
-      this.eventCallbacks.set(key, {
-        callback,
-        lastExecuted: now
-      });
-      
-      return true;
+    // Find old entries
+    this.recentEvents.forEach((timestamp, key) => {
+      if (now - timestamp > 10000) { // 10 seconds
+        keysToDelete.push(key);
+      }
+    });
+    
+    // Delete old entries
+    if (keysToDelete.length > 0) {
+      console.log(`[EventDebouncer] Cleaning up ${keysToDelete.length} old events`);
+      keysToDelete.forEach(key => this.recentEvents.delete(key));
     }
-    
-    return false;
   }
-
-  /**
-   * Clears all pending debounced events
-   */
-  public clear(): void {
-    for (const timeout of this.eventTimeouts.values()) {
-      clearTimeout(timeout);
+  
+  public shouldProcessEvent(eventKey: string, now: number): boolean {
+    // Prioritize status updates to make them nearly instant
+    const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
+                          (eventKey.includes('status') || eventKey.includes('STATUS'));
+                          
+    // Much shorter cooldown for status updates
+    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
+    
+    const lastProcessed = this.recentEvents.get(eventKey);
+    
+    if (lastProcessed && now - lastProcessed < cooldownTime) {
+      if (!isStatusUpdate) {
+        console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
+      }
+      return false;
     }
-    this.eventTimeouts.clear();
+    
+    this.recentEvents.set(eventKey, now);
+    
+    // Automatic cleanup if Map gets too large
+    if (this.recentEvents.size > 1000) {
+      this.cleanupOldEvents();
+    }
+    
+    return true;
+  }
+  
+  public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
+    // Use nearly zero timeout for status updates
+    const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
+    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
+    
+    // Clear existing timer for this key if it exists
+    if (this.debounceTimers.has(debounceKey)) {
+      clearTimeout(this.debounceTimers.get(debounceKey)!);
+    }
+    
+    // Set new timer
+    const timer = setTimeout(() => {
+      callback();
+      this.debounceTimers.delete(debounceKey);
+    }, useTimeout);
+    
+    this.debounceTimers.set(debounceKey, timer);
+  }
+  
+  public dispose() {
+    if (this.cleanupTimeout) {
+      clearTimeout(this.cleanupTimeout);
+      this.cleanupTimeout = null;
+    }
+    
+    // Clear all debounce timers
+    this.debounceTimers.forEach(timer => clearTimeout(timer));
+    this.debounceTimers.clear();
+    
+    // Clear all event tracking
+    this.recentEvents.clear();
   }
 }

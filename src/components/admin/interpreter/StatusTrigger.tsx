@@ -1,22 +1,17 @@
 
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import React from 'react';
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Status, StatusConfigItem } from "./types/status-types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface StatusTriggerProps {
   displayFormat: "badge" | "button";
-  statusConfig: {
-    label: string;
-    color: string;
-    icon: React.ElementType;
-  };
-  status: string;
+  statusConfig: StatusConfigItem;
+  status: Status;
   className?: string;
+  onClick?: () => void;
   disabled?: boolean;
   isConnected?: boolean;
-  onClick?: () => void;
 }
 
 export const StatusTrigger: React.FC<StatusTriggerProps> = ({
@@ -24,76 +19,58 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   statusConfig,
   status,
   className = "",
+  onClick,
   disabled = false,
-  isConnected = true,
-  onClick
+  isConnected = true
 }) => {
-  const Icon = statusConfig.icon;
-
-  const badgeClasses = cn(
-    "bg-opacity-90 hover:bg-opacity-100 transition-all font-medium flex items-center gap-1",
-    statusConfig.color,
-    !isConnected ? "opacity-60" : "",
-    className
-  );
-
-  const buttonClasses = cn(
-    "font-medium flex items-center gap-1.5 shadow-sm",
-    statusConfig.color,
-    !isConnected ? "opacity-60" : "",
-    className
-  );
-
+  const isMobile = useIsMobile();
+  const StatusIcon = statusConfig.icon;
+  const displayLabel = isMobile ? statusConfig.mobileLabel : statusConfig.label;
+  
+  // Handle click with error prevention
+  const handleClick = (e: React.MouseEvent) => {
+    if (disabled || !isConnected) return;
+    
+    if (onClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    }
+  };
+  
+  // Add visual indicator for connection status
+  const connectionStyles = !isConnected 
+    ? "opacity-70 cursor-not-allowed" 
+    : disabled 
+      ? "opacity-80 cursor-not-allowed" 
+      : "cursor-pointer hover:opacity-95 transition-opacity";
+  
   if (displayFormat === "badge") {
     return (
-      <motion.div
-        initial={{ scale: 1 }}
-        whileHover={{ scale: 1.03 }}
-        className="relative"
+      <div
+        className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusConfig.color} ${connectionStyles} ${className}`}
+        onClick={handleClick}
+        aria-disabled={disabled || !isConnected}
+        role="button"
+        tabIndex={disabled || !isConnected ? -1 : 0}
       >
-        <Badge 
-          className={badgeClasses}
-          onClick={onClick}
-          style={{
-            cursor: disabled ? 'not-allowed' : 'pointer',
-          }}
-        >
-          <Icon className="h-3 w-3" />
-          <span>{statusConfig.label}</span>
-        </Badge>
-        
-        <style jsx global>{`
-          @keyframes pulse-badge {
-            0% {
-              box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.2);
-            }
-            70% {
-              box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-            }
-          }
-          
-          .pulse-animation {
-            animation: pulse-badge 1s ease-out;
-            animation-iteration-count: 2;
-          }
-        `}</style>
-      </motion.div>
+        {displayLabel}
+        {!isConnected && <span className="ml-1 inline-block animate-pulse">•</span>}
+      </div>
+    );
+  } else {
+    return (
+      <div
+        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusConfig.color} ${connectionStyles} ${className}`}
+        onClick={handleClick}
+        aria-disabled={disabled || !isConnected}
+        role="button"
+        tabIndex={disabled || !isConnected ? -1 : 0}
+      >
+        <StatusIcon className="h-4 w-4" />
+        <span>{displayLabel}</span>
+        {!isConnected && <span className="ml-1 inline-block animate-pulse">•</span>}
+      </div>
     );
   }
-
-  return (
-    <Button
-      variant="default"
-      size="sm"
-      className={buttonClasses}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Icon className="h-4 w-4" />
-      <span>{statusConfig.label}</span>
-    </Button>
-  );
 };

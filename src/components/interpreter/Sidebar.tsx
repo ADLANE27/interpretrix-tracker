@@ -169,15 +169,18 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   ];
 
   const getStatusColor = () => {
-    const statusColors = {
-      "available": "bg-interpreter-available",
-      "busy": "bg-interpreter-busy",
-      "pause": "bg-interpreter-pause",
-      "unavailable": "bg-interpreter-unavailable",
-      "en appel": "bg-interpreter-busy"
-    };
-    
-    return statusColors[userStatus.toLowerCase()] || "bg-gray-400";
+    switch (userStatus) {
+      case "available":
+        return "bg-interpreter-available";
+      case "busy":
+        return "bg-interpreter-busy";
+      case "pause":
+        return "bg-interpreter-pause";
+      case "unavailable":
+        return "bg-interpreter-unavailable";
+      default:
+        return "bg-gray-400";
+    }
   };
 
   const handleMentionClick = (mention: any) => {
@@ -273,7 +276,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 <Icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
                 
-                {tab.badge !== undefined && tab.badge > 0 && (
+                {tab.badge !== undefined && (
                   <Badge 
                     variant="destructive" 
                     className="ml-auto animate-pulse"
@@ -282,7 +285,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {tab.id === "messages" && tab.mentionsBadge !== undefined && tab.mentionsBadge > 0 && (
+                {tab.id === "messages" && tab.mentionsBadge !== undefined && (
                   <Badge 
                     variant="destructive" 
                     className="mr-1 animate-pulse bg-red-500 text-white"
@@ -291,7 +294,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {tab.id === "messages" && tab.directMessagesBadge !== undefined && tab.directMessagesBadge > 0 && (
+                {tab.id === "messages" && tab.directMessagesBadge !== undefined && (
                   <Badge 
                     variant="secondary" 
                     className="animate-pulse bg-blue-500 text-white"
