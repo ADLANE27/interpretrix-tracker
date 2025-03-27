@@ -41,10 +41,17 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
+    // Prioritize status updates by using identifier
+    const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
+                          eventKey.includes('status');
+                          
+    // Shorter cooldown for status updates
+    const cooldownTime = isStatusUpdate ? 50 : this.defaultDebounceTime;
+    
     const lastProcessed = this.recentEvents.get(eventKey);
     
-    if (lastProcessed && now - lastProcessed < this.defaultDebounceTime) {
-      console.log(`[RealtimeService] Debouncing duplicate event: ${eventKey}`);
+    if (lastProcessed && now - lastProcessed < cooldownTime) {
+      console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
       return false;
     }
     
@@ -59,6 +66,9 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
+    // Use shorter timeout for status updates
+    const useTimeout = debounceKey.includes('status') ? Math.min(100, timeout) : timeout;
+    
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {
       clearTimeout(this.debounceTimers.get(debounceKey)!);
@@ -68,7 +78,7 @@ export class EventDebouncer {
     const timer = setTimeout(() => {
       callback();
       this.debounceTimers.delete(debounceKey);
-    }, timeout);
+    }, useTimeout);
     
     this.debounceTimers.set(debounceKey, timer);
   }

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { EventDebouncer } from './eventDebouncer';
 import { Profile } from '@/types/profile';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 /**
  * Manages all realtime subscriptions
@@ -37,10 +38,31 @@ export class SubscriptionManager {
           },
           (payload) => {
             console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload);
+            
+            // Direct status update broadcasting without debounce
+            if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+              const newStatus = payload.new.status as Profile['status'];
+              console.log(`[SubscriptionManager] Interpreter status changed from ${payload.old.status} to ${newStatus}`);
+              
+              // Immediately emit the status update event for faster UI updates
+              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+                interpreterId: interpreterId,
+                status: newStatus
+              });
+            }
+            
             subscriptionRegistry.updateStatus(key, true);
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`[SubscriptionManager] Subscription status for ${key}: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            subscriptionRegistry.updateStatus(key, true);
+          } else if (status === 'CHANNEL_ERROR' || status === 'CLOSED' || status === 'TIMED_OUT') {
+            subscriptionRegistry.updateStatus(key, false);
+          }
+        });
       
       subscriptionRegistry.register(key, channel);
     } catch (error) {
@@ -78,7 +100,14 @@ export class SubscriptionManager {
             const now = Date.now();
             const eventId = `${table}-${event}-${now}`;
             
-            if (eventDebouncer.shouldProcessEvent(eventId, now)) {
+            // Skip debounce for status-related updates
+            const isStatusUpdate = 
+              table === 'interpreter_profiles' && 
+              payload.new && 
+              payload.old && 
+              payload.new.status !== payload.old.status;
+            
+            if (isStatusUpdate || eventDebouncer.shouldProcessEvent(eventId, now)) {
               console.log(`[SubscriptionManager] ${event} event on ${table}:`, payload);
               callback(payload);
             }
