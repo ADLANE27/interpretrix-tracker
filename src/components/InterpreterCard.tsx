@@ -128,7 +128,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 {lastName}
               </h3>
               {firstName && (
-                <h3 className="text-base text-gradient-primary leading-tight truncate">
+                <h3 className="text-base font-bold text-gradient-primary leading-tight truncate">
                   {firstName}
                 </h3>
               )}
