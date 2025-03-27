@@ -17,6 +17,9 @@ export const CONNECTION_STATUS_DEBOUNCE_TIME = 800; // Reduced for faster UI upd
 export const RECONNECT_STAGGER_INTERVAL = 100; // Reduced for faster reconnection
 export const RECONNECT_STAGGER_MAX_DELAY = 2000; // Reduced maximum stagger delay
 
+// Periodic reconnection interval (in milliseconds)
+export const RECONNECT_PERIODIC_INTERVAL = 60000; // Added this constant for periodic reconnection
+
 // Telemetry and debugging
 export const DEBUG_MODE = false; // Set to true to enable verbose logging
 export const TELEMETRY_BATCH_SIZE = 10; // Number of events to batch before sending
