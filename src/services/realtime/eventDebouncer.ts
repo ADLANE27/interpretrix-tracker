@@ -1,5 +1,5 @@
 
-import { EVENT_COOLDOWN } from './constants';
+import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE } from './constants';
 
 export class EventDebouncer {
   private recentEvents = new Map<string, number>();
@@ -41,17 +41,20 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Prioritize status updates by using identifier
+    // Check if this is a status update event
     const isStatusUpdate = eventKey.includes('interpreter_profiles-UPDATE') && 
                           eventKey.includes('status');
                           
-    // Shorter cooldown for status updates
-    const cooldownTime = isStatusUpdate ? 50 : this.defaultDebounceTime;
+    // Use an extremely short cooldown for status updates
+    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      console.log(`[RealtimeService] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
+      // Don't log for status updates to reduce console noise
+      if (!isStatusUpdate) {
+        console.log(`[RealtimeService] Debouncing event: ${eventKey}`);
+      }
       return false;
     }
     
@@ -66,8 +69,9 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use shorter timeout for status updates
-    const useTimeout = debounceKey.includes('status') ? Math.min(100, timeout) : timeout;
+    // Use extremely short timeout for status updates
+    const isStatusUpdate = debounceKey.includes('status');
+    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
     
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {
