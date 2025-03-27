@@ -36,7 +36,7 @@ export class SubscriptionManager {
             table: 'interpreter_profiles',
             filter: `id=eq.${interpreterId}`
           },
-          (payload) => {
+          (payload: any) => {
             console.log(`[SubscriptionManager] Received update for interpreter: ${interpreterId}`, payload);
             
             // Direct status update broadcasting without debounce
@@ -96,7 +96,7 @@ export class SubscriptionManager {
             table: table,
             filter: filter || undefined
           },
-          (payload) => {
+          (payload: any) => {
             const now = Date.now();
             const eventId = `${table}-${event}-${now}`;
             

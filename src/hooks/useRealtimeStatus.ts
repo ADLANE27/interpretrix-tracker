@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
@@ -26,6 +25,12 @@ export const useRealtimeStatus = ({
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const pendingUpdateRef = useRef<{status: Profile['status'], timestamp: number} | null>(null);
   const isInitialLoadRef = useRef(true);
+  const statusRef = useRef<Profile['status']>(initialStatus);
+  
+  // Keep a ref to the latest status for comparison in event handlers
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
   
   // Initialize the realtime service once
   useEffect(() => {
@@ -71,7 +76,7 @@ export const useRealtimeStatus = ({
     if (!interpreterId) return;
     
     const handleStatusUpdate = ({ interpreterId: eventInterpreterId, status: newStatus }: { interpreterId: string, status: string }) => {
-      if (eventInterpreterId === interpreterId) {
+      if (eventInterpreterId === interpreterId && newStatus !== statusRef.current) {
         console.log(`[useRealtimeStatus] Received status update for ${interpreterId}: ${newStatus}`);
         setStatus(newStatus as Profile['status']);
         setLastUpdateTime(new Date());
@@ -104,7 +109,7 @@ export const useRealtimeStatus = ({
             const fetchedStatus = data.status as Profile['status'];
             console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
             
-            if (fetchedStatus !== status) {
+            if (fetchedStatus !== statusRef.current) {
               setStatus(fetchedStatus);
               setLastUpdateTime(new Date());
               
@@ -120,7 +125,7 @@ export const useRealtimeStatus = ({
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
       // No explicit cleanup needed for subscribeToInterpreterStatus
     };
-  }, [interpreterId, onStatusChange, status]);
+  }, [interpreterId, onStatusChange]);
   
   // Refresh status if connection is restored
   useEffect(() => {
@@ -143,25 +148,31 @@ export const useRealtimeStatus = ({
             const fetchedStatus = data.status as Profile['status'];
             console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
             
-            if (fetchedStatus !== status) {
+            if (fetchedStatus !== statusRef.current) {
               setStatus(fetchedStatus);
               setLastUpdateTime(new Date());
               
               if (onStatusChange) {
                 onStatusChange(fetchedStatus);
               }
+              
+              // Force broadcast to sync all components
+              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+                interpreterId,
+                status: fetchedStatus
+              });
             }
           }
         } catch (error) {
           console.error('[useRealtimeStatus] Error fetching status:', error);
         }
-      }, 500); // Shorter delay for faster updates
+      }, 200); // Short delay for faster updates
     }
     
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [interpreterId, isConnected, onStatusChange, status]);
+  }, [interpreterId, isConnected, onStatusChange]);
   
   /**
    * Update an interpreter's status
@@ -172,6 +183,7 @@ export const useRealtimeStatus = ({
     try {
       // Optimistically update the local state
       setStatus(newStatus);
+      statusRef.current = newStatus;
       const now = Date.now();
       
       // Broadcast status change immediately for other components 
@@ -194,8 +206,6 @@ export const useRealtimeStatus = ({
       
       if (error) {
         console.error('[useRealtimeStatus] Error updating status:', error);
-        // Don't revert on error - optimistic update is shown
-        // Will be fixed when next realtime update comes in
         return false;
       }
       
@@ -205,7 +215,6 @@ export const useRealtimeStatus = ({
       return true;
     } catch (error) {
       console.error('[useRealtimeStatus] Unexpected error:', error);
-      // Don't revert on error - optimistic update is shown
       return false;
     }
   }, [interpreterId, isConnected]);
