@@ -34,7 +34,7 @@ export function useRealtimeSubscription2(
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        'postgres_changes', 
+        'postgres_changes' as any, 
         {
           event: opt.event,
           schema: opt.schema || 'public',
