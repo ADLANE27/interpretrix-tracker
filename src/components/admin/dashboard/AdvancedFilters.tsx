@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -14,6 +13,9 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { LANGUAGES } from "@/lib/constants";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+
+// Tri des langues par ordre alphabétique croissant
+const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b, 'fr'));
 
 interface AdvancedFiltersProps {
   isFiltersOpen: boolean;
@@ -106,7 +108,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <div className="space-y-2">
               <Label htmlFor="language">Langue</Label>
               <LanguageCombobox 
-                languages={LANGUAGES}
+                languages={sortedLanguages}
                 value={languageFilter}
                 onChange={setLanguageFilter}
                 placeholder="Rechercher une langue..."
