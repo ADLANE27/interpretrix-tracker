@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +61,7 @@ export const InterpretersTab: React.FC = () => {
   const handleInterpreterStatusChange = (interpreterId: string, newStatus: Profile['status']) => {
     console.log(`[InterpretersTab] Status change for interpreter ${interpreterId}: ${newStatus}`);
     
+    // Immediately update the local state for instant UI feedback
     setInterpreters(current => 
       current.map(interpreter => 
         interpreter.id === interpreterId 
@@ -81,14 +83,30 @@ export const InterpretersTab: React.FC = () => {
     console.log("[InterpretersTab] Setting up real-time subscriptions and event listeners");
     const channels: RealtimeChannel[] = [];
 
-    // Channel for interpreter profile changes (status updates)
+    // Subscribe to interpreter_profiles table directly with a more specific filter
     const interpreterChannel = supabase.channel('admin-interpreter-profiles').on('postgres_changes', {
-      event: '*',
+      event: 'UPDATE',
       schema: 'public',
-      table: 'interpreter_profiles'
+      table: 'interpreter_profiles',
+      filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
     }, async payload => {
-      console.log(`[InterpretersTab] Interpreter profiles changed:`, payload);
-      await fetchInterpreters();
+      console.log(`[InterpretersTab] Interpreter status changed:`, payload);
+      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+        // Status has changed, update only that interpreter
+        const interpreterId = payload.new.id;
+        const newStatus = payload.new.status;
+        
+        setInterpreters(current => 
+          current.map(interpreter => 
+            interpreter.id === interpreterId 
+              ? { ...interpreter, status: newStatus as Profile['status'] } 
+              : interpreter
+          )
+        );
+      } else {
+        // For other changes, refresh the full list
+        await fetchInterpreters();
+      }
     }).subscribe(status => {
       console.log(`[InterpretersTab] Interpreter profiles subscription status:`, status);
     });
@@ -123,18 +141,25 @@ export const InterpretersTab: React.FC = () => {
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Add connection health check with shorter interval for more responsive feedback
     const handleConnectionState = () => {
-      const connectionState = supabase.getChannels().length > 0;
+      const connectionState = supabase.getChannels().some(channel => channel.state === 'joined');
       console.log("[InterpretersTab] Connection state:", connectionState ? "connected" : "disconnected");
       if (!connectionState) {
         console.log("[InterpretersTab] Attempting to reconnect...");
-        channels.forEach(channel => channel.subscribe());
+        channels.forEach(channel => {
+          if (channel.state !== 'joined') {
+            channel.subscribe();
+          }
+        });
       }
     };
-    const connectionCheckInterval = setInterval(handleConnectionState, 30000);
+    const connectionCheckInterval = setInterval(handleConnectionState, 15000); // Check every 15 seconds
 
     // Initial fetch
     fetchInterpreters();
+    
     return () => {
       console.log("[InterpretersTab] Cleaning up subscriptions and event listeners");
       channels.forEach(channel => {

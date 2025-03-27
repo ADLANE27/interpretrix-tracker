@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,33 +12,66 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
     // Reset connection error state on successful updates
     if (connectionError) setConnectionError(false);
+    reconnectAttemptRef.current = 0;
     
     // Emit event using mitt instead of DOM CustomEvent
     eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
   });
 
-  // Handle connection status
+  // Improved connection health monitoring
   useEffect(() => {
-    const connectionCheck = setInterval(() => {
+    const checkConnection = () => {
       // If there are no active channels, it might indicate a connection issue
       const channels = supabase.getChannels();
       const connected = channels.length > 0 && 
         channels.some((channel: RealtimeChannel) => channel.state === 'joined');
       
-      if (!connected && !connectionError) {
-        console.log('Connection issue detected, will attempt to reconnect');
-        setConnectionError(true);
+      if (!connected) {
+        // Only show reconnection message after 2 failed attempts
+        if (!connectionError && reconnectAttemptRef.current >= 2) {
+          console.log('Connection issue detected, showing reconnection message');
+          setConnectionError(true);
+        }
+        
+        // Try to reconnect by subscribing to a health check channel
+        console.log(`Reconnection attempt ${reconnectAttemptRef.current + 1}`);
+        const healthChannel = supabase.channel('connection-health-check');
+        healthChannel.subscribe((status) => {
+          console.log('Health channel status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully reconnected');
+            setConnectionError(false);
+            reconnectAttemptRef.current = 0;
+            supabase.removeChannel(healthChannel);
+          }
+        });
+        
+        reconnectAttemptRef.current += 1;
       } else if (connected && connectionError) {
+        console.log('Connection restored');
         setConnectionError(false);
+        reconnectAttemptRef.current = 0;
       }
-    }, 30000); // Check every 30 seconds
+    };
 
-    return () => clearInterval(connectionCheck);
+    const connectionCheck = setInterval(checkConnection, 15000); // Check every 15 seconds
+
+    // Initial check
+    checkConnection();
+
+    return () => {
+      clearInterval(connectionCheck);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+    };
   }, [connectionError]);
 
   useEffect(() => {
@@ -89,7 +122,7 @@ const Admin = () => {
   return (
     <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">
       {connectionError && (
-        <div className="fixed top-4 right-4 bg-amber-100 border border-amber-400 text-amber-700 px-4 py-2 rounded-md shadow-lg z-50">
+        <div className="fixed top-4 right-4 bg-amber-100 border border-amber-400 text-amber-700 px-4 py-2 rounded-md shadow-lg z-50 animate-pulse">
           Reconnexion en cours...
         </div>
       )}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -12,6 +11,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 type Status = Profile['status'];
 
@@ -73,12 +73,10 @@ export const InterpreterStatusDropdown = ({
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
 
-  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       const updateId = `${currentStatus}-${Date.now()}`;
       
-      // Prevent duplicate updates
       if (updateId === lastUpdateRef.current) return;
       lastUpdateRef.current = updateId;
       
@@ -104,15 +102,12 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
-      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using RPC function with correct parameters
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -120,10 +115,11 @@ export const InterpreterStatusDropdown = ({
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
-        // Revert on error
         setLocalStatus(currentStatus);
         throw error;
       }
+
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
 
       toast({
         title: "Statut mis à jour",
@@ -148,7 +144,6 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
-  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;

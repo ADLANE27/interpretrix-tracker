@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { supabase } from '@/integrations/supabase/client';
 
 // Determine if we're in production mode
 const isProduction = () => {
@@ -22,7 +23,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionUpdates] Network connection restored, triggering update');
+      onUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Listen for interpreter status update events
@@ -32,11 +38,26 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
 
+    // Set up a direct channel subscription for interpreter status changes
+    const statusChannel = supabase.channel('interpreter-status-direct')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
+      }, (payload) => {
+        console.log('[useMissionUpdates] Direct status update received:', payload);
+        onUpdate();
+        // Also propagate the event to other components
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      }).subscribe();
+
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+      supabase.removeChannel(statusChannel);
     };
   }, [onUpdate]);
 
@@ -94,6 +115,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       // This is a status update, trigger the refresh
       onUpdate();
+      // Also propagate the event
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
     },
     {
       ...subscriptionOptions,
