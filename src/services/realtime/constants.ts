@@ -21,6 +21,6 @@ export const RECONNECT_STAGGER_MAX_DELAY = 2000; // Reduced maximum stagger dela
 export const RECONNECT_PERIODIC_INTERVAL = 60000; // Added this constant for periodic reconnection
 
 // Telemetry and debugging
-export const DEBUG_MODE = false; // Set to true to enable verbose logging
+export const DEBUG_MODE = true; // Set to true to enable verbose logging
 export const TELEMETRY_BATCH_SIZE = 10; // Number of events to batch before sending
 export const TELEMETRY_INTERVAL = 60000; // How often to send telemetry in ms

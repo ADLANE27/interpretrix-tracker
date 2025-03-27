@@ -5,47 +5,68 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --foreground: 222.2 47.4% 11.2%;
+
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+ 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
-    --radius: 0.75rem;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 70% 50.4%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 217.2 32.6% 17.5%;
+
+    --radius: 0.5rem;
   }
 }
 
@@ -53,171 +74,62 @@
   * {
     @apply border-border;
   }
-  
-  html {
-    -webkit-text-size-adjust: 100%;
-    -moz-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-    @apply touch-manipulation overscroll-none;
-  }
-  
   body {
-    @apply bg-background text-foreground antialiased transition-colors duration-300;
-    text-rendering: optimizeLegibility;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
-    @apply fixed inset-0 overflow-hidden;
-  }
-
-  #root {
-    @apply h-full w-full overflow-hidden;
-  }
-
-  input, textarea, button, select, a {
-    @apply touch-manipulation;
-    -webkit-tap-highlight-color: transparent;
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-@layer components {
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top);
+/* Animation for status badge */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
   }
-  
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
   }
-
-  .safe-area-left {
-    padding-left: env(safe-area-inset-left);
-  }
-
-  .safe-area-right {
-    padding-right: env(safe-area-inset-right);
-  }
-
-  .touch-feedback {
-    -webkit-tap-highlight-color: transparent;
-    @apply active:bg-gray-100 dark:active:bg-gray-800 transition-colors;
-  }
-
-  .no-select {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .mobile-safe-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
-  }
-  
-  .mobile-button {
-    @apply h-12 min-w-12 rounded-full flex items-center justify-center;
-    touch-action: manipulation;
-  }
-
-  /* Glass morphism styles */
-  .glass-card {
-    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-lg;
-  }
-  
-  .glass-navbar {
-    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50;
-  }
-  
-  .glass-button {
-    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200/70 dark:border-gray-700/50 
-    hover:bg-white/100 dark:hover:bg-gray-700/100 transition-colors;
-  }
-
-  /* Gradient styles */
-  .gradient-border {
-    @apply border-l-4 border-l-palette-ocean-blue hover:border-l-palette-vivid-purple transition-colors;
-  }
-  
-  .card-header-gradient {
-    @apply bg-gradient-to-r from-slate-50 to-blue-50 dark:from-gray-800 dark:to-blue-900;
-  }
-  
-  .status-badge {
-    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  
-  .hover-elevate {
-    @apply transition-all hover:shadow-lg hover:-translate-y-1;
-  }
-
-  /* Text gradient styles */
-  .text-gradient-primary {
-    @apply bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue bg-clip-text text-transparent;
-  }
-
-  .text-gradient-secondary {
-    @apply bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink bg-clip-text text-transparent;
-  }
-  
-  /* Card enhancement styles */
-  .card-enhanced {
-    @apply border-0 shadow-lg bg-white dark:bg-gray-800 hover:shadow-xl transition-all duration-300;
-  }
-  
-  .card-glass {
-    @apply backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20;
-  }
-  
-  /* Add new utility for proper text wrapping */
-  .overflow-wrap-anywhere {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  /* Card Flip Animation Styles */
-  .perspective-1000 {
-    perspective: 1000px;
-  }
-  
-  .preserve-3d {
-    transform-style: preserve-3d;
-  }
-  
-  .backface-hidden {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
-.gradient-bg-subtle {
-  @apply bg-gradient-to-br from-white to-palette-soft-blue dark:from-gray-900 dark:to-gray-800;
+.pulse-animation {
+  animation: pulse 0.6s ease-in-out 3;
 }
 
-.flip-exit {
-  transform: rotateY(0deg);
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-.flip-exit-active {
-  transform: rotateY(180deg);
-  transition: transform 600ms;
-  transition-timing-function: cubic-bezier(.57,.21,.69,1.25);
+/* Hide scrollbar for Firefox */
+.hide-scrollbar {
+  scrollbar-width: none;
 }
 
-.flip-enter {
-  transform: rotateY(180deg);
+.gradient-border {
+  --border-width: 2px;
+  border: var(--border-width) solid transparent;
+  background-image: linear-gradient(var(--background), var(--background)),
+    linear-gradient(135deg, #861fcf, #007cf0, #00dfd8, #ffba49, #861fcf);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }
 
-.flip-enter-active {
-  transform: rotateY(0deg);
-  transition: transform 600ms;
-  transition-timing-function: cubic-bezier(.57,.21,.69,1.25);
+.hover-elevate {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-elevate:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.text-gradient-primary {
+  background: linear-gradient(to right, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }

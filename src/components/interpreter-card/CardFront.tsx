@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -64,12 +64,28 @@ export const CardFront: React.FC<CardFrontProps> = ({
   hasFutureMission,
   flipCard
 }) => {
+  const badgeRef = useRef<HTMLDivElement>(null);
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
   
   const LocationIcon = locationConfig[workLocation].icon;
   const showAnyTarif = showTarif5min || showTarif15min;
+  
+  // Effect to highlight badge on status change
+  useEffect(() => {
+    if (badgeRef.current) {
+      badgeRef.current.classList.add('pulse-animation');
+      
+      const timeout = setTimeout(() => {
+        if (badgeRef.current) {
+          badgeRef.current.classList.remove('pulse-animation');
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [status]);
 
   return (
     <Card
@@ -102,13 +118,15 @@ export const CardFront: React.FC<CardFrontProps> = ({
         </div>
         
         <div className="flex flex-wrap gap-1 mb-2 items-center">
-          <InterpreterStatusDropdown 
-            interpreterId={interpreter.id}
-            currentStatus={interpreter.status}
-            displayFormat="badge"
-            onStatusChange={handleStatusChange}
-            className="text-[10px] px-1.5 py-0.5"
-          />
+          <div ref={badgeRef} className="transition-all">
+            <InterpreterStatusDropdown 
+              interpreterId={interpreter.id}
+              currentStatus={status}
+              displayFormat="badge"
+              onStatusChange={handleStatusChange}
+              className="text-[10px] px-1.5 py-0.5"
+            />
+          </div>
           
           <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 ${locationConfig[workLocation].color}`}>
             <LocationIcon className="h-2.5 w-2.5" />

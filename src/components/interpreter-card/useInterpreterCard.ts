@@ -1,10 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
-import { useInterpreterStatusSync } from '@/hooks/useInterpreterStatusSync';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Home, Building } from 'lucide-react';
 import { isPast, addMinutes, parseISO } from 'date-fns';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface UseInterpreterCardProps {
   id: string;
@@ -29,38 +30,67 @@ export const useInterpreterCard = (
 ) => {
   const [status, setStatus] = useState(interpreter.status);
   const [isFlipped, setIsFlipped] = useState(false);
+  const prevStatusRef = useRef<Profile['status']>(interpreter.status);
   
   const flipCard = () => {
     setIsFlipped(prev => !prev);
   };
   
-  const { updateStatus } = useInterpreterStatusSync({
+  const { updateStatus, isConnected } = useRealtimeStatus({
     interpreterId: interpreter.id,
+    initialStatus: interpreter.status,
     onStatusChange: (newStatus) => {
       console.log(`[InterpreterCard] Status sync updated status to: ${newStatus}`);
       setStatus(newStatus);
       
-      if (onStatusChange && newStatus !== interpreter.status) {
+      if (onStatusChange && newStatus !== prevStatusRef.current) {
         onStatusChange(interpreter.id, newStatus);
       }
-    },
-    initialStatus: interpreter.status,
-    isAdmin: true
+      
+      prevStatusRef.current = newStatus;
+    }
   });
   
+  // Listen for global status updates
   useEffect(() => {
-    if (interpreter.status !== status) {
-      console.log(`[InterpreterCard] Status updated from prop for ${interpreter.name}:`, interpreter.status);
+    const handleStatusUpdate = (data: { interpreterId: string, status: Profile['status'] }) => {
+      if (data.interpreterId === interpreter.id && data.status !== status) {
+        console.log(`[InterpreterCard] Global status update for ${interpreter.name} to ${data.status}`);
+        setStatus(data.status);
+        prevStatusRef.current = data.status;
+      }
+    };
+    
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    };
+  }, [interpreter.id, interpreter.name, status]);
+  
+  // Effect to sync status from props
+  useEffect(() => {
+    if (interpreter.status !== status && interpreter.status !== prevStatusRef.current) {
+      console.log(`[InterpreterCard] Status updated from prop for ${interpreter.name}: ${interpreter.status}`);
       setStatus(interpreter.status);
+      prevStatusRef.current = interpreter.status;
     }
   }, [interpreter.status, status, interpreter.name]);
 
   const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterCard] Status change requested for ${interpreter.name} to ${newStatus}`);
     setStatus(newStatus);
+    prevStatusRef.current = newStatus;
     
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
+    }
+    
+    // Also update the status in the database
+    try {
+      await updateStatus(newStatus);
+    } catch (error) {
+      console.error(`[InterpreterCard] Failed to update status for ${interpreter.name}:`, error);
     }
   };
 
@@ -96,14 +126,6 @@ export const useInterpreterCard = (
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  console.log(`[InterpreterCard] ${interpreter.name} tarifs:`, {
-    tarif_5min: interpreter.tarif_5min,
-    tarif_15min: interpreter.tarif_15min,
-    showTarif5min,
-    showTarif15min,
-    showAnyTarif
-  });
-
   const hasFutureMission = interpreter.next_mission_start && 
     !isPast(addMinutes(
       parseISO(interpreter.next_mission_start), 
@@ -122,6 +144,7 @@ export const useInterpreterCard = (
     showTarif5min,
     showTarif15min,
     showAnyTarif,
-    hasFutureMission
+    hasFutureMission,
+    isConnected
   };
 };

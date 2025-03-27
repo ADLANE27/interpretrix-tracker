@@ -6,7 +6,8 @@ import {
   RETRY_MAX, 
   RETRY_DELAY_BASE, 
   HEALTH_CHECK_INTERVAL,
-  HEARTBEAT_INTERVAL
+  HEARTBEAT_INTERVAL,
+  RECONNECT_PERIODIC_INTERVAL
 } from './constants';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { SubscriptionStatus } from './registry/types';
@@ -16,6 +17,7 @@ import { SubscriptionStatus } from './registry/types';
  */
 export class ConnectionMonitor {
   private healthCheckInterval: NodeJS.Timeout | null = null;
+  private periodicReconnectInterval: NodeJS.Timeout | null = null;
   private retryCallback: (key: string) => void;
   private statusCallback: (connected: boolean) => void;
   private isMonitoring: boolean = false;
@@ -42,6 +44,12 @@ export class ConnectionMonitor {
       this.checkConnectionHealth();
     }, HEALTH_CHECK_INTERVAL);
     
+    // Set up periodic reconnection to refresh subscriptions
+    this.periodicReconnectInterval = setInterval(() => {
+      console.log('[ConnectionMonitor] Performing periodic reconnection check');
+      this.reconnectStale();
+    }, RECONNECT_PERIODIC_INTERVAL);
+    
     // Initial health check
     this.checkConnectionHealth();
   }
@@ -58,6 +66,11 @@ export class ConnectionMonitor {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
+    }
+    
+    if (this.periodicReconnectInterval) {
+      clearInterval(this.periodicReconnectInterval);
+      this.periodicReconnectInterval = null;
     }
   }
   
@@ -92,6 +105,27 @@ export class ConnectionMonitor {
     } else if (hasActiveChannels) {
       // We have active connections
       this.statusCallback(true);
+    }
+  }
+  
+  /**
+   * Reconnect stale subscriptions (those that haven't been updated in a while)
+   */
+  private reconnectStale(): void {
+    console.log('[ConnectionMonitor] Checking for stale connections to refresh');
+    const statuses = subscriptionRegistry.getAllStatuses();
+    let reconnectCount = 0;
+    
+    for (const [key, status] of Object.entries(statuses)) {
+      // Check if this is an interpreter status subscription
+      if (key.startsWith('interpreter-status-') && status.isActive) {
+        this.reconnectSubscription(key);
+        reconnectCount++;
+      }
+    }
+    
+    if (reconnectCount > 0) {
+      console.log(`[ConnectionMonitor] Refreshing ${reconnectCount} interpreter status subscriptions`);
     }
   }
   
