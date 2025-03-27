@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +52,6 @@ export const InterpretersTab: React.FC = () => {
   const [employmentStatusFilters, setEmploymentStatusFilters] = useState<EmploymentStatus[]>([]);
   const [rateSort, setRateSort] = useState<string>("none");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [todayMissionsCount, setTodayMissionsCount] = useState(0);
   const { toast } = useToast();
 
@@ -299,8 +297,6 @@ export const InterpretersTab: React.FC = () => {
       <InterpreterFilterBar
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
       />
 
       <AdvancedFilters
@@ -322,7 +318,6 @@ export const InterpretersTab: React.FC = () => {
 
       <InterpretersList
         interpreters={filteredInterpreters}
-        viewMode={viewMode}
         onStatusChange={handleInterpreterStatusChange}
       />
     </div>
