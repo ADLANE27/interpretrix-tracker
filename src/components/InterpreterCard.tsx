@@ -53,6 +53,11 @@ const workLocationConfig = {
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [status, setStatus] = useState(interpreter.status);
+  const [isFlipped, setIsFlipped] = useState(false);
+  
+  const flipCard = () => {
+    setIsFlipped(prev => !prev);
+  };
   
   const { updateStatus } = useInterpreterStatusSync({
     interpreterId: interpreter.id,
