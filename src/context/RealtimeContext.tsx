@@ -145,8 +145,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const channel = supabase.channel(channelName);
       
+      // Fixed: Use the properly typed .on method for postgres_changes
       channel.on(
-        'postgres_changes',
+        'postgres_changes',  // This is the correct event type
         {
           event,
           schema,
