@@ -1,5 +1,5 @@
 
-import { realtimeService } from '@/services/realtimeService';
+import { realtimeService } from '@/services/realtime';
 
 /**
  * Initialize application-wide services
