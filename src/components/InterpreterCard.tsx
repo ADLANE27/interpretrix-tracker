@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building, RotateCw } from 'lucide-react';
@@ -54,11 +53,10 @@ const workLocationConfig = {
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   
-  // Extract first and last name from the full name
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
-  
+
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -87,12 +85,10 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     setIsFlipped(!isFlipped);
   };
 
-  // Check if rate values are non-zero to determine if they should be displayed
   const showTarif5min = interpreter.tarif_5min !== null && interpreter.tarif_5min > 0;
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  // Log tarif values to debug
   console.log(`[InterpreterCard] ${interpreter.name} tarifs:`, {
     tarif_5min: interpreter.tarif_5min,
     tarif_15min: interpreter.tarif_15min,
@@ -101,7 +97,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     showAnyTarif
   });
 
-  // Check if mission is still active (not in the past)
   const hasFutureMission = interpreter.next_mission_start && 
     !isPast(addMinutes(
       parseISO(interpreter.next_mission_start), 
@@ -123,18 +118,15 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             damping: 20 
           }
         }}
-        className={`hover-elevate gradient-border w-full h-full backface-hidden ${isFlipped ? 'invisible' : 'visible'}`}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'invisible' : 'visible'}`}
       >
         <CardContent className="p-2 relative flex flex-col h-full justify-between">
-          {/* Interpreter name - last name and first name stacked */}
-          <div className="mb-2">
-            <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
-            {firstName && <span className="text-xs text-muted-foreground block">{firstName}</span>}
+          <div className="mb-2 flex items-center gap-2">
+            <h3 className="text-base font-bold text-gradient-primary leading-tight truncate flex-grow">{lastName}</h3>
+            {firstName && <span className="text-sm text-muted-foreground truncate">{firstName}</span>}
           </div>
           
-          {/* Badges row - status, location, employment in one line */}
           <div className="flex flex-wrap gap-1 mb-2 items-center">
-            {/* Status badge */}
             <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
               currentStatus={interpreter.status}
@@ -143,19 +135,16 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
               className="text-[10px] px-1.5 py-0.5"
             />
             
-            {/* Location badge */}
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-2.5 w-2.5" />
               <span>{workLocationLabels[workLocation]}</span>
             </Badge>
             
-            {/* Employment badge */}
             <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-gray-50">
               {employmentStatusLabels[interpreter.employment_status]}
             </Badge>
           </div>
           
-          {/* Rates row - only show if rates are non-zero */}
           {showAnyTarif && (
             <div className="flex flex-wrap gap-1 mb-2">
               {showTarif5min && (
@@ -172,7 +161,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Contact Information - compact display */}
           {hasAnyPhoneNumber && (
             <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 text-xs text-foreground mb-2">
               {interpreter.booth_number && (
@@ -220,7 +208,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </div>
           )}
 
-          {/* Upcoming Mission - only show if mission is still active */}
           {hasFutureMission && interpreter.next_mission_start && (
             <div className="mb-1">
               <UpcomingMissionBadge
@@ -229,11 +216,11 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
                 sourceLang={interpreter.next_mission_source_language}
                 targetLang={interpreter.next_mission_target_language}
                 useShortDateFormat={true}
+                className="bg-red-500 text-white"
               />
             </div>
           )}
 
-          {/* Flip button without showing language count */}
           <div className="flex items-center justify-end text-xs mt-1">
             <Button 
               variant="ghost" 
@@ -247,7 +234,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         </CardContent>
       </Card>
 
-      {/* Back side of the card - with languages */}
       <Card
         asMotion
         motionProps={{
@@ -261,10 +247,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             damping: 20 
           }
         }}
-        className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 ${isFlipped ? 'visible' : 'invisible'}`}
+        className={`hover-elevate gradient-border w-full h-full backface-hidden absolute top-0 left-0 border-2 border-palette-soft-purple/50 shadow-md ${isFlipped ? 'visible' : 'invisible'}`}
       >
         <CardContent className="p-2 relative flex flex-col h-full">
-          {/* Back card header */}
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="text-sm font-medium text-gradient-primary leading-tight">{lastName}</h3>
@@ -280,7 +265,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
             </Button>
           </div>
           
-          {/* Languages section - now shown on the back */}
           <div className="mb-1 text-xs font-medium text-muted-foreground">Combinaisons de langues:</div>
           <div className="flex flex-wrap gap-1 max-h-[calc(100%-60px)] overflow-y-auto pr-1 hide-scrollbar">
             {parsedLanguages.map((lang, index) => (

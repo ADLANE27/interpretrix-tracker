@@ -14,6 +14,7 @@ interface UpcomingMissionBadgeProps {
   sourceLang?: string | null;
   targetLang?: string | null;
   useShortDateFormat?: boolean;
+  className?: string; // Add this prop to allow custom styling
 }
 
 export const UpcomingMissionBadge = ({ 
@@ -21,7 +22,8 @@ export const UpcomingMissionBadge = ({
   estimatedDuration,
   sourceLang,
   targetLang,
-  useShortDateFormat = false
+  useShortDateFormat = false,
+  className // Add this parameter
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
@@ -100,7 +102,8 @@ export const UpcomingMissionBadge = ({
       variant={status.variant} 
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
-        missionStatus !== "ended" && status.flashingClass
+        missionStatus !== "ended" && status.flashingClass,
+        className // Add custom className with optional override
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />
