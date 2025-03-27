@@ -56,7 +56,6 @@ export function useStatusDropdown(
       toast({
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${pendingStatus}"`,
-        variant: "default"
       });
     } catch (error: any) {
       console.error('[StatusDropdown] Error:', error);

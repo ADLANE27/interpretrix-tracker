@@ -35,7 +35,6 @@ export const InterpreterStatusDropdown = ({
     pendingStatus,
     isConfirmDialogOpen,
     isUpdating,
-    isConnected,
     handleStatusSelect,
     handleConfirm,
     handleCancel
@@ -45,16 +44,14 @@ export const InterpreterStatusDropdown = ({
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <div>
-            <StatusTrigger 
-              displayFormat={displayFormat}
-              statusConfig={statusConfig[localStatus]}
-              status={localStatus}
-              className={className}
-            />
-          </div>
+          <StatusTrigger 
+            displayFormat={displayFormat}
+            statusConfig={statusConfig[localStatus]}
+            status={localStatus}
+            className={className}
+          />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="min-w-[180px] z-50 bg-white dark:bg-gray-950 border shadow-md">
+        <DropdownMenuContent className="min-w-[180px]">
           {Object.entries(statusConfig).map(([status, config]) => {
             const StatusIcon = config.icon;
             return (

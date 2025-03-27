@@ -35,7 +35,7 @@ const Admin = () => {
           toast({
             title: "Connexion rétablie",
             description: "La connexion temps réel a été rétablie",
-            variant: "default",
+            variant: "success",
           });
         }
         reconnectAttemptRef.current = 0;
@@ -147,7 +147,6 @@ const Admin = () => {
     toast({
       title: "Reconnexion initiée",
       description: "Tentative de reconnexion en cours...",
-      variant: "default"
     });
   };
 

@@ -1,49 +1,37 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Status } from './types/status-types';
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Status, StatusConfigItem } from "./types/status-types";
 
 interface StatusTriggerProps {
-  statusConfig: {
-    color: string;
-    label: string;
-    mobileLabel: string;
-    icon: React.ComponentType<{ className?: string }>;
-  };
-  status: Status;
   displayFormat: "badge" | "button";
+  statusConfig: StatusConfigItem;
+  status: Status;
   className?: string;
 }
 
 export const StatusTrigger: React.FC<StatusTriggerProps> = ({
+  displayFormat,
   statusConfig,
   status,
-  displayFormat,
   className = ""
 }) => {
+  const isMobile = useIsMobile();
   const StatusIcon = statusConfig.icon;
-
+  const displayLabel = isMobile ? statusConfig.mobileLabel : statusConfig.label;
+  
   if (displayFormat === "badge") {
     return (
-      <Badge 
-        variant="outline" 
-        className={`flex items-center gap-1 cursor-pointer ${statusConfig.color} ${className}`}
-      >
-        <StatusIcon className="h-3 w-3" />
-        <span>{statusConfig.label}</span>
-      </Badge>
+      <div className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig.color} ${className}`}>
+        {displayLabel}
+      </div>
+    );
+  } else {
+    return (
+      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig.color} ${className}`}>
+        <StatusIcon className="h-4 w-4" />
+        <span>{displayLabel}</span>
+      </div>
     );
   }
-
-  return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className={`gap-1 ${className}`}
-    >
-      <StatusIcon className="h-4 w-4" />
-      <span>{statusConfig.label}</span>
-    </Button>
-  );
 };
