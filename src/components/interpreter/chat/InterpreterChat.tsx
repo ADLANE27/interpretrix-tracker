@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -16,7 +17,7 @@ import { Menu, ArrowLeft, Users, RefreshCw, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InterpreterChatProps {
@@ -329,34 +330,45 @@ export const InterpreterChat = ({
         <div className="h-[56px] md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isMobile && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="rounded-full" onClick={onBackToChannels}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="ghost" size="icon" className="rounded-full" onClick={onBackToChannels}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </motion.div>
             )}
             {isMobile && onMenuClick && (
-              <Button variant="ghost" size="icon" className="rounded-full" onClick={onMenuClick}>
-                <Menu className="h-5 w-5" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="ghost" size="icon" className="rounded-full" onClick={onMenuClick}>
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </motion.div>
             )}
           </div>
           
-          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left text-gradient-primary">
+          <motion.h2 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-lg font-semibold truncate flex-1 text-center md:text-left text-gradient-primary"
+          >
             {channel?.name}
-          </h2>
+          </motion.h2>
           
           <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full" 
-                    onClick={forceFetch}
-                    aria-label="Actualiser les messages"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors" 
+                      onClick={forceFetch}
+                      aria-label="Actualiser les messages"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </motion.div>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Actualiser les messages</p>
@@ -370,55 +382,78 @@ export const InterpreterChat = ({
               channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
               userRole="interpreter"
             >
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Users className="h-5 w-5" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
+                  <Users className="h-5 w-5" />
+                </Button>
+              </motion.div>
             </ChannelMembersPopover>
           </div>
         </div>
 
         {/* Afficher les boutons de statut uniquement dans l'en-tête du chat si StatusButtonsBar-in-header n'existe pas */}
         {showStatusButtons && profile && onStatusChange && !document.querySelector('.StatusButtonsBar-in-header') && (
-          <div className="pb-2 w-full overflow-visible">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="pb-2 w-full overflow-visible"
+          >
             <StatusButtonsBar 
               currentStatus={profile.status} 
               onStatusChange={onStatusChange}
               variant="compact" 
             />
-          </div>
+          </motion.div>
         )}
       </motion.div>
 
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
+        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-gray-900/30" 
         ref={messageContainerRef} 
         id="messages-container" 
         data-channel-id={channelId}
         style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 160px)' } : {}}
         onScroll={handleScroll}
       >
-        {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <LoadingSpinner size="lg" text="Chargement des messages..." />
-          </div>
-        ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <LoadingSpinner size="md" text="Connexion en cours..." />
-          </div>
-        ) : null}
+        <AnimatePresence>
+          {isLoading ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center"
+            >
+              <LoadingSpinner size="lg" text="Chargement des messages..." />
+            </motion.div>
+          ) : !isSubscribed ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center"
+            >
+              <LoadingSpinner size="md" text="Connexion en cours..." />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         
         {hasMoreMessages && !isLoading && (
-          <div className="flex justify-center my-3">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center my-3"
+          >
             <Button 
               size="sm" 
               variant="outline"
               onClick={loadMoreMessages}
-              className="text-xs flex items-center gap-1"
+              className="text-xs flex items-center gap-1 shadow-sm hover:shadow transition-all"
             >
               <RefreshCw className="h-3 w-3" />
               Charger plus de messages
             </Button>
-          </div>
+          </motion.div>
         )}
         
         <MessageList
@@ -432,10 +467,17 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className={`
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
-        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
-      `}>
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
+        className={`
+          border-t border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md
+          shadow-[0_-1px_3px_rgba(0,0,0,0.05)] dark:shadow-[0_-1px_3px_rgba(0,0,0,0.2)]
+          ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0" : ""}
+          ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+        `}
+      >
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -448,7 +490,7 @@ export const InterpreterChat = ({
           setReplyTo={setReplyTo}
           style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
         />
-      </div>
+      </motion.div>
     </div>
   );
 };

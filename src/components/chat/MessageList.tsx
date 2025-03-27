@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -14,6 +15,7 @@ import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { motion, AnimatePresence } from "framer-motion";
 
 interface MessageListProps {
   messages: Message[];
@@ -160,8 +162,11 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div className="flex flex-wrap gap-1 mt-1.5">
         {Object.entries(message.reactions).map(([emoji, users]) => (
-          <div 
+          <motion.div
             key={emoji} 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            whileHover={{ scale: 1.05 }}
             className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer transition-colors ${
               users.includes(currentUserId || '') 
                 ? 'bg-primary/20 dark:bg-primary/30' 
@@ -171,7 +176,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           >
             <span>{emoji}</span>
             <span className="text-gray-600 dark:text-gray-400">{users.length}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
     );
@@ -187,7 +192,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     const isSelfMessage = message.sender.id === currentUserId;
 
     return (
-      <div 
+      <motion.div 
         ref={(el) => {
           if (el) {
             observeMessage(el);
@@ -197,25 +202,32 @@ export const MessageList: React.FC<MessageListProps> = ({
           }
         }}
         key={message.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, delay: index * 0.03 }}
         data-message-id={message.id}
         data-is-thread-reply={isThreadReply ? 'true' : 'false'}
         onMouseEnter={() => setHoveredMessageId(message.id)}
         onMouseLeave={() => setHoveredMessageId(null)}
-        className={`group px-3 py-1 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
+        className={`group px-3 py-1.5 hover:bg-gray-50/80 dark:hover:bg-gray-800/70 transition-colors rounded-lg ${
           isThreadReply ? 'ml-10 pl-3' : ''
-        }`}
+        } ${hoveredMessageId === message.id ? 'bg-gray-50/80 dark:bg-gray-800/70' : ''}`}
       >
         {!isThreadReply && index > 0 && shouldShowDate(message, previousMessage) && (
-          <div className="flex justify-center my-4">
-            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium shadow-sm">
+          <motion.div 
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center my-4"
+          >
+            <div className="bg-gray-200/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium shadow-sm">
               {formatMessageDate(message.timestamp)}
             </div>
-          </div>
+          </motion.div>
         )}
 
         <div className="flex items-start gap-2.5 relative">
           {showSender ? (
-            <Avatar className="h-9 w-9 mt-1 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+            <Avatar className="h-9 w-9 mt-1 flex-shrink-0 border border-gray-200 dark:border-gray-700 shadow-sm">
               <AvatarImage 
                 src={message.sender.avatarUrl} 
                 alt={message.sender.name}
@@ -242,7 +254,12 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
 
             {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-2.5 max-w-sm">
+              <motion.div 
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mt-2.5 max-w-sm space-y-2"
+              >
                 {message.attachments.map((attachment, idx) => (
                   <MessageAttachment
                     key={idx}
@@ -251,7 +268,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     locale="fr"
                   />
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {renderReactions(message)}
@@ -320,48 +337,63 @@ export const MessageList: React.FC<MessageListProps> = ({
             className="ml-11 mt-2 mb-2"
             id={`thread-${message.id}`}
           >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleThread(message.id)}
-              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2.5 py-1 h-auto transition-colors"
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="inline-block"
             >
-              {expandedThreads.has(message.id) ? (
-                <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
-              )}
-              {messageThreads[message.id].length - 1} réponses
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleThread(message.id)}
+                className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2.5 py-1 h-auto transition-colors shadow-sm hover:shadow"
+              >
+                {expandedThreads.has(message.id) ? (
+                  <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {messageThreads[message.id].length - 1} réponses
+              </Button>
+            </motion.div>
             
-            {expandedThreads.has(message.id) && (
-              <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                <ScrollArea className="max-h-80">
-                  {messageThreads[message.id]
-                    .filter(reply => reply.id !== message.id)
-                    .map((reply, idx, replies) => renderMessage(
-                      reply, 
-                      idx, 
-                      true, 
-                      idx > 0 ? replies[idx - 1] : undefined
-                    ))}
-                </ScrollArea>
-              </div>
-            )}
+            <AnimatePresence>
+              {expandedThreads.has(message.id) && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700"
+                >
+                  <ScrollArea className="max-h-80">
+                    {messageThreads[message.id]
+                      .filter(reply => reply.id !== message.id)
+                      .map((reply, idx, replies) => renderMessage(
+                        reply, 
+                        idx, 
+                        true, 
+                        idx > 0 ? replies[idx - 1] : undefined
+                      ))}
+                  </ScrollArea>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
-      </div>
+      </motion.div>
     );
   };
 
   return (
     <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {displayMessages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {renderMessage(message, index, false, index > 0 ? displayMessages[index - 1] : undefined)}
-          </React.Fragment>
-        ))}
+        <AnimatePresence initial={false}>
+          {displayMessages.map((message, index) => (
+            <React.Fragment key={message.id}>
+              {renderMessage(message, index, false, index > 0 ? displayMessages[index - 1] : undefined)}
+            </React.Fragment>
+          ))}
+        </AnimatePresence>
       </div>
       <div ref={messagesEndRef} />
     </div>

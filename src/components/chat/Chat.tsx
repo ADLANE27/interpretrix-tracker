@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -15,7 +16,7 @@ import { Pencil, Users, RefreshCw, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChatProps {
@@ -298,35 +299,51 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       </motion.div>
       
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative px-1 py-2 sm:p-3"
+        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative px-1 py-2 sm:p-3 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-gray-900/30"
         ref={messageContainerRef} 
         id="messages-container" 
         data-channel-id={channelId}
         style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 160px)' } : {}}
         onScroll={handleScroll}
       >
-        {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <LoadingSpinner size="lg" text="Chargement des messages..." />
-          </div>
-        ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <LoadingSpinner size="md" text="Connexion en cours..." />
-          </div>
-        ) : null}
+        <AnimatePresence>
+          {isLoading ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center"
+            >
+              <LoadingSpinner size="lg" text="Chargement des messages..." />
+            </motion.div>
+          ) : !isSubscribed ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center"
+            >
+              <LoadingSpinner size="md" text="Connexion en cours..." />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         
         {hasMoreMessages && !isLoading && (
-          <div className="flex justify-center my-3">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center my-3"
+          >
             <Button 
               size="sm" 
               variant="outline"
               onClick={loadMoreMessages}
-              className="text-xs flex items-center gap-1"
+              className="text-xs flex items-center gap-1 shadow-sm hover:shadow transition-all"
             >
               <RefreshCw className="h-3 w-3" />
               Charger plus de messages
             </Button>
-          </div>
+          </motion.div>
         )}
         
         <MessageList
@@ -341,9 +358,16 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         />
       </div>
       
-      <div className={`
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
-      `}>
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
+        className={`
+          border-t border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md
+          shadow-[0_-1px_3px_rgba(0,0,0,0.05)] dark:shadow-[0_-1px_3px_rgba(0,0,0,0.2)]
+          ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0" : ""}
+        `}
+      >
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -356,7 +380,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           setReplyTo={setReplyTo}
           style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
         />
-      </div>
+      </motion.div>
     </div>
   );
 };
