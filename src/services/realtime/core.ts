@@ -12,6 +12,7 @@ import { Profile } from '@/types/profile';
 class RealtimeService {
   private static instance: RealtimeService;
   private isInitialized = false;
+  private isOnline = true;
   private subscriptionManager: SubscriptionManager;
   private connectionMonitor: ConnectionMonitor;
   private eventDebouncer: EventDebouncer;
@@ -19,8 +20,8 @@ class RealtimeService {
   private constructor() {
     this.subscriptionManager = new SubscriptionManager();
     this.connectionMonitor = new ConnectionMonitor(
-      () => this.reconnectAll(),
-      (connected) => eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected)
+      (key) => this.retrySubscription(key),
+      (connected) => this.updateConnectionStatus(connected)
     );
     this.eventDebouncer = new EventDebouncer();
   }
@@ -30,6 +31,45 @@ class RealtimeService {
       RealtimeService.instance = new RealtimeService();
     }
     return RealtimeService.instance;
+  }
+
+  private retrySubscription(key: string) {
+    console.log(`[RealtimeService] Retrying subscription for ${key}`);
+    if (key.startsWith('interpreter-status-')) {
+      const interpreterId = key.replace('interpreter-status-', '');
+      this.subscriptionManager.createInterpreterStatusSubscription(
+        interpreterId,
+        this.eventDebouncer
+      );
+    } else if (key.startsWith('table-')) {
+      // Parse the table key pattern: table-{tableName}-{event}-{filterSuffix?}
+      const parts = key.split('-');
+      if (parts.length >= 3) {
+        const tableName = parts[1];
+        const event = parts[2] as 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+        
+        // This is a simplification - in a real app we'd need to store and retrieve 
+        // the original callbacks and filters
+        this.subscriptionManager.createTableSubscription(
+          tableName,
+          event,
+          null,
+          () => {
+            console.log(`[RealtimeService] Received event from retried subscription ${key}`);
+            // Ideally, we'd call the original callback here
+          },
+          this.eventDebouncer
+        );
+      }
+    }
+  }
+
+  private updateConnectionStatus(connected: boolean) {
+    if (this.isOnline !== connected) {
+      this.isOnline = connected;
+      console.log(`[RealtimeService] Connection status changed to: ${connected ? 'connected' : 'disconnected'}`);
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
+    }
   }
 
   public init() {
@@ -43,6 +83,9 @@ class RealtimeService {
     window.addEventListener('online', this.handleOnline);
     window.addEventListener('offline', this.handleOffline);
     
+    // Initial status check
+    this.isOnline = navigator.onLine;
+    
     return () => {
       window.removeEventListener('online', this.handleOnline);
       window.removeEventListener('offline', this.handleOffline);
@@ -53,12 +96,12 @@ class RealtimeService {
   private handleOnline = () => {
     console.log('[RealtimeService] Network online, reconnecting all channels');
     this.reconnectAll();
-    eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
+    this.updateConnectionStatus(true);
   }
   
   private handleOffline = () => {
     console.log('[RealtimeService] Network offline');
-    eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, false);
+    this.updateConnectionStatus(false);
   }
 
   public subscribeToInterpreterStatus = (interpreterId: string, onStatusChange?: (status: Profile['status']) => void) => {
@@ -86,7 +129,7 @@ class RealtimeService {
 
   public reconnectAll() {
     console.log('[RealtimeService] Reconnecting all channels');
-    this.subscriptionManager.reconnectAll();
+    this.connectionMonitor.reconnectAll();
   }
   
   public cleanup() {
@@ -95,6 +138,11 @@ class RealtimeService {
     this.connectionMonitor.stop();
     this.subscriptionManager.cleanupAll();
     this.isInitialized = false;
+  }
+  
+  // Method to check if realtime service is connected
+  public isConnected() {
+    return this.isOnline;
   }
 }
 

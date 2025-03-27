@@ -3,16 +3,16 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface SubscriptionStatus {
   connected: boolean;
-  lastUpdate: Date;
   retryCount: number;
-  channelRef: RealtimeChannel | null;
+  lastUpdate: Date;
+  channelRef?: RealtimeChannel;
 }
 
-export function createSubscriptionStatus(channel?: RealtimeChannel | null): SubscriptionStatus {
+export function createSubscriptionStatus(channel?: RealtimeChannel): SubscriptionStatus {
   return {
     connected: false,
-    lastUpdate: new Date(),
     retryCount: 0,
-    channelRef: channel || null
+    lastUpdate: new Date(),
+    channelRef: channel
   };
 }

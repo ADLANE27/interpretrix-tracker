@@ -51,7 +51,11 @@ export class SubscriptionRegistry {
     
     if (status && status.channelRef) {
       console.log(`[RealtimeService] Unregistering subscription: ${key}`);
-      supabase.removeChannel(status.channelRef);
+      try {
+        supabase.removeChannel(status.channelRef);
+      } catch (error) {
+        console.error(`[RealtimeService] Error removing channel for ${key}:`, error);
+      }
       delete this.subscriptionStatuses[key];
     }
   }
@@ -60,10 +64,23 @@ export class SubscriptionRegistry {
    * Reconnect all registered subscriptions
    */
   public reconnectAll(): void {
-    Object.entries(this.subscriptionStatuses).forEach(([key, status]) => {
+    const keys = Object.keys(this.subscriptionStatuses);
+    console.log(`[RealtimeService] Attempting to reconnect ${keys.length} subscriptions`);
+    
+    keys.forEach((key, index) => {
+      const status = this.subscriptionStatuses[key];
       if (status.channelRef) {
-        console.log(`[RealtimeService] Reconnecting ${key}`);
-        status.channelRef.subscribe();
+        try {
+          // Stagger reconnection attempts to avoid overwhelming the server
+          setTimeout(() => {
+            console.log(`[RealtimeService] Reconnecting ${key}`);
+            if (status.channelRef && status.channelRef.state !== 'joined') {
+              status.channelRef.subscribe();
+            }
+          }, index * 300); // Stagger by 300ms per subscription
+        } catch (error) {
+          console.error(`[RealtimeService] Error reconnecting ${key}:`, error);
+        }
       }
     });
   }
@@ -88,15 +105,30 @@ export class SubscriptionRegistry {
   public cleanupAll(): void {
     Object.entries(this.subscriptionStatuses).forEach(([key, status]) => {
       if (status.channelRef) {
-        supabase.removeChannel(status.channelRef);
+        try {
+          supabase.removeChannel(status.channelRef);
+        } catch (error) {
+          console.error(`[RealtimeService] Error removing channel for ${key}:`, error);
+        }
       }
     });
     
-    Object.keys(this.subscriptionStatuses).forEach(key => {
-      delete this.subscriptionStatuses[key];
-    });
-    
+    this.subscriptionStatuses = {};
     console.log(`[RealtimeService] All subscriptions cleaned up`);
+  }
+  
+  /**
+   * Get the count of active subscriptions
+   */
+  public getActiveCount(): number {
+    return Object.values(this.subscriptionStatuses).filter(status => status.connected).length;
+  }
+  
+  /**
+   * Get the total count of subscriptions
+   */
+  public getTotalCount(): number {
+    return Object.keys(this.subscriptionStatuses).length;
   }
 }
 
