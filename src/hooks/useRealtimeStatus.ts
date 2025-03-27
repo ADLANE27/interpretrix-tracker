@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { realtimeService } from '@/services/realtimeService';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { Profile } from '@/types/profile';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseRealtimeStatusOptions {
   interpreterId?: string;
