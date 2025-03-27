@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +12,7 @@ import { AvailableUsersList } from './channel-members/AvailableUsersList';
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface ChannelMembersPopoverProps {
   channelId: string;
@@ -61,93 +61,92 @@ export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Show the rename button for admins */}
-      {userRole === 'admin' && channelType === 'group' && !isEditing && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setIsEditing(true)}
-          className="p-2 h-8 w-8"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      )}
-
-      {/* Show the rename input for admins when editing */}
-      {userRole === 'admin' && channelType === 'group' && isEditing && (
-        <div className="flex items-center gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="w-[200px]"
-            placeholder="Nom du canal"
-          />
-          <Button size="sm" onClick={handleRename}>
-            Sauvegarder
-          </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => {
-              setIsEditing(false);
-              setNewName(channelName);
-            }}
+    <TooltipProvider>
+      <div className="flex items-center gap-2">
+        {userRole === 'admin' && channelType === 'group' && !isEditing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsEditing(true)}
+            className="p-2 h-8 w-8"
           >
-            Annuler
+            <Pencil className="h-4 w-4" />
           </Button>
-        </div>
-      )}
+        )}
 
-      {/* Only show participants button for admin users or use the provided children */}
-      {userRole === 'admin' ? (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="whitespace-nowrap"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              {!isMobile && "Participants"}
+        {userRole === 'admin' && channelType === 'group' && isEditing && (
+          <div className="flex items-center gap-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-[200px]"
+              placeholder="Nom du canal"
+            />
+            <Button size="sm" onClick={handleRename}>
+              Sauvegarder
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-4" align="end">
-            <div className="space-y-4">
-              <h3 className="font-semibold">{channelName}</h3>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => {
+                setIsEditing(false);
+                setNewName(channelName);
+              }}
+            >
+              Annuler
+            </Button>
+          </div>
+        )}
 
-              <MemberList 
-                channelId={channelId}
-                channelType={channelType}
-                userRole={userRole}
-              />
-              
-              {userRole === 'admin' && channelType === 'group' && (
-                <>
-                  <div className="h-px bg-border" />
-                  <AvailableUsersList channelId={channelId} />
-                </>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      ) : children ? (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            {children}
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-4" align="end">
-            <div className="space-y-4">
-              <h3 className="font-semibold">{channelName}</h3>
-              <MemberList 
-                channelId={channelId}
-                channelType={channelType}
-                userRole={userRole}
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      ) : null}
-    </div>
+        {userRole === 'admin' ? (
+          <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="whitespace-nowrap"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                {!isMobile && "Participants"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+              <div className="space-y-4">
+                <h3 className="font-semibold">{channelName}</h3>
+
+                <MemberList 
+                  channelId={channelId}
+                  channelType={channelType}
+                  userRole={userRole}
+                />
+                
+                {userRole === 'admin' && channelType === 'group' && (
+                  <>
+                    <div className="h-px bg-border" />
+                    <AvailableUsersList channelId={channelId} />
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : children ? (
+          <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+              {children}
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-4" align="end">
+              <div className="space-y-4">
+                <h3 className="font-semibold">{channelName}</h3>
+                <MemberList 
+                  channelId={channelId}
+                  channelType={channelType}
+                  userRole={userRole}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+    </TooltipProvider>
   );
 };

@@ -9,6 +9,7 @@ import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { realtimeService } from '@/services/realtimeService';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, WifiOff } from 'lucide-react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -174,47 +175,49 @@ const Admin = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">
-      {connectionError && (
-        <div className="fixed top-4 right-4 bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded-md shadow-lg z-50 flex flex-col">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {isForceReconnecting ? (
-                <Loader2 className="animate-spin h-4 w-4 mr-2" />
-              ) : (
-                <WifiOff className="h-4 w-4 mr-2" />
-              )}
-              <span className="font-medium">Reconnexion en cours...</span>
+    <TooltipProvider>
+      <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">
+        {connectionError && (
+          <div className="fixed top-4 right-4 bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded-md shadow-lg z-50 flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                {isForceReconnecting ? (
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                ) : (
+                  <WifiOff className="h-4 w-4 mr-2" />
+                )}
+                <span className="font-medium">Reconnexion en cours...</span>
+              </div>
+              <span className="text-xs ml-2 bg-amber-200 px-1.5 py-0.5 rounded-full">{reconnectingFor}s</span>
             </div>
-            <span className="text-xs ml-2 bg-amber-200 px-1.5 py-0.5 rounded-full">{reconnectingFor}s</span>
+            {reconnectingFor > 10 && !isForceReconnecting && (
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleForceReconnect}
+                className="mt-2 text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 border-amber-300"
+                disabled={isForceReconnecting}
+              >
+                {isForceReconnecting ? (
+                  <>
+                    <Loader2 className="animate-spin h-3 w-3 mr-1" />
+                    Reconnexion...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Forcer la reconnexion
+                  </>
+                )}
+              </Button>
+            )}
           </div>
-          {reconnectingFor > 10 && !isForceReconnecting && (
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={handleForceReconnect}
-              className="mt-2 text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 border-amber-300"
-              disabled={isForceReconnecting}
-            >
-              {isForceReconnecting ? (
-                <>
-                  <Loader2 className="animate-spin h-3 w-3 mr-1" />
-                  Reconnexion...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  Forcer la reconnexion
-                </>
-              )}
-            </Button>
-          )}
+        )}
+        <div className="h-full w-full">
+          <AdminDashboard />
         </div>
-      )}
-      <div className="h-full w-full">
-        <AdminDashboard />
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

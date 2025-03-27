@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './index.css'
+import { TooltipProvider } from './components/ui/tooltip'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -22,7 +23,9 @@ const root = createRoot(document.getElementById("root")!);
 root.render(
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <App />
+      <TooltipProvider>
+        <App />
+      </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
 );

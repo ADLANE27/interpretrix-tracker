@@ -2,6 +2,7 @@
 import React from 'react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Status, StatusConfigItem } from "./types/status-types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface StatusTriggerProps {
   displayFormat: "badge" | "button";
