@@ -40,7 +40,7 @@ export function useRealtimeSubscription2(
           schema: opt.schema || 'public',
           table: opt.table,
           filter: opt.filter
-        },
+        } as any,
         (payload) => {
           callbackRef.current(payload);
         }

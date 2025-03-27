@@ -86,7 +86,7 @@ class RealtimeManager {
       const mentionedUserId = payload.new?.mentioned_user_id;
       
       if (mentionedUserId) {
-        this.emitEvent(EVENT_UNREAD_MENTIONS_UPDATED, 1);
+        eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, 1);
       }
     });
   }
@@ -103,7 +103,7 @@ class RealtimeManager {
       // Add all configurations to the channel
       configs.forEach(config => {
         channel.on(
-          'postgres_changes',
+          'postgres_changes' as any,
           {
             event: config.event,
             schema: config.schema || 'public',
@@ -228,11 +228,15 @@ class RealtimeManager {
   }
 
   // Utility method to emit events using eventEmitter
-  emitEvent(eventName: keyof typeof EVENT_INTERPRETER_STATUS_UPDATE | 
-                       keyof typeof EVENT_UNREAD_MENTIONS_UPDATED | 
-                       keyof typeof EVENT_NEW_MESSAGE_RECEIVED, 
-            data: any) {
-    eventEmitter.emit(eventName as any, data);
+  emitEvent(eventName: string, data: any) {
+    // Type check the event name to ensure it's a valid event
+    if (eventName === EVENT_INTERPRETER_STATUS_UPDATE) {
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+    } else if (eventName === EVENT_UNREAD_MENTIONS_UPDATED) {
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
+    } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
+      eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, data);
+    }
   }
 
   cleanup() {
