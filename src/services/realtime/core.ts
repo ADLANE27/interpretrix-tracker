@@ -1,10 +1,10 @@
 
-import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { SubscriptionManager } from './subscriptionManager';
 import { ConnectionMonitor } from './connectionMonitor';
 import { EventDebouncer } from './eventDebouncer';
+import { Profile } from '@/types/profile';
 
 /**
  * Centralized service to manage all Supabase realtime subscriptions
@@ -61,11 +61,11 @@ class RealtimeService {
     eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, false);
   }
 
-  public subscribeToInterpreterStatus = (interpreterId: string, onStatusChange?: (status: any) => void) => {
+  public subscribeToInterpreterStatus = (interpreterId: string, onStatusChange?: (status: Profile['status']) => void) => {
     return this.subscriptionManager.createInterpreterStatusSubscription(
       interpreterId, 
-      onStatusChange,
-      this.eventDebouncer
+      this.eventDebouncer,
+      onStatusChange
     );
   };
   
