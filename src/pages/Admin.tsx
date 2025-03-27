@@ -6,13 +6,33 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { useRealtimeSubscription } from '@/hooks/use-realtime-subscription';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [connectionError, setConnectionError] = useState(false);
 
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
+  // We'll use our enhanced useRealtimeSubscription hook for reliable status updates
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'interpreter_profiles',
+      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+    },
+    (payload) => {
+      console.log('[Admin] Interpreter profile update received:', payload);
+      // Dispatch a custom event that the AdminDashboard will listen for
+      window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+    },
+    {
+      debugMode: true,
+      channelNamePrefix: 'admin-interpreter-status-direct'
+    }
+  );
+
+  // Also use the useMissionUpdates hook for other mission-related updates
   useMissionUpdates(() => {
     // Reset connection error state on successful updates
     if (connectionError) setConnectionError(false);
@@ -29,7 +49,7 @@ const Admin = () => {
         channels.some((channel: RealtimeChannel) => channel.state === 'joined');
       
       if (!connected && !connectionError) {
-        console.log('Connection issue detected, will attempt to reconnect');
+        console.log('[Admin] Connection issue detected, will attempt to reconnect');
         setConnectionError(true);
       } else if (connected && connectionError) {
         setConnectionError(false);

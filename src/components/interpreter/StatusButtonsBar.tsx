@@ -34,6 +34,32 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         userId.current = user.id;
+        
+        // Subscribe to realtime updates for this interpreter
+        if (user.id) {
+          const channel = supabase.channel(`interpreter-own-status-${user.id}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'interpreter_profiles',
+                filter: `id=eq.${user.id}`
+              },
+              (payload) => {
+                if (payload.new && payload.new.status) {
+                  const newStatus = payload.new.status as Status;
+                  console.log('[StatusButtonsBar] Realtime status update:', newStatus);
+                  setLocalStatus(newStatus);
+                }
+              }
+            )
+            .subscribe((status) => {
+              console.log(`[StatusButtonsBar] Subscription status:`, status);
+            });
+            
+          return () => supabase.removeChannel(channel);
+        }
       }
     };
     
