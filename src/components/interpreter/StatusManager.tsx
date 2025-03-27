@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRealtime } from "@/context/RealtimeContext";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -21,7 +21,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { subscribe } = useRealtime();
 
   // Update local state when prop changes
   useEffect(() => {
@@ -29,7 +28,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
-  }, [currentStatus, status]);
+  }, [currentStatus]);
 
   // Get current user ID and set up real-time subscription
   useEffect(() => {
@@ -51,26 +50,27 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   }, []);
 
   // Set up realtime subscription for status updates
-  useEffect(() => {
-    if (!userId) return;
-    
-    const unsubscribe = subscribe(
-      {
-        event: 'UPDATE',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${userId}`
-      },
-      (payload) => {
-        console.log('[StatusManager] Status update received:', payload);
-        const newStatus = payload.new.status;
-        if (isValidStatus(newStatus)) {
-          setStatus(newStatus);
-        }
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      table: 'interpreter_profiles',
+      filter: userId ? `id=eq.${userId}` : undefined
+    },
+    (payload) => {
+      console.log('[StatusManager] Status update received:', payload);
+      const newStatus = payload.new.status;
+      if (isValidStatus(newStatus)) {
+        setStatus(newStatus);
       }
-    );
-    
-    return unsubscribe;
-  }, [userId, subscribe]);
+    },
+    {
+      enabled: !!userId,
+      onError: (error) => {
+        console.error('[StatusManager] Error in realtime subscription:', error);
+      },
+      debugMode: true
+    }
+  );
 
   const isValidStatus = (status: string): status is Status => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);
