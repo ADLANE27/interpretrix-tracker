@@ -65,32 +65,39 @@ export function LanguageCombobox({
     try {
       const normalizedSearchTerm = normalizeString(searchTerm);
       
-      return [...languages]
-        .filter(lang => {
-          const normalizedLang = normalizeString(lang);
-          return !searchTerm || normalizedLang.includes(normalizedSearchTerm);
-        })
-        .sort((a, b) => {
-          const normalizedA = normalizeString(a);
-          const normalizedB = normalizeString(b);
-          
-          // Exact matches first
-          const aExactMatch = normalizedA === normalizedSearchTerm;
-          const bExactMatch = normalizedB === normalizedSearchTerm;
-          
-          if (aExactMatch && !bExactMatch) return -1;
-          if (!aExactMatch && bExactMatch) return 1;
-          
-          // Then sort by whether it starts with the search term
-          const aStartsWith = normalizedA.startsWith(normalizedSearchTerm);
-          const bStartsWith = normalizedB.startsWith(normalizedSearchTerm);
-          
-          if (aStartsWith && !bStartsWith) return -1;
-          if (!aStartsWith && bStartsWith) return 1;
-          
-          // Then alphabetical order
-          return a.localeCompare(b, 'fr');
-        });
+      if (!normalizedSearchTerm) {
+        return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
+      }
+      
+      // Catégoriser les langues
+      const exactMatches: string[] = [];
+      const startsWithMatches: string[] = [];
+      const containsMatches: string[] = [];
+      
+      languages.forEach(lang => {
+        const normalizedLang = normalizeString(lang);
+        
+        // Correspondance exacte
+        if (normalizedLang === normalizedSearchTerm) {
+          exactMatches.push(lang);
+        }
+        // Commence par le terme de recherche
+        else if (normalizedLang.startsWith(normalizedSearchTerm)) {
+          startsWithMatches.push(lang);
+        }
+        // Contient le terme de recherche, mais pas au début
+        else if (normalizedLang.includes(normalizedSearchTerm)) {
+          containsMatches.push(lang);
+        }
+      });
+      
+      // Trier chaque catégorie alphabétiquement
+      exactMatches.sort((a, b) => a.localeCompare(b, 'fr'));
+      startsWithMatches.sort((a, b) => a.localeCompare(b, 'fr'));
+      containsMatches.sort((a, b) => a.localeCompare(b, 'fr'));
+      
+      // Combiner toutes les catégories dans l'ordre de priorité
+      return [...exactMatches, ...startsWithMatches, ...containsMatches];
     } catch (error) {
       console.error("Error filtering languages:", error);
       return [];
@@ -173,3 +180,4 @@ export function LanguageCombobox({
     </div>
   );
 }
+
