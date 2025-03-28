@@ -38,10 +38,10 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
       animate={{ y: 0 }}
       transition={{ duration: 0.3, type: "spring" }}
     >
-      <div className="flex items-center justify-around px-2 py-3">
+      <div className="flex items-center justify-around px-2 py-2">
         <button
           className={cn(
-            "flex flex-col items-center justify-center py-2 px-3 relative",
+            "flex flex-col items-center justify-center py-1 px-3 relative",
             "transition-all duration-200 rounded-lg",
             "focus:outline-none active:scale-95",
             "text-gray-500 dark:text-gray-400"
@@ -62,7 +62,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
             <button
               key={tab.id}
               className={cn(
-                "flex flex-col items-center justify-center py-2 px-3 relative",
+                "flex flex-col items-center justify-center py-1 px-3 relative",
                 "transition-all duration-200 rounded-lg",
                 "focus:outline-none active:scale-95",
                 isActive 

@@ -76,23 +76,18 @@ export const DashboardHeader = ({
           )}
         </div>
         
+        {showStatusButtons && (
+          <div className="flex-1 mr-4">
+            <StatusButtonsBar 
+              currentStatus={profile?.status} 
+              onStatusChange={onStatusChange}
+              variant={isMobile ? 'compact' : 'default'} 
+            />
+          </div>
+        )}
+        
         <ThemeToggle />
       </div>
-      
-      {showStatusButtons && (
-        <motion.div 
-          className="pb-2 md:pb-3 md:py-2 w-full overflow-visible StatusButtonsBar-in-header"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.3 }}
-        >
-          <StatusButtonsBar 
-            currentStatus={profile?.status} 
-            onStatusChange={onStatusChange}
-            variant={isMobile ? 'compact' : 'default'} 
-          />
-        </motion.div>
-      )}
     </motion.header>
   );
 };

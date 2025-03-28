@@ -28,10 +28,10 @@ export const ThemeToggle = () => {
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size="sm"
       onClick={toggleTheme}
       className={`
-        relative overflow-hidden rounded-full w-10 h-10
+        relative overflow-hidden rounded-full h-9 w-9
         bg-gradient-to-br from-white/70 to-palette-soft-blue/30 
         dark:from-gray-800/80 dark:to-palette-ocean-blue/30 
         backdrop-blur-md
@@ -52,7 +52,7 @@ export const ThemeToggle = () => {
         transition={{ duration: 0.5, type: "spring" }}
         className="absolute inset-0 flex items-center justify-center"
       >
-        <Moon className="h-5 w-5" />
+        <Moon className="h-4 w-4" />
       </motion.div>
       
       <motion.div
@@ -65,7 +65,7 @@ export const ThemeToggle = () => {
         transition={{ duration: 0.5, type: "spring" }}
         className="absolute inset-0 flex items-center justify-center"
       >
-        <Sun className="h-5 w-5" />
+        <Sun className="h-4 w-4" />
       </motion.div>
       
       <span className="sr-only">Toggle theme</span>
