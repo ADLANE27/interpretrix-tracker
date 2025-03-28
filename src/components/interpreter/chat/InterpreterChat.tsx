@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -44,7 +45,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "calc(100vh - 320px)"
+  messageListHeight = "calc(100vh - 320px)" // Default adjusted to account for header, footer, and status bar
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -305,12 +306,13 @@ export const InterpreterChat = ({
     }
   };
 
-  const showStatusButtons = isMobile ? (profile && onStatusChange && orientation === "portrait") : (profile && onStatusChange);
+  const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
-  const messagesContainerHeight = isMobile 
-    ? "calc(100vh - 240px)" // Mobile view (adjusted to be shorter)
-    : "calc(100vh - 260px)"; // Desktop view (adjusted to be shorter)
-
+  // Dynamic height adjustment based on whether status buttons are shown
+  const adjustedMessageListHeight = showStatusButtons 
+    ? "calc(100vh - 360px)" // More space for status buttons
+    : messageListHeight;
+  
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -349,6 +351,42 @@ export const InterpreterChat = ({
               )}
             </motion.h2>
           </AnimatePresence>
+          
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" 
+                    onClick={forceFetch}
+                    aria-label="Refresh messages"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh messages</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <ChannelMembersPopover 
+              channelId={channelId} 
+              channelName={channel?.name || ''} 
+              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+              userRole="interpreter"
+            >
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60"
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            </ChannelMembersPopover>
+          </div>
         </div>
 
         {showStatusButtons && profile && onStatusChange && (
@@ -356,7 +394,7 @@ export const InterpreterChat = ({
             <StatusButtonsBar 
               currentStatus={profile.status} 
               onStatusChange={onStatusChange}
-              variant={isMobile ? 'compact' : 'default'} 
+              variant="compact" 
             />
           </div>
         )}
@@ -369,7 +407,7 @@ export const InterpreterChat = ({
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ height: messagesContainerHeight }}
+          style={{ height: adjustedMessageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-gradient-to-br from-white/70 to-palette-soft-blue/30 dark:from-gray-800/70 dark:to-palette-ocean-blue/20 backdrop-blur-md flex items-center justify-center">
