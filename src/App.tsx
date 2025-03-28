@@ -20,7 +20,12 @@ function App() {
 
           {/* Interpreter Routes */}
           <Route path="/interpreter/login" element={<InterpreterLogin />} />
-          <Route path="/interpreter" element={<AuthenticatedLayout />} />
+          <Route path="/interpreter" element={
+            <>
+              <AuthenticatedLayout />
+              <Footer />
+            </>
+          } />
 
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -33,7 +38,6 @@ function App() {
           <Route path="*" element={<Index />} />
         </Routes>
       </div>
-      <Footer />
       <Toaster />
     </div>
   );

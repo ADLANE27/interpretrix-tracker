@@ -29,7 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import Chat from "@/components/chat/Chat";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { MessageList } from "@/components/chat/MessageList";
 
 interface Channel {
   id: string;
@@ -346,11 +347,97 @@ export const MessagesTab = () => {
                 </Button>
               )}
               
-              {/* Use the standardized Chat component */}
-              <Chat 
-                channelId={selectedChannel.id} 
-                userRole="admin"
-              />
+              {selectedChannel && (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200/70 dark:border-gray-700/70 shadow-sm">
+                    <div className="h-[56px] md:h-16 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold truncate flex-1 text-gradient-primary">
+                          {editingChannel?.id === selectedChannel.id ? (
+                            <>
+                              <Input
+                                value={editingChannel.name}
+                                onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleRename(selectedChannel.id, editingChannel.name);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingChannel(null);
+                                    setEditingChannel({ id: selectedChannel.id, name: selectedChannel.display_name });
+                                  }
+                                }}
+                                className="w-[200px] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200/70 dark:border-gray-700/70 focus-within:ring-1 focus-within:ring-primary/30"
+                                autoFocus
+                              />
+                              <div className="flex gap-2 mt-1">
+                                <Button size="sm" onClick={() => handleRename(selectedChannel.id, editingChannel.name)} className="shadow-sm">
+                                  Sauvegarder
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => {
+                                    setEditingChannel(null);
+                                  }}
+                                  className="hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {selectedChannel.display_name}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingChannel({ id: selectedChannel.id, name: selectedChannel.display_name })}
+                                className="ml-2 p-1 h-7 w-7 rounded-full hover:bg-primary/10 transition-colors"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </h2>
+                      </div>
+                      
+                      <ChannelMemberManagement
+                        isOpen={showMemberManagement}
+                        onClose={() => setShowMemberManagement(false)}
+                        channelId={selectedChannel.id}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-hidden">
+                    {/* Use shared components for chat functionality */}
+                    <div className="h-full">
+                      <div className="h-[calc(100%-110px)] overflow-auto">
+                        <MessageList
+                          messages={useChat(selectedChannel.id).messages}
+                          currentUserId={currentUser.current?.id}
+                          onDeleteMessage={useChat(selectedChannel.id).deleteMessage}
+                          onReactToMessage={useChat(selectedChannel.id).reactToMessage}
+                          channelId={selectedChannel.id}
+                        />
+                      </div>
+                      <div className="h-[110px] border-t">
+                        <ChatInput
+                          message={useChat(selectedChannel.id).message || ""}
+                          setMessage={useChat(selectedChannel.id).setMessage}
+                          onSendMessage={useChat(selectedChannel.id).sendMessage}
+                          handleFileChange={useChat(selectedChannel.id).handleFileChange}
+                          attachments={useChat(selectedChannel.id).attachments || []}
+                          handleRemoveAttachment={useChat(selectedChannel.id).handleRemoveAttachment}
+                          inputRef={useChat(selectedChannel.id).inputRef}
+                          replyTo={useChat(selectedChannel.id).replyTo}
+                          setReplyTo={useChat(selectedChannel.id).setReplyTo}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center">
@@ -370,13 +457,7 @@ export const MessagesTab = () => {
         onClose={() => setShowDirectMessageDialog(false)}
         onChannelCreated={handleChannelCreated}
       />
-      {selectedChannel && (
-        <ChannelMemberManagement
-          isOpen={showMemberManagement}
-          onClose={() => setShowMemberManagement(false)}
-          channelId={selectedChannel.id}
-        />
-      )}
+      
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
