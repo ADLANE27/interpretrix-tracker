@@ -356,7 +356,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-md">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-md w-full">
       {messages.length === 0 ? (
         <div className="flex items-center justify-center h-32 text-gray-500">
           Aucun message à afficher
