@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
@@ -51,7 +50,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
-            messageListHeight="70vh" // Adding fixed height for message list
+            messageListHeight="50vh" // Reducing height to 50% of screen height
           />
         </div>
       )}

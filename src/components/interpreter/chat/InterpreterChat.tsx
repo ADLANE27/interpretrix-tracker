@@ -44,7 +44,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "100%"
+  messageListHeight = "50%"
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
