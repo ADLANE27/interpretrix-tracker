@@ -54,8 +54,8 @@ export function useRealtimeSubscription2(
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        // Use the correct type expected by the Supabase SDK
-        'postgres_changes', 
+        // TypeScript fix: Use the correct type for Supabase SDK
+        'postgres_changes' as any, 
         {
           event: opt.event,
           schema: opt.schema || 'public',
