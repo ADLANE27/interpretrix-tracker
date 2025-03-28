@@ -1,6 +1,8 @@
 
 import { LANGUAGES } from '@/lib/constants';
-import { MENTION_PATTERN } from '@/services/realtime/constants';
+
+// Pattern for detecting mentions in messages
+export const MENTION_PATTERN = /@([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)/g;
 
 export const useMessageFormatter = () => {
   const formatMessage = (content: string) => {
@@ -30,7 +32,7 @@ export const useMessageFormatter = () => {
     return { isValid: true };
   };
 
-  // Helper function to normalize strings for better comparison (kept for reference)
+  // Helper function to normalize strings for better comparison
   const normalizeString = (str: string): string => {
     return str.toLowerCase()
       .normalize("NFD")
@@ -42,6 +44,7 @@ export const useMessageFormatter = () => {
 
   return {
     formatMessage,
-    validateMentions
+    validateMentions,
+    normalizeString
   };
 };

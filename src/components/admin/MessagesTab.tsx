@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,7 +57,6 @@ export const MessagesTab = () => {
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -67,7 +65,6 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
-  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true);
@@ -83,7 +80,6 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
-          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -101,7 +97,7 @@ export const MessagesTab = () => {
     };
 
     fetchChannels();
-  }, []); // No dependencies, only run once on component mount
+  }, []);
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -188,7 +184,6 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
-      // Update the channels list with the new name
       setChannels(channels.map(channel => 
         channel.id === channelId 
           ? { ...channel, display_name: newName.trim() }
@@ -209,7 +204,6 @@ export const MessagesTab = () => {
     }
   };
 
-  // Display a loading state while fetching channels
   if (isLoading && channels.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -384,7 +378,6 @@ export const MessagesTab = () => {
                 </motion.div>
               )}
               
-              {/* Use the standardized Chat component */}
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
