@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -306,11 +305,10 @@ export const InterpreterChat = ({
     }
   };
 
-  const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
+  const showStatusButtons = isMobile ? (profile && onStatusChange && orientation === "portrait") : (profile && onStatusChange);
   
-  // Dynamic height adjustment based on whether status buttons are shown
   const adjustedMessageListHeight = showStatusButtons 
-    ? "calc(100vh - 360px)" // More space for status buttons
+    ? isMobile ? "calc(100vh - 360px)" : "calc(100vh - 370px)"
     : messageListHeight;
   
   return (
@@ -394,7 +392,7 @@ export const InterpreterChat = ({
             <StatusButtonsBar 
               currentStatus={profile.status} 
               onStatusChange={onStatusChange}
-              variant="compact" 
+              variant={isMobile ? 'compact' : 'default'} 
             />
           </div>
         )}

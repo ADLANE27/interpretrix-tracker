@@ -35,7 +35,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   // This ensures no unnecessary scrolling
   const messageListHeight = isMobile 
     ? "calc(100vh - 340px)" 
-    : "calc(100vh - 300px)";
+    : profile && onStatusChange ? "calc(100vh - 370px)" : "calc(100vh - 300px)";
 
   return (
     <motion.div 
