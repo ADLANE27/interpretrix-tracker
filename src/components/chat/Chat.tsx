@@ -28,7 +28,7 @@ interface ChatProps {
 const Chat = ({ 
   channelId, 
   userRole = 'admin', 
-  messageListHeight = "calc(100vh - 200px)" 
+  messageListHeight = "calc(100vh - 280px)" 
 }: ChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],

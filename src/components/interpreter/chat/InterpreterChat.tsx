@@ -45,7 +45,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "calc(100vh - 200px)"
+  messageListHeight = "calc(100vh - 280px)"
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -384,7 +384,7 @@ export const InterpreterChat = ({
           </div>
         </div>
 
-        {showStatusButtons && profile && onStatusChange && !document.querySelector('.StatusButtonsBar-in-header') && (
+        {showStatusButtons && profile && onStatusChange && (
           <div className="pb-2 w-full overflow-visible">
             <StatusButtonsBar 
               currentStatus={profile.status} 
