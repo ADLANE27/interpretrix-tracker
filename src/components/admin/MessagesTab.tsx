@@ -209,7 +209,7 @@ export const MessagesTab = () => {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
         <div 
           className={`${
@@ -326,10 +326,18 @@ export const MessagesTab = () => {
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <div className="flex-1 flex flex-col h-full overflow-hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChannelList(true)}
+                className="h-9 w-9 p-0 absolute top-4 left-4 z-10"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
-                messageListHeight="calc(100vh - 170px)"
+                messageListHeight="calc(100vh - 250px)"
               />
             </div>
           ) : (

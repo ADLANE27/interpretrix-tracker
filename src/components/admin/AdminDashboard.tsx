@@ -12,43 +12,51 @@ import { ReservationsTab } from "./reservations/ReservationsTab";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { TabNavigationPanel } from "./dashboard/TabNavigationPanel";
 import { InterpretersTab } from "./dashboard/InterpretersTab";
+
 const AdminDashboard = () => {
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const tabs = [{
-    id: "interpreters",
-    label: "Interprètes"
-  }, {
-    id: "missions",
-    label: "Missions"
-  }, {
-    id: "reservations",
-    label: "Réservations"
-  }, {
-    id: "calendar",
-    label: "Calendrier"
-  }, {
-    id: "messages",
-    label: "Messages"
-  }, {
-    id: "users",
-    label: "Utilisateurs"
-  }, {
-    id: "guide",
-    label: "Guide"
-  }];
+  
+  const tabs = [
+    {
+      id: "interpreters",
+      label: "Interprètes"
+    }, 
+    {
+      id: "missions",
+      label: "Missions"
+    }, 
+    {
+      id: "reservations",
+      label: "Réservations"
+    }, 
+    {
+      id: "calendar",
+      label: "Calendrier"
+    }, 
+    {
+      id: "messages",
+      label: "Messages"
+    }, 
+    {
+      id: "users",
+      label: "Utilisateurs"
+    }, 
+    {
+      id: "guide",
+      label: "Guide"
+    }
+  ];
+  
   const {
     activeTab,
     setActiveTab
   } = useTabPersistence("interpreters");
+
   const handleLogout = async () => {
     try {
-      const {
-        error
-      } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast({
         title: "Déconnexion réussie",
@@ -63,9 +71,18 @@ const AdminDashboard = () => {
       });
     }
   };
-  return <div className="flex flex-col h-full bg-[#1a2844]">
+
+  return (
+    <div className="flex flex-col h-full bg-[#1a2844]">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full scroll-smooth">
-        <TabNavigationPanel tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+        <TabNavigationPanel
+          tabs={tabs}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onLogout={handleLogout}
+          isMenuOpen={isMenuOpen}
+          setIsMenuOpen={setIsMenuOpen}
+        />
 
         <div className="flex-1 min-h-0 relative bg-[#1a2844]">
           <TabsContent value="interpreters" className="absolute inset-0 overflow-auto bg-slate-50">
@@ -85,7 +102,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6 bg-slate-50 py-0">
+            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
               <MessagesTab />
             </div>
           </TabsContent>
@@ -109,6 +126,8 @@ const AdminDashboard = () => {
           </TabsContent>
         </div>
       </Tabs>
-    </div>;
+    </div>
+  );
 };
+
 export default AdminDashboard;
