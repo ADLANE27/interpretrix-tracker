@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
@@ -56,6 +57,11 @@ export function useTableSubscription(
         if (onError) onError(error);
       }
     };
+    
+    // Make sure the service is initialized first
+    if (!realtimeService.isInitialized()) {
+      realtimeService.init();
+    }
     
     // Create subscription through realtime service
     const cleanup = realtimeService.subscribeToTable(table, event, filter, handlePayload);

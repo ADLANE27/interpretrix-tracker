@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
@@ -129,6 +128,63 @@ class RealtimeService {
       timestamp: Date.now(),
       uuid: uuidv4() // Add unique ID to ensure event is always processed
     });
+  }
+
+  /**
+   * Subscribe to table changes
+   */
+  public subscribeToTable(
+    table: string,
+    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
+    filter: string | null,
+    callback: (payload: any) => void
+  ): () => void {
+    console.log(`[RealtimeService] Subscribing to table ${table} for ${event} events`);
+    
+    const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
+    const key = `table-${table}-${event}${filterSuffix}`;
+    
+    // Check if we already have this subscription
+    if (this.subscriptions.has(key)) {
+      console.log(`[RealtimeService] Reusing existing subscription for ${key}`);
+      return this.subscriptions.get(key) || (() => {});
+    }
+    
+    try {
+      const channel = supabase.channel(key)
+        .on('postgres_changes' as any, {
+          event: event,
+          schema: 'public',
+          table: table,
+          filter: filter || undefined
+        }, (payload) => {
+          const now = Date.now();
+          const eventId = `${table}-${event}-${now}`;
+          
+          if (this.eventDebouncer.shouldProcessEvent(eventId, now)) {
+            console.log(`[RealtimeService] ${event} event on ${table}:`, payload);
+            callback(payload);
+          }
+        })
+        .subscribe((status) => {
+          console.log(`[RealtimeService] Subscription status for ${key}: ${status}`);
+        });
+      
+      // Create cleanup function
+      const cleanup = () => {
+        console.log(`[RealtimeService] Unsubscribing from ${key}`);
+        supabase.removeChannel(channel);
+        this.subscriptions.delete(key);
+      };
+      
+      // Store in our subscriptions map
+      this.subscriptions.set(key, cleanup);
+      
+      return cleanup;
+    } catch (error) {
+      console.error(`[RealtimeService] Error creating subscription: ${error}`);
+      return () => {};
+    }
   }
 
   private cleanup(): void {
