@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
@@ -6,13 +7,9 @@ import { CONNECTION_STATUS_DEBOUNCE_TIME, RETRY_MAX } from './constants';
 import { EventDebouncer } from './eventDebouncer';
 import { SubscriptionManager } from './subscriptionManager';
 
-// Create our connection monitor with enhanced debouncing
+// Create our connection monitor
 const connectionStatusDebouncer = new EventDebouncer(CONNECTION_STATUS_DEBOUNCE_TIME);
 const subscriptionManager = new SubscriptionManager();
-
-// Keep track of last emitted connection status to avoid duplicates
-let lastEmittedConnectionStatus = true;
-let lastEmissionTime = Date.now();
 
 /**
  * Core service for managing realtime subscriptions
@@ -32,7 +29,7 @@ class RealtimeService {
    */
   public init(): () => void {
     if (this.initialized) {
-      // console.log('[RealtimeService] Already initialized');
+      console.log('[RealtimeService] Already initialized');
       return () => {};
     }
 
@@ -73,24 +70,14 @@ class RealtimeService {
   }
   
   /**
-   * Handle connection status change with improved debouncing
+   * Handle connection status change
    */
   private handleConnectionStatusChange(connected: boolean): void {
-    // Only emit if status actually changed or enough time has passed
-    const now = Date.now();
-    const timeSinceLastEmission = now - lastEmissionTime;
-    
-    if (connected !== lastEmittedConnectionStatus || timeSinceLastEmission > 10000) {
-      // Debounce connection status changes to prevent UI flickering
-      connectionStatusDebouncer.debounce(() => {
-        console.log(`[RealtimeService] Connection status changed: ${connected ? 'connected' : 'disconnected'}`);
-        eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
-        
-        // Update tracking variables
-        lastEmittedConnectionStatus = connected;
-        lastEmissionTime = Date.now();
-      }, 'connection-status', CONNECTION_STATUS_DEBOUNCE_TIME);
-    }
+    // Debounce connection status changes to prevent UI flickering
+    connectionStatusDebouncer.debounce(() => {
+      console.log(`[RealtimeService] Connection status changed: ${connected ? 'connected' : 'disconnected'}`);
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
+    }, 'connection-status', CONNECTION_STATUS_DEBOUNCE_TIME);
   }
   
   /**

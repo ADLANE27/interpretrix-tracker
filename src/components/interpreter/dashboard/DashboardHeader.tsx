@@ -4,7 +4,7 @@ import { Profile } from "@/types/profile";
 import { useOrientation } from "@/hooks/use-orientation";
 import { StatusButtonsBar } from "../StatusButtonsBar";
 import { motion } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -20,77 +20,32 @@ export const DashboardHeader = ({
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
   const [isInMessagesTab, setIsInMessagesTab] = useState(false);
-  const checkStateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const mutationObserverRef = useRef<MutationObserver | null>(null);
   
-  // Use a more efficient approach to check data attributes
-  const checkDataAttributes = () => {
-    const newIsInChatTab = document.body.hasAttribute('data-in-chat');
-    const newIsInMessagesTab = document.body.hasAttribute('data-in-messages-tab');
-    
-    if (newIsInChatTab !== isInChatTab) {
-      setIsInChatTab(newIsInChatTab);
-    }
-    
-    if (newIsInMessagesTab !== isInMessagesTab) {
-      setIsInMessagesTab(newIsInMessagesTab);
-    }
-  };
-  
-  // Set up a better attribute monitoring system
+  // Use an effect to update the states whenever data attributes change
   useEffect(() => {
+    const updateStates = () => {
+      setIsInChatTab(document.body.hasAttribute('data-in-chat'));
+      setIsInMessagesTab(document.body.hasAttribute('data-in-messages-tab'));
+    };
+
     // Initial check
-    checkDataAttributes();
-    
-    // Clear any existing observer and timeout
-    if (mutationObserverRef.current) {
-      mutationObserverRef.current.disconnect();
-    }
-    
-    if (checkStateTimeoutRef.current) {
-      clearTimeout(checkStateTimeoutRef.current);
-    }
-    
-    // Set up a MutationObserver with optimized configuration
+    updateStates();
+
+    // Set up a MutationObserver to watch for changes to the attributes
     const observer = new MutationObserver((mutations) => {
-      let shouldUpdate = false;
-      
-      for (const mutation of mutations) {
+      mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && 
-           (mutation.attributeName === 'data-in-chat' || 
-            mutation.attributeName === 'data-in-messages-tab')) {
-          shouldUpdate = true;
-          break;
+            (mutation.attributeName === 'data-in-chat' || 
+             mutation.attributeName === 'data-in-messages-tab')) {
+          updateStates();
         }
-      }
-      
-      if (shouldUpdate) {
-        // Debounce updates to avoid rapid changes
-        if (checkStateTimeoutRef.current) {
-          clearTimeout(checkStateTimeoutRef.current);
-        }
-        
-        checkStateTimeoutRef.current = setTimeout(() => {
-          checkDataAttributes();
-        }, 100);
-      }
+      });
     });
-    
-    observer.observe(document.body, { 
-      attributes: true,
-      attributeFilter: ['data-in-chat', 'data-in-messages-tab'] // Only watch these specific attributes
-    });
-    
-    mutationObserverRef.current = observer;
-    
+
+    observer.observe(document.body, { attributes: true });
+
     return () => {
-      if (mutationObserverRef.current) {
-        mutationObserverRef.current.disconnect();
-      }
-      
-      if (checkStateTimeoutRef.current) {
-        clearTimeout(checkStateTimeoutRef.current);
-      }
+      observer.disconnect();
     };
   }, []);
   
@@ -102,7 +57,7 @@ export const DashboardHeader = ({
 
   return (
     <motion.header 
-      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm pt-6"
+      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, type: "spring" }}

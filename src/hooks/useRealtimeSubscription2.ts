@@ -12,32 +12,14 @@ interface SubscriptionOptions {
   filter?: string;
 }
 
-interface UseRealtimeSubscription2Options {
-  debugMode?: boolean;
-  maxRetries?: number;
-  retryInterval?: number;
-  onError?: (error: any) => void;
-  channelName?: string;
-}
-
-/**
- * A more optimized hook for Supabase realtime subscriptions that prevents
- * excessive re-renders and properly cleans up resources.
- */
 export function useRealtimeSubscription2(
   options: SubscriptionOptions | SubscriptionOptions[],
   callback: (payload: RealtimePostgresChangesPayload<any>) => void,
-  hookOptions: UseRealtimeSubscription2Options = {},
   enabled: boolean = true
 ) {
   const optionsArray = Array.isArray(options) ? options : [options];
   const callbackRef = useRef(callback);
   const channelRef = useRef<any>(null);
-  const mountedRef = useRef(true);
-  
-  // Generate a stable channel name
-  const channelName = hookOptions.channelName || 
-    `realtime-${optionsArray.map(o => `${o.table}-${o.event}`).join('-')}-${Math.random().toString(36).substring(2, 9)}`;
   
   // Update callback ref when callback changes
   useEffect(() => {
@@ -45,66 +27,36 @@ export function useRealtimeSubscription2(
   }, [callback]);
 
   useEffect(() => {
-    mountedRef.current = true;
-    
     if (!enabled) return;
     
-    let channel = supabase.channel(channelName);
+    let channel = supabase.channel('custom-realtime-channel');
     
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        // TypeScript fix: Use the correct type for Supabase SDK
+        // Add a type assertion to resolve the TypeScript error
         'postgres_changes' as any, 
         {
           event: opt.event,
           schema: opt.schema || 'public',
           table: opt.table,
           filter: opt.filter
-        },
-        // Type assertion to fix the payload type mismatch
-        (payload: any) => {
-          if (!mountedRef.current) return;
+        } as any,
+        (payload) => {
           callbackRef.current(payload);
         }
       );
     });
     
-    // Subscribe to the channel with retry logic
-    channel.subscribe((status) => {
-      if (hookOptions.debugMode) {
-        console.log(`[useRealtimeSubscription2] Subscription status for ${channelName}: ${status}`);
-      }
-      
-      if (status === 'CHANNEL_ERROR') {
-        if (hookOptions.onError) {
-          hookOptions.onError(new Error(`Channel subscription error for ${channelName}`));
-        }
-      }
-    });
-    
+    // Subscribe to the channel
+    const subscription = channel.subscribe();
     channelRef.current = channel;
     
     // Cleanup function
     return () => {
-      mountedRef.current = false;
-      if (channelRef.current) {
-        if (hookOptions.debugMode) {
-          console.log(`[useRealtimeSubscription2] Cleaning up channel ${channelName}`);
-        }
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      supabase.removeChannel(channel);
     };
-  }, [channelName, enabled, hookOptions.debugMode, hookOptions.onError, JSON.stringify(optionsArray)]);
+  }, [optionsArray, enabled]);
 
-  return {
-    channel: channelRef.current,
-    isSubscribed: !!channelRef.current,
-    resubscribe: () => {
-      if (channelRef.current) {
-        channelRef.current.subscribe();
-      }
-    }
-  };
+  return channelRef.current;
 }

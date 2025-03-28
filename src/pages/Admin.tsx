@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -18,34 +18,21 @@ const Admin = () => {
     isForceReconnecting, 
     handleForceReconnect 
   } = useConnectionMonitor();
-  
-  const initializedRef = useRef(false);
 
-  // Create a stable callback for mission updates
-  const handleMissionUpdate = useCallback(() => {
+  // Initialize realtime service once on admin page load
+  useEffect(() => {
+    console.log('[Admin] Initializing realtime service');
+    const cleanup = realtimeService.init();
+    return cleanup;
+  }, []);
+
+  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
+  useMissionUpdates(() => {
     // Reset connection error state on successful updates
     if (connectionError) {
       eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
     }
-  }, [connectionError]);
-
-  // Initialize realtime service once on admin page load
-  useEffect(() => {
-    if (initializedRef.current) return;
-    
-    console.log('[Admin] Initializing realtime service');
-    initializedRef.current = true;
-    const cleanup = realtimeService.init();
-    
-    return () => {
-      if (typeof cleanup === 'function') {
-        cleanup();
-      }
-    };
-  }, []);
-
-  // Add the useMissionUpdates hook with our stable callback
-  useMissionUpdates(handleMissionUpdate);
+  });
 
   // Authentication check
   useEffect(() => {
@@ -95,35 +82,20 @@ const Admin = () => {
 
   // Monitor page visibility to handle reconnection when page becomes visible
   useEffect(() => {
-    const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Clear any existing timeout
-        if (visibilityTimeoutRef.current) {
-          clearTimeout(visibilityTimeoutRef.current);
-        }
+        console.log('[Admin] Page visibility changed to visible, checking connection');
         
-        // Set a small delay to debounce multiple visibility events
-        visibilityTimeoutRef.current = setTimeout(() => {
-          console.log('[Admin] Page visibility changed to visible, checking connection');
-          
-          // Check connection and attempt reconnect if needed
-          if (connectionError || !realtimeService.isConnected()) {
-            realtimeService.reconnectAll();
-          }
-          
-          visibilityTimeoutRef.current = null;
-        }, 300);
+        // Check connection and attempt reconnect if needed
+        if (connectionError || !realtimeService.isConnected()) {
+          realtimeService.reconnectAll();
+        }
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [connectionError]);
