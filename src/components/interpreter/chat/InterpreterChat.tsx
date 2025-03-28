@@ -396,7 +396,7 @@ export const InterpreterChat = ({
 
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md">
         <div 
-          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none"
+          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none flex-1 min-h-0" 
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
