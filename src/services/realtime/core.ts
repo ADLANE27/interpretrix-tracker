@@ -35,8 +35,14 @@ class RealtimeService {
     console.log('[RealtimeService] Initializing');
     this.initialized = true;
 
-    // Create connection monitor with the event emitter
-    this.connectionMonitor = new ConnectionMonitor(eventEmitter);
+    // Create connection monitor
+    this.connectionMonitor = new ConnectionMonitor(
+      (key) => this.handleSubscriptionRetry(key),
+      (connected) => this.handleConnectionStatusChange(connected)
+    );
+
+    // Start monitoring
+    this.connectionMonitor.start();
 
     // Return cleanup function
     return () => {
@@ -50,7 +56,7 @@ class RealtimeService {
   private cleanup(): void {
     console.log('[RealtimeService] Cleaning up');
     if (this.connectionMonitor) {
-      this.connectionMonitor.unsubscribeAll();
+      this.connectionMonitor.stop();
       this.connectionMonitor = null;
     }
     
