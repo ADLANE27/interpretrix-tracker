@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,31 +12,33 @@ const isProduction = () => {
          !window.location.hostname.includes('preview');
 };
 
+// Create a stable callback that doesn't change on each render
 export const useMissionUpdates = (onUpdate: () => void) => {
   const interpreterStatusChannelRef = useRef<RealtimeChannel | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = isProduction() ? 15 : 5;
+  const stableOnUpdate = useCallback(onUpdate, [onUpdate]);
+  const mountedRef = useRef(true);
   
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
-    let mounted = true;
     
     const handleVisibilityChange = () => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
-        onUpdate();
+        stableOnUpdate();
       }
     };
 
     const handleOnline = () => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       
       console.log('[useMissionUpdates] Network connection restored, triggering update');
-      onUpdate();
+      stableOnUpdate();
       
       // Also try to resubscribe to the interpreter status channel
       if (interpreterStatusChannelRef.current && interpreterStatusChannelRef.current.state !== 'joined') {
@@ -50,10 +52,10 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     // Listen for interpreter status update events
     const handleStatusUpdate = () => {
-      if (!mounted) return;
+      if (!mountedRef.current) return;
       
       console.log('[useMissionUpdates] Received manual status update event');
-      onUpdate();
+      stableOnUpdate();
     };
     
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
@@ -73,11 +75,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
           table: 'interpreter_profiles',
           filter: 'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause'
         }, (payload) => {
-          if (!mounted) return;
+          if (!mountedRef.current) return;
           
           console.log('[useMissionUpdates] Direct status update received via channel:', payload);
           // First run the provided callback
-          onUpdate();
+          stableOnUpdate();
           // Then propagate the event to other components
           eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
           
@@ -87,7 +89,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         .subscribe((status) => {
           console.log('[useMissionUpdates] Status channel subscription status:', status);
           
-          if (status === 'CHANNEL_ERROR' && mounted) {
+          if (status === 'CHANNEL_ERROR' && mountedRef.current) {
             console.error('[useMissionUpdates] Channel error, attempting recovery');
             
             // Clear any existing retry timeout
@@ -101,13 +103,13 @@ export const useMissionUpdates = (onUpdate: () => void) => {
               console.log(`[useMissionUpdates] Retry ${retryCountRef.current + 1}/${MAX_RETRIES} in ${delay}ms`);
               
               retryTimeoutRef.current = setTimeout(() => {
-                if (mounted) {
+                if (mountedRef.current) {
                   retryCountRef.current++;
                   setupStatusChannel();
                 }
               }, delay);
             }
-          } else if (status === 'SUBSCRIBED' && mounted) {
+          } else if (status === 'SUBSCRIBED' && mountedRef.current) {
             console.log('[useMissionUpdates] Successfully subscribed to interpreter status channel');
             retryCountRef.current = 0;
           }
@@ -121,7 +123,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      mounted = false;
+      mountedRef.current = false;
       
       window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -137,7 +139,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         retryTimeoutRef.current = null;
       }
     };
-  }, [onUpdate]);
+  }, [stableOnUpdate]);
 
   // Common subscription options
   const subscriptionOptions = {
@@ -161,8 +163,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       table: 'interpretation_missions'
     },
     (payload) => {
+      if (!mountedRef.current) return;
       console.log('[useMissionUpdates] Mission update received:', payload);
-      onUpdate();
+      stableOnUpdate();
     },
     subscriptionOptions
   );
@@ -176,8 +179,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       filter: "status=eq.scheduled" // Only listen for scheduled reservations
     },
     (payload) => {
+      if (!mountedRef.current) return;
       console.log('[useMissionUpdates] Private reservation update received:', payload);
-      onUpdate();
+      stableOnUpdate();
     },
     {
       ...subscriptionOptions,
