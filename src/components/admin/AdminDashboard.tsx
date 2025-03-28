@@ -68,7 +68,7 @@ const AdminDashboard = () => {
         <TabNavigationPanel tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
         <div className="flex-1 min-h-0 relative bg-[#1a2844]">
-          <TabsContent value="interpreters" className="absolute inset-0 overflow-auto bg-slate-50">
+          <TabsContent value="interpreters" className="absolute inset-0 overflow-auto bg-slate-50 px-0 mx-0">
             <InterpretersTab />
           </TabsContent>
 
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6 bg-slate-50 py-0">
+            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
               <MessagesTab />
             </div>
           </TabsContent>
