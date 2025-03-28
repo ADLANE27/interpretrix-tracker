@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -28,7 +27,7 @@ interface ChatProps {
 const Chat = ({ 
   channelId, 
   userRole = 'admin', 
-  messageListHeight = "calc(100vh - 280px)" 
+  messageListHeight = "calc(100vh - 300px)" // Default adjusted to account for header and footer
 }: ChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],

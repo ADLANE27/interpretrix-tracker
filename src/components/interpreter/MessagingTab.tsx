@@ -31,6 +31,12 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
     setFilters({});
   };
 
+  // Calculate proper height accounting for header (60px), footer (36px), and status bar (~45px if needed)
+  // This ensures no unnecessary scrolling
+  const messageListHeight = isMobile 
+    ? "calc(100vh - 340px)" 
+    : "calc(100vh - 300px)";
+
   return (
     <motion.div 
       className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
@@ -67,7 +73,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
-            messageListHeight="calc(100vh - 280px)"
+            messageListHeight={messageListHeight}
           />
         </motion.div>
       )}

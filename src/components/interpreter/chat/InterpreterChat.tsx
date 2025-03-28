@@ -45,7 +45,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "calc(100vh - 280px)"
+  messageListHeight = "calc(100vh - 320px)" // Default adjusted to account for header, footer, and status bar
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -308,6 +308,11 @@ export const InterpreterChat = ({
 
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
+  // Dynamic height adjustment based on whether status buttons are shown
+  const adjustedMessageListHeight = showStatusButtons 
+    ? "calc(100vh - 360px)" // More space for status buttons
+    : messageListHeight;
+  
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -402,7 +407,7 @@ export const InterpreterChat = ({
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ height: messageListHeight }}
+          style={{ height: adjustedMessageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-gradient-to-br from-white/70 to-palette-soft-blue/30 dark:from-gray-800/70 dark:to-palette-ocean-blue/20 backdrop-blur-md flex items-center justify-center">

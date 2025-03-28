@@ -14,7 +14,8 @@ export const Footer = () => {
       "bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm",
       "text-xs text-gray-500 dark:text-gray-400",
       "flex flex-col sm:flex-row items-center justify-between gap-2",
-      "z-10"
+      "z-10",
+      "h-[36px]" // Fixed height to ensure consistent calculations
     )}>
       <div className="flex items-center gap-1">
         <span>© {year} Interpretix</span>
