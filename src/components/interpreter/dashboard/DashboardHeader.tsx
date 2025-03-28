@@ -1,6 +1,4 @@
 
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "../ThemeToggle";
 import { Profile } from "@/types/profile";
 import { useOrientation } from "@/hooks/use-orientation";
@@ -63,11 +61,7 @@ export const DashboardHeader = ({
     >
       <div className="h-[56px] md:h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {isMobile && (
-            <Button variant="ghost" size="icon" className="rounded-full" onClick={onMenuClick}>
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
+          {/* Le bouton menu a été retiré d'ici */}
         </div>
         
         <ThemeToggle />

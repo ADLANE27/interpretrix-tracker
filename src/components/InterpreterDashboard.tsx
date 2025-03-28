@@ -258,6 +258,10 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
@@ -315,7 +319,7 @@ export const InterpreterDashboard = () => {
               setProfile(updatedProfile);
             }
           }}
-          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          onMenuClick={toggleSidebar}
           isMobile={isMobile}
         />
 
@@ -333,7 +337,7 @@ export const InterpreterDashboard = () => {
                 setProfile(updatedProfile);
               }
             }}
-            onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onMenuClick={toggleSidebar}
           />
         </div>
         
@@ -343,6 +347,7 @@ export const InterpreterDashboard = () => {
             onTabChange={setActiveTab}
             pendingMissionsCount={scheduledMissions.length}
             unreadMessagesCount={0}
+            onMenuClick={toggleSidebar}
           />
         )}
       </main>

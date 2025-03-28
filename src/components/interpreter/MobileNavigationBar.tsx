@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, MessageCircle, User, Home } from 'lucide-react';
+import { Menu, MessageCircle, User, Home } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,13 +11,15 @@ interface MobileNavigationBarProps {
   onTabChange: (tab: string) => void;
   pendingMissionsCount?: number;
   unreadMessagesCount?: number;
+  onMenuClick?: () => void; // Ajout de la fonction pour gérer le clic sur le menu
 }
 
 export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({ 
   activeTab, 
   onTabChange,
   pendingMissionsCount = 0,
-  unreadMessagesCount = 0
+  unreadMessagesCount = 0,
+  onMenuClick
 }) => {
   const isMobile = useIsMobile();
   
@@ -37,6 +39,22 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
       transition={{ duration: 0.3, type: "spring" }}
     >
       <div className="flex items-center justify-around px-2 py-1">
+        {/* Bouton de menu ajouté à la barre de navigation mobile */}
+        <button
+          className={cn(
+            "flex flex-col items-center justify-center py-2 px-3 relative",
+            "transition-all duration-200 rounded-lg",
+            "focus:outline-none touch-feedback",
+            "text-gray-500 dark:text-gray-400"
+          )}
+          onClick={onMenuClick}
+        >
+          <Menu className="w-5 h-5 mb-1" />
+          <span className="text-xs font-medium">
+            Menu
+          </span>
+        </button>
+
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
