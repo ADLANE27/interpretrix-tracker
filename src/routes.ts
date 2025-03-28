@@ -1,28 +1,26 @@
 
 import React from 'react';
 import { RouteObject } from 'react-router-dom';
-
-// Create placeholder components for now
-const Home = () => <div>Home Page</div>;
-const About = () => <div>About Page</div>;
-const Admin = () => <div>Admin Page</div>;
-const Interpreter = () => <div>Interpreter Page</div>;
+import Home from './pages/Home';
+import About from './pages/About';
+import Admin from './pages/Admin';
+import Interpreter from './pages/Interpreter';
 
 export const routes: RouteObject[] = [
   {
     path: "/",
-    element: React.createElement(Home),
+    element: <Home />,
   },
   {
     path: "/about",
-    element: React.createElement(About),
+    element: <About />,
   },
   {
     path: "/admin/*",
-    element: React.createElement(Admin),
+    element: <Admin />,
   },
   {
     path: "/interpreter/*",
-    element: React.createElement(Interpreter),
+    element: <Interpreter />,
   },
 ];
