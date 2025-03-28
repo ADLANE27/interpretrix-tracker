@@ -1,8 +1,9 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MemberSuggestion, Suggestion } from '@/types/messaging';
 import { debounce } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { LANGUAGES } from '@/lib/constants';
 
 export function useMessageMentions() {
   const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);
@@ -11,6 +12,7 @@ export function useMessageMentions() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const currentChannelIdRef = useRef<string | null>(null);
+  const { toast } = useToast();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -22,7 +24,7 @@ export function useMessageMentions() {
   const checkForMentions = useCallback((text: string, cursorPos: number) => {
     const textBeforeCursor = text.substring(0, cursorPos);
     
-    // Improved regex to better match mentions at cursor position
+    // Improved regex to match mentions at cursor position
     const mentionMatch = textBeforeCursor.match(/@([^\s@]*)$/);
     
     if (mentionMatch) {
@@ -158,6 +160,18 @@ export function useMessageMentions() {
     }
   };
 
+  const handleMentionSelect = (suggestion: Suggestion, message: string, cursorPosition: number) => {
+    if (mentionStartIndex === -1) return message;
+    
+    const textBeforeMention = message.substring(0, mentionStartIndex);
+    const textAfterCursor = message.substring(cursorPosition);
+    
+    const insertText = `@${suggestion.name} `;
+    
+    const newMessage = textBeforeMention + insertText + textAfterCursor;
+    return newMessage;
+  };
+
   const resetMentionSuggestions = useCallback(() => {
     setMentionSuggestionsVisible(false);
     setMentionSearchTerm('');
@@ -173,5 +187,6 @@ export function useMessageMentions() {
     checkForMentions,
     resetMentionSuggestions,
     setMentionSuggestionsVisible,
+    handleMentionSelect,
   };
 }
