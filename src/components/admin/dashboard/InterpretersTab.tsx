@@ -10,7 +10,6 @@ import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { useTableSubscription } from "@/hooks/useTableSubscription";
-import { realtimeService } from "@/services/realtimeService";
 
 interface WorkHours {
   start_morning?: string;
@@ -59,12 +58,6 @@ export const InterpretersTab: React.FC = () => {
   const [isConnected, setIsConnected] = useState(true);
   const { toast } = useToast();
   
-  // Initialize realtime service
-  useEffect(() => {
-    const cleanup = realtimeService.init();
-    return cleanup;
-  }, []);
-
   // Listen for connection status changes
   useEffect(() => {
     const handleConnectionStatusChange = (connected: boolean) => {
@@ -81,7 +74,7 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
-  // Subscribe to reservation changes
+  // Subscribe to reservation changes using the centralized hook
   useTableSubscription(
     'private_reservations',
     '*',

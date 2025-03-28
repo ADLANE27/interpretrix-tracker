@@ -114,9 +114,8 @@ export const useConnectionMonitor = () => {
     
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
     
-    // Start monitoring connection
-    // Initialize realtime service which will handle connection monitoring internally
-    realtimeService.init();
+    // Start monitoring connection using the singleton realtimeService
+    // We don't initialize here, we'll do it once in Admin.tsx
     
     // Check current connection status
     const isCurrentlyConnected = realtimeService.isConnected();

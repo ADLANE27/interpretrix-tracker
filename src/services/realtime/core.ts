@@ -163,7 +163,9 @@ class RealtimeService {
             subscriptionRegistry.updateStatus(subscriptionKey, false);
             
             // Let connection monitor know there was an error
-            this.handleConnectionStatusChange(this.isConnected());
+            if (this.connectionMonitor) {
+              this.handleConnectionStatusChange(this.connectionMonitor.isConnected());
+            }
           }
         });
       
@@ -184,6 +186,11 @@ class RealtimeService {
     filter: string | null,
     callback: (payload: any) => void
   ): () => void {
+    // Make sure the service is initialized first
+    if (!this.initialized) {
+      this.init();
+    }
+    
     const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
     const subscriptionKey = `table-${table}-${event}${filterSuffix}`;
     

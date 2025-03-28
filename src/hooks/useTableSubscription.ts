@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 
 interface UseTableSubscriptionOptions {
   enabled?: boolean;
   onError?: (error: any) => void;
+  onConnectionChange?: (connected: boolean) => void; 
 }
 
 /**
@@ -17,7 +18,7 @@ export function useTableSubscription(
   callback: (payload: any) => void,
   options: UseTableSubscriptionOptions = {}
 ) {
-  const { enabled = true, onError } = options;
+  const { enabled = true, onError, onConnectionChange } = options;
   const [isConnected, setIsConnected] = useState(true);
   const callbackRef = useRef(callback);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -27,11 +28,21 @@ export function useTableSubscription(
     callbackRef.current = callback;
   }, [callback]);
   
-  // Initialize the realtime service once
+  // Track connection status
   useEffect(() => {
-    const cleanup = realtimeService.init();
-    return cleanup;
-  }, []);
+    const handleConnectionChange = (connected: boolean) => {
+      setIsConnected(connected);
+      if (onConnectionChange) {
+        onConnectionChange(connected);
+      }
+    };
+    
+    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
+    
+    return () => {
+      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
+    };
+  }, [onConnectionChange]);
   
   // Subscribe to the table
   useEffect(() => {
@@ -58,18 +69,19 @@ export function useTableSubscription(
     };
   }, [enabled, table, event, filter, onError]);
   
-  // Track connection status
-  useEffect(() => {
-    const handleConnectionChange = (connected: boolean) => {
-      setIsConnected(connected);
-    };
+  // Expose reconnect functionality
+  const refresh = useCallback(() => {
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
     
-    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
-    
-    return () => {
-      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
-    };
-  }, []);
+    const cleanup = realtimeService.subscribeToTable(table, event, filter, callbackRef.current);
+    cleanupRef.current = cleanup;
+  }, [table, event, filter]);
   
-  return { isConnected };
+  return { 
+    isConnected,
+    refresh
+  };
 }

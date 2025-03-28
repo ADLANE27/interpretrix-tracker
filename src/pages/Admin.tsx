@@ -19,8 +19,9 @@ const Admin = () => {
     handleForceReconnect 
   } = useConnectionMonitor();
 
-  // Initialize realtime service on admin page load
+  // Initialize realtime service once on admin page load
   useEffect(() => {
+    console.log('[Admin] Initializing realtime service');
     const cleanup = realtimeService.init();
     return cleanup;
   }, []);
