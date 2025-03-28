@@ -54,13 +54,13 @@ export function useRealtimeSubscription2(
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        'postgres_changes' as any, 
+        'postgres_changes',
         {
           event: opt.event,
           schema: opt.schema || 'public',
           table: opt.table,
           filter: opt.filter
-        } as any,
+        },
         (payload) => {
           if (!mountedRef.current) return;
           callbackRef.current(payload);
@@ -94,7 +94,7 @@ export function useRealtimeSubscription2(
         channelRef.current = null;
       }
     };
-  }, [channelName, enabled, hookOptions.debugMode, hookOptions.onError, optionsArray]);
+  }, [channelName, enabled, hookOptions.debugMode, hookOptions.onError, JSON.stringify(optionsArray)]);
 
   return {
     channel: channelRef.current,

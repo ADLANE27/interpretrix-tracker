@@ -12,13 +12,13 @@ const isProduction = () => {
          !window.location.hostname.includes('preview');
 };
 
-// Prevent multiple initializations of the same handler
+// Global flag to prevent multiple initializations of the same handler
 let isInitialized = false;
 
 // Create a stable callback that doesn't change on each render
-export const useMissionUpdates = (onUpdate: () => void) => {
-  const interpreterStatusChannelRef = useRef<RealtimeChannel | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+export const useMissionUpdates = (onUpdate) => {
+  const interpreterStatusChannelRef = useRef(null);
+  const retryTimeoutRef = useRef(null);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = isProduction() ? 15 : 5;
   const mountedRef = useRef(true);
@@ -186,7 +186,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     debugMode: isProduction() ? false : true, // Disable verbose logging in production
     maxRetries: isProduction() ? 15 : 5,      // Increase retries in production
     retryInterval: 3000,
-    onError: (error: any) => {
+    onError: (error) => {
       if (!isProduction()) {
         console.error('[useMissionUpdates] Subscription error:', error);
       } else {

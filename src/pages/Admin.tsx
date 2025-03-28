@@ -37,7 +37,11 @@ const Admin = () => {
     initializedRef.current = true;
     const cleanup = realtimeService.init();
     
-    return cleanup;
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, []);
 
   // Add the useMissionUpdates hook with our stable callback
