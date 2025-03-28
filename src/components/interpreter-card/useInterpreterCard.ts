@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
@@ -28,78 +27,63 @@ export const useInterpreterCard = (
   interpreter: UseInterpreterCardProps,
   onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void
 ) => {
-  const [status, setStatus] = useState(interpreter.status);
+  const { id: interpreterId, status: initialStatus } = interpreter;
+  const [status, setStatus] = useState<Profile['status']>(initialStatus);
   const [isFlipped, setIsFlipped] = useState(false);
-  const prevStatusRef = useRef<Profile['status']>(interpreter.status);
+  const prevStatusRef = useRef<Profile['status']>(initialStatus);
+  const didMountRef = useRef(false);
+  
+  const handleStatusChangeCallback = useCallback((newStatus: Profile['status']) => {
+    console.log(`[InterpreterCard] Status changed to: ${newStatus} for ${interpreterId}`);
+    setStatus(newStatus);
+    prevStatusRef.current = newStatus;
+    
+    if (onStatusChange) {
+      onStatusChange(interpreterId, newStatus);
+    }
+  }, [interpreterId, onStatusChange]);
+  
+  const { updateStatus, isConnected } = useRealtimeStatus({
+    interpreterId,
+    initialStatus,
+    onStatusChange: handleStatusChangeCallback
+  });
   
   const flipCard = useCallback(() => {
     setIsFlipped(prev => !prev);
   }, []);
-  
-  const handleStatusChangeCallback = useCallback((newStatus: Profile['status']) => {
-    console.log(`[InterpreterCard] Status sync updated status to: ${newStatus}`);
-    setStatus(newStatus);
-    
-    if (onStatusChange && newStatus !== prevStatusRef.current) {
-      onStatusChange(interpreter.id, newStatus);
-    }
-    
-    prevStatusRef.current = newStatus;
-  }, [interpreter.id, onStatusChange]);
-  
-  const { updateStatus, isConnected } = useRealtimeStatus({
-    interpreterId: interpreter.id,
-    initialStatus: interpreter.status,
-    onStatusChange: handleStatusChangeCallback
-  });
-  
-  // Handle global status updates with memoized handler
-  const handleStatusUpdate = useCallback((data: { interpreterId: string, status: Profile['status'] }) => {
-    if (data.interpreterId === interpreter.id && data.status !== status) {
-      console.log(`[InterpreterCard] Global status update for ${interpreter.name} to ${data.status}`);
-      setStatus(data.status);
-      prevStatusRef.current = data.status;
-    }
-  }, [interpreter.id, interpreter.name, status]);
-  
-  // Listen for global status updates
-  useEffect(() => {
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-    };
-  }, [handleStatusUpdate]);
-  
+
   // Effect to sync status from props
   useEffect(() => {
-    if (interpreter.status !== status && interpreter.status !== prevStatusRef.current) {
-      console.log(`[InterpreterCard] Status updated from prop for ${interpreter.name}: ${interpreter.status}`);
-      setStatus(interpreter.status);
-      prevStatusRef.current = interpreter.status;
+    if (didMountRef.current && initialStatus !== status && initialStatus !== prevStatusRef.current) {
+      console.log(`[InterpreterCard] Status updated from prop for ${interpreter.name}: ${initialStatus}`);
+      setStatus(initialStatus);
+      prevStatusRef.current = initialStatus;
     }
-  }, [interpreter.status, status, interpreter.name]);
+    
+    didMountRef.current = true;
+  }, [initialStatus, status, interpreter.name]);
 
   const handleStatusChange = useCallback(async (newStatus: Profile['status']) => {
     console.log(`[InterpreterCard] Status change requested for ${interpreter.name} to ${newStatus}`);
     
-    // Avoid setting state if it's already set to this value
+    // Only update if status is actually changing
     if (newStatus !== status) {
       setStatus(newStatus);
       prevStatusRef.current = newStatus;
+      
+      if (onStatusChange) {
+        onStatusChange(interpreterId, newStatus);
+      }
+      
+      // Update status through hook
+      try {
+        await updateStatus(newStatus);
+      } catch (error) {
+        console.error(`[InterpreterCard] Failed to update status for ${interpreter.name}:`, error);
+      }
     }
-    
-    if (onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
-    }
-    
-    // Also update the status in the database
-    try {
-      await updateStatus(newStatus);
-    } catch (error) {
-      console.error(`[InterpreterCard] Failed to update status for ${interpreter.name}:`, error);
-    }
-  }, [interpreter.id, interpreter.name, onStatusChange, status, updateStatus]);
+  }, [interpreterId, interpreter.name, onStatusChange, status, updateStatus]);
 
   const parsedLanguages = interpreter.languages
     .map(lang => {

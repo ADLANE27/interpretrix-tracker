@@ -5,6 +5,7 @@
 export class CustomEventEmitter {
   private events: Record<string, Function[]> = {};
   private maxListeners: number = 10;
+  private duplicateWarnings: Set<string> = new Set();
 
   /**
    * Register an event listener
@@ -14,16 +15,33 @@ export class CustomEventEmitter {
       this.events[event] = [];
     }
 
+    // Check for duplicate listeners to avoid memory leaks
+    const isDuplicate = this.events[event].some(existingListener => 
+      existingListener.toString() === listener.toString()
+    );
+    
+    if (isDuplicate) {
+      const warningKey = `${event}-${listener.toString().substring(0, 50)}`;
+      if (!this.duplicateWarnings.has(warningKey)) {
+        console.warn(
+          `[CustomEventEmitter] Duplicate listener detected for event: ${event}. This may cause memory leaks.`
+        );
+        this.duplicateWarnings.add(warningKey);
+      }
+      return; // Don't add the same listener twice
+    }
+    
     // Check if we're exceeding maxListeners and provide a warning
     if (this.events[event].length >= this.maxListeners) {
       console.warn(
-        `[CustomEventEmitter] Possible memory leak detected. ${this.events[event].length} listeners added for event: ${event}`
+        `[CustomEventEmitter] Possible memory leak detected. ${this.events[event].length + 1} listeners added for event: ${event}. Current limit is ${this.maxListeners}.`
       );
     }
     
-    // Check if this exact listener is already registered to avoid duplicates
-    if (!this.events[event].some(l => l === listener)) {
-      this.events[event].push(listener);
+    this.events[event].push(listener);
+    
+    if (event === 'interpreter-status-update') {
+      console.log(`[CustomEventEmitter] New listener registered for interpreter status updates. Total: ${this.events[event].length}`);
     }
   }
 
@@ -33,7 +51,12 @@ export class CustomEventEmitter {
   off(event: string, listener: Function): void {
     if (!this.events[event]) return;
     
+    const initialLength = this.events[event].length;
     this.events[event] = this.events[event].filter(l => l !== listener);
+    
+    if (event === 'interpreter-status-update' && this.events[event].length !== initialLength) {
+      console.log(`[CustomEventEmitter] Listener removed from interpreter status updates. Remaining: ${this.events[event].length}`);
+    }
   }
 
   /**
@@ -43,13 +66,17 @@ export class CustomEventEmitter {
     const listeners = this.events[event];
     if (!listeners || listeners.length === 0) return false;
     
-    listeners.forEach(listener => {
+    if (event === 'interpreter-status-update') {
+      console.log(`[CustomEventEmitter] Emitting interpreter status update to ${listeners.length} listeners`);
+    }
+    
+    for (const listener of listeners) {
       try {
         listener(...args);
       } catch (error) {
         console.error(`Error in event listener for ${event}:`, error);
       }
-    });
+    }
     
     return true;
   }
@@ -73,9 +100,21 @@ export class CustomEventEmitter {
    */
   removeAllListeners(event?: string): void {
     if (event) {
+      if (this.events[event]?.length > 0) {
+        console.log(`[CustomEventEmitter] Removing all ${this.events[event].length} listeners for event: ${event}`);
+      }
       this.events[event] = [];
     } else {
+      // Log cleanup of important events
+      if (this.events['interpreter-status-update']?.length > 0) {
+        console.log(`[CustomEventEmitter] Removing all ${this.events['interpreter-status-update'].length} listeners for interpreter status updates in global cleanup`);
+      }
       this.events = {};
+    }
+    
+    // Clear the warnings cache on full cleanup
+    if (!event) {
+      this.duplicateWarnings.clear();
     }
   }
 }

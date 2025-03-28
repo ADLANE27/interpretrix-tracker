@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
-import { realtimeService } from "@/services/realtimeService";
+import { realtimeService } from "@/services/realtime";
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -54,6 +54,9 @@ export function useStatusDropdown(
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
+      
+      // Immediate broadcast for instant UI updates
+      realtimeService.broadcastStatusUpdate(interpreterId, pendingStatus);
       
       const success = await updateStatus(pendingStatus);
       

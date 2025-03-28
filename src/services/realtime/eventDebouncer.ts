@@ -1,101 +1,50 @@
 
-import { EVENT_COOLDOWN, STATUS_UPDATE_DEBOUNCE, DEBUG_MODE } from './constants';
-
+/**
+ * Utility class to debounce events and manage cooldowns
+ */
 export class EventDebouncer {
-  private recentEvents = new Map<string, number>();
-  private cleanupTimeout: NodeJS.Timeout | null = null;
-  private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
-  
-  constructor(private defaultDebounceTime: number = EVENT_COOLDOWN) {
-    // Set up periodic cleanup to prevent memory leaks
-    this.setupCleanupInterval();
+  private eventTimestamps: Map<string, number> = new Map();
+  private cooldownPeriod: number;
+
+  constructor(cooldownPeriod = 500) {
+    this.cooldownPeriod = cooldownPeriod;
   }
-  
-  private setupCleanupInterval() {
-    if (this.cleanupTimeout) {
-      clearTimeout(this.cleanupTimeout);
+
+  /**
+   * Check if an event should be processed based on cooldown
+   */
+  public shouldProcessEvent(eventId: string, timestamp: number): boolean {
+    const lastTimestamp = this.eventTimestamps.get(eventId);
+    
+    if (!lastTimestamp || (timestamp - lastTimestamp > this.cooldownPeriod)) {
+      this.eventTimestamps.set(eventId, timestamp);
+      return true;
     }
     
-    this.cleanupTimeout = setTimeout(() => {
-      this.cleanupOldEvents();
-      this.setupCleanupInterval();
-    }, 60000); // Run cleanup every 60 seconds
+    return false;
   }
-  
-  private cleanupOldEvents() {
-    const now = Date.now();
-    const keysToDelete: string[] = [];
+
+  /**
+   * Execute a function after debounce period
+   */
+  public debounce(
+    fn: Function, 
+    id: string, 
+    wait: number = this.cooldownPeriod
+  ): void {
+    const timestamp = Date.now();
+    const lastExecution = this.eventTimestamps.get(id) || 0;
     
-    // Find old entries
-    this.recentEvents.forEach((timestamp, key) => {
-      if (now - timestamp > 30000) { // 30 seconds instead of 10
-        keysToDelete.push(key);
-      }
-    });
-    
-    // Delete old entries
-    if (keysToDelete.length > 0 && DEBUG_MODE) {
-      console.log(`[EventDebouncer] Cleaning up ${keysToDelete.length} old events`);
-      keysToDelete.forEach(key => this.recentEvents.delete(key));
+    if (timestamp - lastExecution > wait) {
+      fn();
+      this.eventTimestamps.set(id, timestamp);
     }
   }
-  
-  public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Prioritize status updates to make them nearly instant
-    const isStatusUpdate = eventKey.includes('status') || eventKey.includes('STATUS');
-                          
-    // Much shorter cooldown for status updates
-    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
-    
-    const lastProcessed = this.recentEvents.get(eventKey);
-    
-    if (lastProcessed && now - lastProcessed < cooldownTime) {
-      if (DEBUG_MODE && !isStatusUpdate) {
-        console.log(`[EventDebouncer] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
-      }
-      return false;
-    }
-    
-    this.recentEvents.set(eventKey, now);
-    
-    // Automatic cleanup if Map gets too large
-    if (this.recentEvents.size > 500) { // Reduced from 1000
-      this.cleanupOldEvents();
-    }
-    
-    return true;
-  }
-  
-  public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use nearly zero timeout for status updates
-    const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
-    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
-    
-    // Clear existing timer for this key if it exists
-    if (this.debounceTimers.has(debounceKey)) {
-      clearTimeout(this.debounceTimers.get(debounceKey)!);
-    }
-    
-    // Set new timer
-    const timer = setTimeout(() => {
-      callback();
-      this.debounceTimers.delete(debounceKey);
-    }, useTimeout);
-    
-    this.debounceTimers.set(debounceKey, timer);
-  }
-  
-  public dispose() {
-    if (this.cleanupTimeout) {
-      clearTimeout(this.cleanupTimeout);
-      this.cleanupTimeout = null;
-    }
-    
-    // Clear all debounce timers
-    this.debounceTimers.forEach(timer => clearTimeout(timer));
-    this.debounceTimers.clear();
-    
-    // Clear all event tracking
-    this.recentEvents.clear();
+
+  /**
+   * Clear all stored timestamps
+   */
+  public reset(): void {
+    this.eventTimestamps.clear();
   }
 }
