@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -43,7 +42,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const { formatMessage } = useMessageFormatter();
   const { toast } = useToast();
   
-  // Use our mention hooks
   const { 
     mentionSuggestionsVisible,
     mentionSearchTerm,
@@ -72,7 +70,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     resetMentionSuggestions();
     
-    // Position cursor after the inserted mention
     setTimeout(() => {
       if (inputRef.current) {
         const newCursorPos = newMessage.length - (message.length - cursorPosition);
@@ -96,7 +93,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSend = () => {
     try {
-      // No formatting or special handling for mentions - just send the message as is
       onSendMessage();
     } catch (error) {
       console.error("Error sending message:", error);
