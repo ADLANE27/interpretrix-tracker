@@ -3,6 +3,8 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MemberSuggestion, Suggestion } from '@/types/messaging';
 import { debounce } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { LANGUAGES } from '@/lib/constants';
 
 export function useMessageMentions() {
   const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);
@@ -11,6 +13,7 @@ export function useMessageMentions() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const currentChannelIdRef = useRef<string | null>(null);
+  const { toast } = useToast();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -158,6 +161,27 @@ export function useMessageMentions() {
     }
   };
 
+  // Function to apply mention formatting properly for complex language names
+  const handleMentionSelect = (suggestion: Suggestion, message: string, cursorPosition: number) => {
+    if (mentionStartIndex === -1) return message;
+    
+    const textBeforeMention = message.substring(0, mentionStartIndex);
+    const textAfterCursor = message.substring(cursorPosition);
+    
+    let insertText = '';
+    
+    if ('type' in suggestion && suggestion.type === 'language') {
+      // For language mentions, preserve the exact case and format of the language name
+      insertText = `@${suggestion.name} `;
+    } else {
+      // For user mentions
+      insertText = `@${suggestion.name} `;
+    }
+    
+    const newMessage = textBeforeMention + insertText + textAfterCursor;
+    return newMessage;
+  };
+
   const resetMentionSuggestions = useCallback(() => {
     setMentionSuggestionsVisible(false);
     setMentionSearchTerm('');
@@ -173,5 +197,6 @@ export function useMessageMentions() {
     checkForMentions,
     resetMentionSuggestions,
     setMentionSuggestionsVisible,
+    handleMentionSelect,
   };
 }
