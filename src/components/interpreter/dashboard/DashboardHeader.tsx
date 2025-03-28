@@ -32,17 +32,28 @@ export const DashboardHeader = ({
     updateStates();
 
     // Set up a MutationObserver to watch for changes to the attributes
+    // with improved performance by only watching the body element
     const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
+      let shouldUpdate = false;
+      
+      for (const mutation of mutations) {
         if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'data-in-chat' || 
-             mutation.attributeName === 'data-in-messages-tab')) {
-          updateStates();
+           (mutation.attributeName === 'data-in-chat' || 
+            mutation.attributeName === 'data-in-messages-tab')) {
+          shouldUpdate = true;
+          break;
         }
-      });
+      }
+      
+      if (shouldUpdate) {
+        updateStates();
+      }
     });
 
-    observer.observe(document.body, { attributes: true });
+    observer.observe(document.body, { 
+      attributes: true,
+      attributeFilter: ['data-in-chat', 'data-in-messages-tab'] // Only watch these specific attributes
+    });
 
     return () => {
       observer.disconnect();
@@ -57,7 +68,7 @@ export const DashboardHeader = ({
 
   return (
     <motion.header 
-      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm"
+      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm pt-4"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, type: "spring" }}

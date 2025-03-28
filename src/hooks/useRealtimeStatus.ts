@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
@@ -27,6 +26,7 @@ export const useRealtimeStatus = ({
   const pendingUpdateRef = useRef<{status: Profile['status'], timestamp: number} | null>(null);
   const isInitialLoadRef = useRef(true);
   const statusRef = useRef<Profile['status']>(initialStatus);
+  const connectionStateLoggedRef = useRef(false);
   
   // Keep a ref to the latest status for comparison in event handlers
   useEffect(() => {
@@ -39,39 +39,55 @@ export const useRealtimeStatus = ({
     return cleanup;
   }, []);
   
-  // Handle connection status changes
+  // Handle connection status changes - with improved debouncing
   useEffect(() => {
+    // Keep connection state to prevent duplicate logs
+    let lastKnownState = true;
+    
     const handleConnectionChange = (connected: boolean) => {
-      console.log(`[useRealtimeStatus] Connection status changed: ${connected}`);
-      setIsConnected(connected);
-      
-      if (onConnectionStateChange) {
-        onConnectionStateChange(connected);
-      }
-      
-      if (connected && pendingUpdateRef.current && interpreterId) {
-        // If connection restored and we have pending updates, retry them
-        const { status: pendingStatus, timestamp } = pendingUpdateRef.current;
-        const now = Date.now();
+      // Only react to actual state changes to reduce debug logs
+      if (connected !== lastKnownState) {
+        lastKnownState = connected;
         
-        // Only retry if pending update is recent (within last 2 minutes)
-        if (now - timestamp < 120000) {
-          console.log(`[useRealtimeStatus] Connection restored, retrying pending update to ${pendingStatus}`);
-          updateStatus(pendingStatus).then(() => {
+        if (!connectionStateLoggedRef.current || connected !== isConnected) {
+          console.log(`[useRealtimeStatus] Connection status changed: ${connected}`);
+          connectionStateLoggedRef.current = true;
+          setIsConnected(connected);
+          
+          if (onConnectionStateChange) {
+            onConnectionStateChange(connected);
+          }
+        }
+        
+        if (connected && pendingUpdateRef.current && interpreterId) {
+          // If connection restored and we have pending updates, retry them
+          const { status: pendingStatus, timestamp } = pendingUpdateRef.current;
+          const now = Date.now();
+          
+          // Only retry if pending update is recent (within last 2 minutes)
+          if (now - timestamp < 120000) {
+            console.log(`[useRealtimeStatus] Connection restored, retrying pending update to ${pendingStatus}`);
+            updateStatus(pendingStatus).then(() => {
+              pendingUpdateRef.current = null;
+            });
+          } else {
             pendingUpdateRef.current = null;
-          });
-        } else {
-          pendingUpdateRef.current = null;
+          }
         }
       }
     };
     
-    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
+    // Use a custom name for this handler to make it unique per component instance
+    const handlerKey = interpreterId ? `connection-${interpreterId}` : 'connection-default';
+    
+    // Add event listener with handler key for identification
+    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
     
     return () => {
-      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange);
+      // Remove event listener using the same handler key
+      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
     };
-  }, [onConnectionStateChange, interpreterId]);
+  }, [onConnectionStateChange, interpreterId, isConnected]);
   
   // Subscribe to status events for a specific interpreter
   useEffect(() => {
@@ -90,7 +106,8 @@ export const useRealtimeStatus = ({
     };
     
     // Listen for broadcasted status updates (from other components/contexts)
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    const handlerKey = `status-${interpreterId}`;
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, handlerKey);
     
     // Subscribe to real-time database updates
     realtimeService.subscribeToInterpreterStatus(interpreterId);
@@ -124,19 +141,19 @@ export const useRealtimeStatus = ({
     }
     
     return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, handlerKey);
       // No explicit cleanup needed for subscribeToInterpreterStatus
     };
   }, [interpreterId, onStatusChange]);
   
-  // Refresh status if connection is restored
+  // Refresh status if connection is restored - with reduced frequency
   useEffect(() => {
     if (!interpreterId) return;
     
     let timeoutId: NodeJS.Timeout;
     
     if (isConnected) {
-      // If we're connected, refresh the status after a short delay
+      // If we're connected, refresh the status after a short delay, but less frequently
       timeoutId = setTimeout(async () => {
         try {
           // Fetch the current status directly
@@ -148,9 +165,9 @@ export const useRealtimeStatus = ({
           
           if (!error && data) {
             const fetchedStatus = data.status as Profile['status'];
-            console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
             
             if (fetchedStatus !== statusRef.current) {
+              console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
               setStatus(fetchedStatus);
               setLastUpdateTime(new Date());
               
@@ -168,7 +185,7 @@ export const useRealtimeStatus = ({
         } catch (error) {
           console.error('[useRealtimeStatus] Error fetching status:', error);
         }
-      }, 200); // Short delay for faster updates
+      }, 1000); // Increased delay for less frequent updates
     }
     
     return () => {
