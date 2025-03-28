@@ -45,14 +45,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   const isMobile = useIsMobile();
   const { theme } = useTheme();
 
-  // Auto scroll to the bottom when new messages are added
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages]);
 
-  // Scroll to the active thread when expanded
   useEffect(() => {
     if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
       const threadElement = threadRefsMap.current.get(activeThreadId);
@@ -98,10 +96,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
     if (!previousMessage) return true;
     
-    // If different senders, always show
     if (currentMessage.sender.id !== previousMessage.sender.id) return true;
     
-    // If same sender but messages are far apart in time (> 5 minutes), show sender again
     const currentTime = new Date(currentMessage.timestamp).getTime();
     const previousTime = new Date(previousMessage.timestamp).getTime();
     const fiveMinutesInMs = 5 * 60 * 1000;

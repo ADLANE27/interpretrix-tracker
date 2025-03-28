@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,6 +60,7 @@ export const useGlobalNotification = () => {
         action: (
           <Button 
             onClick={() => {
+              // Only request permission in response to user interaction
               requestPermission();
             }}
             variant="outline"

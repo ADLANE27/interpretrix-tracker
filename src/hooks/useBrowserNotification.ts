@@ -26,6 +26,7 @@ export const useBrowserNotification = (test = false) => {
 
     try {
       // Only request permission in response to a user action
+      // DO NOT automatically request here!
       const permission = await Notification.requestPermission();
       setPermission(permission);
       return permission === 'granted';
