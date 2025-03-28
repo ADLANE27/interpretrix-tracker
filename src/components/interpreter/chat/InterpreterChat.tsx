@@ -12,11 +12,11 @@ import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { StatusButtonsBar } from "@/components/interpreter/StatusButtonsBar";
-import { Menu, ArrowLeft, Users, RefreshCw } from "lucide-react";
+import { Menu, ArrowLeft, Users, RefreshCw, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InterpreterChatProps {
@@ -46,7 +46,7 @@ export const InterpreterChat = ({
   onMenuClick,
   messageListHeight = "50%"
 }: InterpreterChatProps) => {
-  const { data: channel, isLoading: isLoadingChannel } = useQuery({
+  const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -308,43 +308,30 @@ export const InterpreterChat = ({
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-white/90 via-white/80 to-palette-soft-blue/30 dark:from-gray-800/90 dark:via-gray-800/80 dark:to-palette-ocean-blue/30 rounded-xl overflow-hidden">
+    <div className="flex flex-col h-full">
       <motion.div 
-        className="bg-gradient-to-r from-white/95 to-palette-soft-blue/40 dark:from-gray-800/95 dark:to-palette-ocean-blue/30 backdrop-blur-md flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-white/30 dark:border-gray-700/40 shadow-sm"
+        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200 dark:border-gray-700 shadow-sm"
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
         <div className="h-[56px] md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {isMobile && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-gray-700/60" onClick={onBackToChannels}>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={onBackToChannels}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
             {isMobile && onMenuClick && (
-              <Button variant="ghost" size="icon" className="rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-gray-700/60" onClick={onMenuClick}>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={onMenuClick}>
                 <Menu className="h-5 w-5" />
               </Button>
             )}
           </div>
           
-          <AnimatePresence mode="wait">
-            <motion.h2 
-              key={channel?.name || 'loading'}
-              className="text-lg font-semibold truncate flex-1 text-center md:text-left text-gradient-primary"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {isLoadingChannel ? (
-                <span className="inline-block w-32 h-6 bg-gray-200/50 dark:bg-gray-700/50 animate-pulse rounded"></span>
-              ) : (
-                channel?.name
-              )}
-            </motion.h2>
-          </AnimatePresence>
+          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left text-gradient-primary">
+            {channel?.name}
+          </h2>
           
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -353,15 +340,15 @@ export const InterpreterChat = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-gray-700/60" 
+                    className="rounded-full" 
                     onClick={forceFetch}
-                    aria-label="Refresh messages"
+                    aria-label="Actualiser les messages"
                   >
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Refresh messages</p>
+                  <p>Actualiser les messages</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -372,11 +359,7 @@ export const InterpreterChat = ({
               channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
               userRole="interpreter"
             >
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:bg-white/70 dark:hover:bg-gray-700/60"
-              >
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <Users className="h-5 w-5" />
               </Button>
             </ChannelMembersPopover>
@@ -396,7 +379,7 @@ export const InterpreterChat = ({
 
       <div className="flex flex-col h-full min-h-0 overflow-hidden">
         <div 
-          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none bg-gradient-to-b from-transparent to-white/40 dark:to-gray-800/40"
+          className="flex-grow overflow-y-auto p-2 sm:p-4"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
@@ -404,12 +387,12 @@ export const InterpreterChat = ({
           style={{ maxHeight: messageListHeight, height: messageListHeight }}
         >
           {isLoading ? (
-            <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/80 dark:to-palette-ocean-blue/30 backdrop-blur-md flex items-center justify-center">
-              <LoadingSpinner size="lg" text="Loading messages..." />
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+              <LoadingSpinner size="lg" text="Chargement des messages..." />
             </div>
           ) : !isSubscribed ? (
-            <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/80 dark:to-palette-ocean-blue/30 backdrop-blur-md flex items-center justify-center">
-              <LoadingSpinner size="md" text="Connecting..." />
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+              <LoadingSpinner size="md" text="Connexion en cours..." />
             </div>
           ) : null}
           
@@ -419,10 +402,10 @@ export const InterpreterChat = ({
                 size="sm" 
                 variant="outline"
                 onClick={loadMoreMessages}
-                className="text-xs flex items-center gap-1 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-white/30 dark:border-gray-700/40 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                className="text-xs flex items-center gap-1"
               >
                 <RefreshCw className="h-3 w-3" />
-                Load more messages
+                Charger plus de messages
               </Button>
             </div>
           )}
@@ -438,7 +421,10 @@ export const InterpreterChat = ({
           />
         </div>
         
-        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-md px-3 py-2 md:px-4 md:py-3 border-t-0 border-white/30 dark:border-gray-700/40 rounded-b-xl">
+        <div className={`
+          bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700
+          ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+        `}>
           <ChatInput
             message={message}
             setMessage={setMessage}

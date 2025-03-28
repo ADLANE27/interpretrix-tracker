@@ -53,7 +53,7 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full pb-16 bg-gradient-to-br from-palette-soft-blue/30 via-white/50 to-palette-soft-purple/40 dark:from-gray-900/95 dark:via-palette-ocean-blue/20 dark:to-palette-vivid-purple/20">
+    <div className="flex-1 overflow-auto h-full pb-16">
       <div className="container mx-auto p-0 h-full">
         <AnimatePresence mode="wait">
           <motion.div
@@ -67,7 +67,7 @@ export const DashboardContent = ({
             <div className={`
               ${isMobile ? 'p-2 sm:p-3' : 'p-4 md:p-6'} 
               h-full overflow-auto
-              rounded-xl
+              glass-card rounded-xl
             `}>
               {renderActiveTab()}
             </div>
