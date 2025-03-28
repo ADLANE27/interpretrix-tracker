@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -68,7 +69,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const checkForMentions = (text: string, cursorPos: number) => {
     const textBeforeCursor = text.substring(0, cursorPos);
     
-    const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
+    // Modified regex to better match mentions up to the cursor position
+    const mentionMatch = textBeforeCursor.match(/@([^\s@]*)$/);
     
     if (mentionMatch) {
       const searchTerm = mentionMatch[1];
@@ -213,8 +215,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     let insertText = '';
     
     if ('type' in suggestion && suggestion.type === 'language') {
+      // For language mentions, preserve the exact case and format of the language name
       insertText = `@${suggestion.name} `;
     } else {
+      // For user mentions
       insertText = `@${suggestion.name} `;
     }
     
@@ -223,6 +227,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     setMentionSuggestionsVisible(false);
     
+    // Position cursor after the inserted mention
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();

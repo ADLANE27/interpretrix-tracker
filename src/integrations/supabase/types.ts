@@ -1343,6 +1343,18 @@ export type Database = {
         }
         Returns: string
       }
+      unaccent: {
+        Args: {
+          "": string
+        }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: {
+          "": unknown
+        }
+        Returns: unknown
+      }
       update_interpreter_status: {
         Args: {
           p_interpreter_id: string
