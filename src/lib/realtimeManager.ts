@@ -1,17 +1,12 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { EventEmitter } from './eventEmitter';
+import EventEmitter from 'events';
 
-// Use the centralized event names from events.ts
-import { 
-  EVENT_INTERPRETER_STATUS_UPDATE,
-  EVENT_UNREAD_MENTIONS_UPDATED,
-  EVENT_NEW_MESSAGE_RECEIVED,
-  EVENT_CONNECTION_STATUS_CHANGE
-} from './events';
+export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
+export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread-mentions-updated';
+export const EVENT_NEW_MESSAGE_RECEIVED = 'new-message-received';
 
-// Create an instance of EventEmitter
-export const eventEmitter = new EventEmitter();
+const eventEmitter = new EventEmitter();
 
 interface RealtimeConfig {
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -34,7 +29,6 @@ class RealtimeManager {
     this.channels = [];
     this.initInterpreterStatusChannel();
     this.initMessageMentionsChannel();
-    this.initMessagesChannel();
   }
 
   cleanup() {
@@ -76,14 +70,7 @@ class RealtimeManager {
           eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
         }
       )
-      .subscribe((status) => {
-        console.log('Interpreter status channel subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'connected', channel: 'interpreter-status' });
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'disconnected', channel: 'interpreter-status', error: status });
-        }
-      });
+      .subscribe();
 
     this.channels.push(channel);
   }
@@ -113,44 +100,7 @@ class RealtimeManager {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('Message mentions channel subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'connected', channel: 'message-mentions' });
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'disconnected', channel: 'message-mentions', error: status });
-        }
-      });
-
-    this.channels.push(channel);
-  }
-
-  // Add a new method to initialize a channel for messages
-  initMessagesChannel() {
-    console.log('Initializing messages channel');
-    
-    const channel = this.supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages'
-        },
-        (payload) => {
-          console.log('New chat message received:', payload);
-          this.emitEvent(EVENT_NEW_MESSAGE_RECEIVED, payload.new);
-        }
-      )
-      .subscribe((status) => {
-        console.log('Messages channel subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'connected', channel: 'chat-messages' });
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'disconnected', channel: 'chat-messages', error: status });
-        }
-      });
+      .subscribe();
 
     this.channels.push(channel);
   }
@@ -179,11 +129,6 @@ class RealtimeManager {
       // Subscribe to the channel
       const subscription = channel.subscribe((status) => {
         console.log(`Channel ${channelName} subscription status:`, status);
-        if (status === 'SUBSCRIBED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'connected', channel: channelName });
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, { status: 'disconnected', channel: channelName, error: status });
-        }
       });
       
       // Store the channel in our array so we can clean it up later
@@ -209,8 +154,6 @@ class RealtimeManager {
       eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
     } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
       eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, data);
-    } else if (eventName === EVENT_CONNECTION_STATUS_CHANGE) {
-      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, data);
     }
   }
 
@@ -225,3 +168,4 @@ class RealtimeManager {
 }
 
 export default RealtimeManager;
+export { eventEmitter };
