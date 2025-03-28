@@ -9,7 +9,7 @@ export const useBrowserNotification = (test = false) => {
       setPermission(Notification.permission);
     }
 
-    // Test notification if flag is true
+    // Only test if explicitly requested and permission is already granted
     if (test && Notification.permission === 'granted') {
       new Notification('Test Notification', {
         body: 'This is a test notification to verify the implementation',
@@ -25,6 +25,7 @@ export const useBrowserNotification = (test = false) => {
     }
 
     try {
+      // Only request permission in response to a user action
       const permission = await Notification.requestPermission();
       setPermission(permission);
       return permission === 'granted';

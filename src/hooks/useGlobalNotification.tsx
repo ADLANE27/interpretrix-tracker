@@ -1,12 +1,13 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/notificationSound';
-import { AtSign, MessageSquare, Reply } from 'lucide-react';
+import { AtSign, MessageSquare, Reply, Bell } from 'lucide-react';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { Button } from '@/components/ui/button';
 
 const NOTIFICATION_TRANSLATIONS = {
   newMessage: {
@@ -32,6 +33,10 @@ const NOTIFICATION_TRANSLATIONS = {
   threadReplyText: {
     fr: "Quelqu'un a répondu à votre message",
     en: "Someone replied to your message"
+  },
+  enableNotifications: {
+    fr: "Activer les notifications",
+    en: "Enable notifications"
   }
 };
 
@@ -39,13 +44,39 @@ export const useGlobalNotification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { permission, requestPermission, showNotification } = useBrowserNotification();
-
+  const [hasShownPermissionPrompt, setHasShownPermissionPrompt] = useState(false);
+  
+  // Show a toast notification to request permission only once per session
   useEffect(() => {
-    // Demander la permission dès le chargement du composant
-    if (permission !== 'granted') {
-      requestPermission();
+    if (
+      'Notification' in window && 
+      Notification.permission === 'default' && 
+      !hasShownPermissionPrompt
+    ) {
+      setHasShownPermissionPrompt(true);
+      
+      toast({
+        title: "Notifications",
+        description: "Recevez des notifications pour les nouveaux messages.",
+        action: (
+          <Button 
+            onClick={() => {
+              requestPermission();
+            }}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <Bell className="h-3.5 w-3.5" />
+            {NOTIFICATION_TRANSLATIONS.enableNotifications.fr}
+          </Button>
+        ),
+        duration: 10000,
+      });
     }
-    
+  }, [toast, requestPermission, hasShownPermissionPrompt]);
+  
+  useEffect(() => {
     console.log('[GlobalNotification] Setting up global notification listeners');
     
     const handleNewMessage = async (data: any) => {
