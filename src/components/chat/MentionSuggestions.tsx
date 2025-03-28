@@ -25,20 +25,20 @@ export const MentionSuggestions = ({
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
-  // Convert standardized languages to suggestions format without any filtering conditions
-  const languageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
+  // Convert standardized languages to suggestions format
+  const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
     name: lang,
     type: 'language'
   }));
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   
-  // Very basic filtering for languages just to make the UI usable
-  const filteredLanguageSuggestions = searchTerm 
-    ? languageSuggestions.filter(lang => 
+  // Filter language suggestions based on search term if provided
+  const languageSuggestions = searchTerm 
+    ? standardLanguageSuggestions.filter(lang => 
         lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
           .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
-    : languageSuggestions;
+    : standardLanguageSuggestions;
 
   if (loading) {
     return (
@@ -65,7 +65,7 @@ export const MentionSuggestions = ({
     );
   }
 
-  if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && filteredLanguageSuggestions.length === 0)) {
+  if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
     return (
       <motion.div 
         className="absolute bottom-full mb-1 w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
@@ -97,11 +97,13 @@ export const MentionSuggestions = ({
       <Command
         className="rounded-lg"
         filter={(value, search) => {
-          // Simple, very permissive search to match anything remotely close
+          // Improved search to handle diacritics and case
           const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           
-          if (normalizedValue.includes(normalizedSearch)) return 1;
+          // Check if value starts with or contains the search term
+          if (normalizedValue.startsWith(normalizedSearch)) return 1;
+          if (normalizedValue.includes(normalizedSearch)) return 0.5;
           return 0;
         }}
       >
@@ -147,7 +149,7 @@ export const MentionSuggestions = ({
             )}
 
             <CommandGroup heading="Langues">
-              {filteredLanguageSuggestions.map((lang) => (
+              {languageSuggestions.map((lang) => (
                 <CommandItem
                   key={lang.name}
                   value={lang.name.toLowerCase()}

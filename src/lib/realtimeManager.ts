@@ -1,11 +1,12 @@
+
 import { SupabaseClient } from '@supabase/supabase-js';
-import { CustomEventEmitter } from './customEventEmitter';
+import EventEmitter from 'events';
 
 export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
 export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread-mentions-updated';
 export const EVENT_NEW_MESSAGE_RECEIVED = 'new-message-received';
 
-const eventEmitter = new CustomEventEmitter();
+const eventEmitter = new EventEmitter();
 
 interface RealtimeConfig {
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -91,13 +92,12 @@ class RealtimeManager {
           const mentionedUserId = payload.new?.mentioned_user_id;
           
           if (mentionedUserId) {
+            // Use an explicitly typeable method to avoid TypeScript errors
             this.emitEvent(EVENT_UNREAD_MENTIONS_UPDATED, 1);
           }
         }
       )
-      .subscribe((status) => {
-        console.log(`Message mentions channel subscription status:`, status);
-      });
+      .subscribe();
 
     this.channels.push(channel);
   }
@@ -109,6 +109,7 @@ class RealtimeManager {
     try {
       let channel = this.supabase.channel(channelName);
       
+      // Add all configurations to the channel
       configs.forEach(config => {
         channel = channel.on(
           'postgres_changes' as any,
@@ -122,12 +123,15 @@ class RealtimeManager {
         );
       });
       
+      // Subscribe to the channel
       const subscription = channel.subscribe((status) => {
         console.log(`Channel ${channelName} subscription status:`, status);
       });
       
+      // Store the channel in our array so we can clean it up later
       this.channels.push(channel);
       
+      // Return a function to unsubscribe from this specific channel
       return () => {
         console.log(`Cleaning up channel ${channelName}`);
         this.supabase.removeChannel(channel);
@@ -140,12 +144,12 @@ class RealtimeManager {
   }
 
   emitEvent(eventName: string, data: any) {
-    console.log(`[RealtimeManager] Emitting event ${eventName} with data:`, data);
-    
+    // Type-safe event emission
     if (eventName === EVENT_INTERPRETER_STATUS_UPDATE) {
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
     } else if (eventName === EVENT_UNREAD_MENTIONS_UPDATED) {
-      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
+      // Use a type assertion to resolve the TypeScript error
+      (eventEmitter as any).emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
     } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
       eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, data);
     }
