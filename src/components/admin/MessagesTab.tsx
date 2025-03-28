@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,14 +9,11 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { PlusCircle, Settings, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTimestampFormat } from "@/hooks/useTimestampFormat";
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
 import { useChat } from "@/hooks/useChat"; 
 import {
   AlertDialog,
@@ -57,7 +53,6 @@ export const MessagesTab = () => {
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -66,7 +61,6 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
-  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true);
@@ -82,7 +76,6 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
-          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -100,7 +93,7 @@ export const MessagesTab = () => {
     };
 
     fetchChannels();
-  }, []); // No dependencies, only run once on component mount
+  }, []);
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -187,7 +180,6 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
-      // Update the channels list with the new name
       setChannels(channels.map(channel => 
         channel.id === channelId 
           ? { ...channel, display_name: newName.trim() }
@@ -208,7 +200,6 @@ export const MessagesTab = () => {
     }
   };
 
-  // Display a loading state while fetching channels
   if (isLoading && channels.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -226,7 +217,7 @@ export const MessagesTab = () => {
               ? showChannelList 
                 ? 'absolute inset-0 z-30 bg-background' 
                 : 'hidden'
-              : 'w-80'
+              : 'w-80 overflow-y-auto'
           } border-r flex flex-col`}
         >
           <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -334,22 +325,19 @@ export const MessagesTab = () => {
 
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
-            <div className="flex-1 flex flex-col h-full">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChannelList(true)}
-                  className="h-9 w-9 p-0 absolute top-4 left-4 z-10"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-              )}
-              
-              {/* Use the standardized Chat component */}
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChannelList(true)}
+                className="h-9 w-9 p-0 absolute top-4 left-4 z-10"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
+                messageListHeight="calc(100vh - 250px)"
               />
             </div>
           ) : (
