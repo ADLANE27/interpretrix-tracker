@@ -58,17 +58,16 @@ export const DashboardContent = ({
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, type: "spring", stiffness: 200, damping: 20 }}
             className="w-full h-full"
           >
             <div className={`
               ${isMobile ? 'p-2 sm:p-3' : 'p-4 md:p-6'} 
               h-full overflow-auto
-              bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/70
-              backdrop-blur-sm rounded-md shadow-sm
+              glass-card rounded-xl
             `}>
               {renderActiveTab()}
             </div>

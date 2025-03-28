@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -217,14 +218,19 @@ const Chat = ({
   return (
     <div className="flex flex-col h-full">
       <motion.div 
-        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200 dark:border-gray-700 shadow-sm"
+        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200/70 dark:border-gray-700/70 shadow-sm"
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.3, type: "spring" }}
       >
         <div className="h-[56px] md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold truncate flex-1 text-gradient-primary">
+            <motion.h2 
+              className="text-lg font-semibold truncate flex-1 text-gradient-primary"
+              initial={{ x: -10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
               {isEditing ? (
                 <>
                   <Input
@@ -238,11 +244,11 @@ const Chat = ({
                         setNewName(channel?.name || '');
                       }
                     }}
-                    className="w-[200px]"
+                    className="w-[200px] bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200/70 dark:border-gray-700/70 focus-within:ring-1 focus-within:ring-primary/30"
                     autoFocus
                   />
                   <div className="flex gap-2 mt-1">
-                    <Button size="sm" onClick={handleRename}>
+                    <Button size="sm" onClick={handleRename} className="shadow-sm">
                       Sauvegarder
                     </Button>
                     <Button 
@@ -252,6 +258,7 @@ const Chat = ({
                         setIsEditing(false);
                         setNewName(channel?.name || '');
                       }}
+                      className="hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
                     >
                       Annuler
                     </Button>
@@ -265,14 +272,14 @@ const Chat = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsEditing(true)}
-                      className="ml-2 p-1 h-7 w-7 rounded-full"
+                      className="ml-2 p-1 h-7 w-7 rounded-full hover:bg-primary/10 transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}
                 </>
               )}
-            </h2>
+            </motion.h2>
           </div>
           
           <div className="flex items-center gap-2">
@@ -282,7 +289,7 @@ const Chat = ({
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="rounded-full" 
+                    className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors" 
                     onClick={forceFetch}
                     aria-label="Actualiser les messages"
                   >
@@ -301,7 +308,11 @@ const Chat = ({
               channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
               userRole={userRole}
             >
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
                 <Users className="h-5 w-5" />
               </Button>
             </ChannelMembersPopover>
@@ -311,7 +322,7 @@ const Chat = ({
 
       <div className="flex flex-col h-full min-h-0 overflow-hidden">
         <div 
-          className="flex-grow overflow-y-auto p-2 sm:p-4"
+          className="flex-grow overflow-y-auto p-2 sm:p-4 scrollbar-none"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
@@ -319,11 +330,11 @@ const Chat = ({
           style={{ maxHeight: messageListHeight, height: messageListHeight }}
         >
           {isLoading ? (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex items-center justify-center">
               <LoadingSpinner size="lg" text="Chargement des messages..." />
             </div>
           ) : !isSubscribed ? (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex items-center justify-center">
               <LoadingSpinner size="md" text="Connexion en cours..." />
             </div>
           ) : null}
@@ -334,7 +345,7 @@ const Chat = ({
                 size="sm" 
                 variant="outline"
                 onClick={loadMoreMessages}
-                className="text-xs flex items-center gap-1"
+                className="text-xs flex items-center gap-1 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
               >
                 <RefreshCw className="h-3 w-3" />
                 Charger plus de messages
@@ -355,7 +366,7 @@ const Chat = ({
         </div>
         
         <div className={`
-          bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700
+          bg-white/80 dark:bg-gray-900/80 border-t border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm
           ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
         `}>
           <ChatInput

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Profile } from "@/types/profile";
+import { motion } from "framer-motion";
 
 interface MessagingTabProps {
   profile?: Profile | null;
@@ -30,17 +32,32 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <motion.div 
+      className="flex h-full overflow-hidden rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur-md shadow-lg"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full overflow-hidden`}>
+        <motion.div 
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border/50 h-full overflow-hidden`}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />
-        </div>
+        </motion.div>
       )}
 
       {selectedChannelId && (
-        <div className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full`}>
+        <motion.div 
+          className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
           <InterpreterChat 
             channelId={selectedChannelId} 
             filters={filters} 
@@ -50,10 +67,10 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
-            messageListHeight="50vh" // Reducing height to 50% of screen height
+            messageListHeight="50vh"
           />
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 };
