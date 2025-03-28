@@ -5,7 +5,6 @@ import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Profile } from "@/types/profile";
 import { motion } from "framer-motion";
-import { ThemeToggle } from "./ThemeToggle";
 
 interface MessagingTabProps {
   profile?: Profile | null;
@@ -34,27 +33,18 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
   return (
     <motion.div 
-      className="flex h-full overflow-hidden rounded-2xl 
-        bg-white dark:bg-gray-900
-        shadow-lg"
+      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {(!selectedChannelId || !isMobile) && (
         <motion.div 
-          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 
-            bg-gradient-to-br from-white to-palette-soft-blue/10 
-            dark:from-gray-800/90 dark:to-palette-ocean-blue/10
-            border-r border-gray-100 dark:border-gray-800
-            h-full overflow-hidden rounded-l-2xl`}
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <div className="absolute top-3 right-3 z-10">
-            <ThemeToggle />
-          </div>
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />
@@ -63,10 +53,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
       {selectedChannelId && (
         <motion.div 
-          className={`${isMobile ? 'w-full' : 'flex-1'} 
-            bg-gradient-to-br from-white/80 to-palette-soft-blue/5 
-            dark:from-gray-800 dark:to-palette-ocean-blue/5
-            overflow-hidden h-full rounded-r-2xl`}
+          className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full rounded-r-xl`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
