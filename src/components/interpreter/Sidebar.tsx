@@ -13,6 +13,7 @@ import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { motion, AnimatePresence } from "framer-motion";
+import { Separator } from "@/components/ui/separator";
 
 interface SidebarProps {
   activeTab: string;
@@ -255,6 +256,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
           Déconnexion
         </Button>
       </div>
+
+      <Separator className="my-4 w-full" />
 
       <nav className="flex-1 my-2">
         <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
