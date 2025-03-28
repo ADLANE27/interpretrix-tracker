@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 import { CompanyType } from "@/types/privateReservation";
+import { useTableSubscription } from "@/hooks/useTableSubscription";
 
 interface CalendarMission {
   mission_id: string;
@@ -62,51 +62,34 @@ export const AdminMissionsCalendar = () => {
     }
   };
 
+  useTableSubscription(
+    'interpretation_missions',
+    '*',
+    null,
+    () => {
+      console.log('[AdminMissionsCalendar] Mission update received via hook');
+      fetchMissions();
+    },
+    {
+      onError: (error) => console.error('[AdminMissionsCalendar] Subscription error:', error)
+    }
+  );
+
+  useTableSubscription(
+    'private_reservations',
+    '*',
+    null,
+    () => {
+      console.log('[AdminMissionsCalendar] Private reservation update received via hook');
+      fetchMissions();
+    },
+    {
+      onError: (error) => console.error('[AdminMissionsCalendar] Private reservations subscription error:', error)
+    }
+  );
+
   useEffect(() => {
-    console.log('[AdminMissionsCalendar] Setting up realtime subscriptions');
-    const channels = [];
-
-    // Subscribe to changes in interpretation_missions
-    const missionsChannel = supabase.channel('admin-calendar-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        () => {
-          console.log('[AdminMissionsCalendar] Mission update received');
-          fetchMissions();
-        }
-      )
-      .subscribe();
-    channels.push(missionsChannel);
-
-    // Subscribe to changes in private_reservations
-    const reservationsChannel = supabase.channel('admin-calendar-reservations')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'private_reservations'
-        },
-        () => {
-          console.log('[AdminMissionsCalendar] Private reservation update received');
-          fetchMissions();
-        }
-      )
-      .subscribe();
-    channels.push(reservationsChannel);
-
     fetchMissions();
-
-    return () => {
-      channels.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-    };
   }, []);
 
   const getVisibleMissions = () => {

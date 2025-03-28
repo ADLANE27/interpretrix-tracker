@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { ConnectionMonitor } from './connectionMonitor';
-import { CONNECTION_STATUS_DEBOUNCE_TIME } from './constants';
+import { CONNECTION_STATUS_DEBOUNCE_TIME, RETRY_MAX } from './constants';
 import { EventDebouncer } from './eventDebouncer';
 import { SubscriptionManager } from './subscriptionManager';
 
@@ -18,6 +18,7 @@ class RealtimeService {
   private connectionMonitor: ConnectionMonitor | null = null;
   private initialized: boolean = false;
   private eventDebouncer: EventDebouncer;
+  private activeSubscriptions: Map<string, () => void> = new Map();
 
   constructor() {
     this.eventDebouncer = new EventDebouncer();
@@ -59,6 +60,10 @@ class RealtimeService {
       this.connectionMonitor.stop();
       this.connectionMonitor = null;
     }
+    
+    // Clean up all active subscriptions
+    this.activeSubscriptions.forEach(cleanup => cleanup());
+    this.activeSubscriptions.clear();
     
     subscriptionRegistry.cleanupAll();
     this.initialized = false;
@@ -179,13 +184,38 @@ class RealtimeService {
     filter: string | null,
     callback: (payload: any) => void
   ): () => void {
-    return subscriptionManager.createTableSubscription(
-      table,
-      event,
-      filter,
-      callback,
-      this.eventDebouncer
-    );
+    const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
+    const subscriptionKey = `table-${table}-${event}${filterSuffix}`;
+    
+    // Check if we already have an active subscription
+    if (this.activeSubscriptions.has(subscriptionKey)) {
+      console.log(`[RealtimeService] Reusing existing subscription for ${subscriptionKey}`);
+      return () => {};
+    }
+    
+    console.log(`[RealtimeService] Creating new subscription for ${subscriptionKey}`);
+    
+    try {
+      const cleanup = subscriptionManager.createTableSubscription(
+        table,
+        event,
+        filter,
+        callback,
+        this.eventDebouncer
+      );
+      
+      // Store in active subscriptions map
+      this.activeSubscriptions.set(subscriptionKey, cleanup);
+      
+      // Return a cleanup function that removes from map
+      return () => {
+        cleanup();
+        this.activeSubscriptions.delete(subscriptionKey);
+      };
+    } catch (error) {
+      console.error(`[RealtimeService] Error creating subscription: ${error}`);
+      return () => {};
+    }
   }
   
   /**

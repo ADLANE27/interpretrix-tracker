@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
@@ -21,6 +20,7 @@ export function useTableSubscription(
   const { enabled = true, onError } = options;
   const [isConnected, setIsConnected] = useState(true);
   const callbackRef = useRef(callback);
+  const cleanupRef = useRef<(() => void) | null>(null);
   
   // Keep callback reference updated
   useEffect(() => {
@@ -41,14 +41,21 @@ export function useTableSubscription(
       try {
         callbackRef.current(payload);
       } catch (error) {
-        console.error(`Error processing ${event} event for ${table}:`, error);
+        console.error(`[useTableSubscription] Error processing ${event} event for ${table}:`, error);
         if (onError) onError(error);
       }
     };
     
+    // Create subscription through realtime service
     const cleanup = realtimeService.subscribeToTable(table, event, filter, handlePayload);
+    cleanupRef.current = cleanup;
     
-    return cleanup;
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+    };
   }, [enabled, table, event, filter, onError]);
   
   // Track connection status
