@@ -10,6 +10,7 @@ export interface SubscriptionStatus {
   lastUpdate: Date;
   channelRef?: RealtimeChannel;
   isActive: boolean;  // Required property
+  maxRetriesReached?: boolean; // Added missing property
 }
 
 export function createSubscriptionStatus(channel?: RealtimeChannel): SubscriptionStatus {
@@ -18,6 +19,7 @@ export function createSubscriptionStatus(channel?: RealtimeChannel): Subscriptio
     retryCount: 0,
     lastUpdate: new Date(),
     channelRef: channel,
-    isActive: false
+    isActive: false,
+    maxRetriesReached: false, // Initialize the new property
   };
 }

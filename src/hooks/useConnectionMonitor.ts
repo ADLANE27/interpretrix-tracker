@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
-import { realtimeService } from '@/services/realtimeService';
+import { realtimeService } from '@/services/realtime';
 
 export function useConnectionMonitor() {
   const { toast } = useToast();
@@ -31,8 +31,7 @@ export function useConnectionMonitor() {
           
           // Dismiss previous error toast if it exists
           if (toastIdRef.current) {
-            toast({
-              id: toastIdRef.current,
+            const result = toast({
               title: "Connexion rétablie",
               description: "La connexion temps réel a été rétablie",
               duration: 3000,
@@ -73,12 +72,12 @@ export function useConnectionMonitor() {
               
               // Only show toast after 5 seconds of disconnection
               if (elapsedSeconds === 5 && !toastIdRef.current) {
-                const { id } = toast({
+                const result = toast({
                   title: "Problème de connexion",
                   description: "Tentative de reconnexion en cours...",
                   duration: 0, // Persistent until connection is restored
                 });
-                toastIdRef.current = id;
+                toastIdRef.current = result.id;
               }
             }
           }, 1000);
@@ -111,12 +110,11 @@ export function useConnectionMonitor() {
       // Clear any persistent toast on unmount
       if (toastIdRef.current) {
         toast({
-          id: toastIdRef.current,
           duration: 1,
         });
       }
     };
-  }, [toast]);
+  }, [toast, connectionError]);
 
   // Effect to update the connection status when component mounts
   useEffect(() => {
