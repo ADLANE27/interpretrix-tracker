@@ -11,6 +11,8 @@ interface UseRealtimeStatusOptions {
   onConnectionStateChange?: (connected: boolean) => void;
 }
 
+const globalStatusCache = new Map<string, {status: Profile['status'], timestamp: number}>();
+
 /**
  * A hook to subscribe to and update interpreter status changes
  */
@@ -27,25 +29,22 @@ export const useRealtimeStatus = ({
   const isInitialLoadRef = useRef(true);
   const statusRef = useRef<Profile['status']>(initialStatus);
   const connectionStateLoggedRef = useRef(false);
+  const instanceIdRef = useRef<string>(`instance-${Math.random().toString(36).substring(2, 9)}`);
+  const lastStatusRefreshRef = useRef<number>(0);
   
-  // Keep a ref to the latest status for comparison in event handlers
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
   
-  // Initialize the realtime service once
   useEffect(() => {
     const cleanup = realtimeService.init();
     return cleanup;
   }, []);
   
-  // Handle connection status changes - with improved debouncing
   useEffect(() => {
-    // Keep connection state to prevent duplicate logs
     let lastKnownState = true;
     
     const handleConnectionChange = (connected: boolean) => {
-      // Only react to actual state changes to reduce debug logs
       if (connected !== lastKnownState) {
         lastKnownState = connected;
         
@@ -60,12 +59,10 @@ export const useRealtimeStatus = ({
         }
         
         if (connected && pendingUpdateRef.current && interpreterId) {
-          // If connection restored and we have pending updates, retry them
           const { status: pendingStatus, timestamp } = pendingUpdateRef.current;
           const now = Date.now();
           
-          // Only retry if pending update is recent (within last 2 minutes)
-          if (now - timestamp < 120000) {
+          if (now - timestamp < 300000) {
             console.log(`[useRealtimeStatus] Connection restored, retrying pending update to ${pendingStatus}`);
             updateStatus(pendingStatus).then(() => {
               pendingUpdateRef.current = null;
@@ -77,19 +74,15 @@ export const useRealtimeStatus = ({
       }
     };
     
-    // Use a custom name for this handler to make it unique per component instance
-    const handlerKey = interpreterId ? `connection-${interpreterId}` : 'connection-default';
+    const handlerKey = interpreterId ? `connection-${interpreterId}-${instanceIdRef.current}` : `connection-default-${instanceIdRef.current}`;
     
-    // Add event listener with handler key for identification
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
     
     return () => {
-      // Remove event listener using the same handler key
       eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
     };
   }, [onConnectionStateChange, interpreterId, isConnected]);
   
-  // Subscribe to status events for a specific interpreter
   useEffect(() => {
     if (!interpreterId) return;
     
@@ -99,119 +92,140 @@ export const useRealtimeStatus = ({
         setStatus(newStatus as Profile['status']);
         setLastUpdateTime(new Date());
         
+        globalStatusCache.set(interpreterId, {
+          status: newStatus as Profile['status'],
+          timestamp: Date.now()
+        });
+        
         if (onStatusChange) {
           onStatusChange(newStatus as Profile['status']);
         }
       }
     };
     
-    // Listen for broadcasted status updates (from other components/contexts)
-    const handlerKey = `status-${interpreterId}`;
+    const handlerKey = `status-${interpreterId}-${instanceIdRef.current}`;
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, handlerKey);
     
-    // Subscribe to real-time database updates
-    realtimeService.subscribeToInterpreterStatus(interpreterId);
-    
-    // Initial fetch of status
     if (isInitialLoadRef.current) {
-      console.log(`[useRealtimeStatus] Initial load for ${interpreterId}`);
       isInitialLoadRef.current = false;
       
-      // Fetch current status
-      supabase
-        .from('interpreter_profiles')
-        .select('status')
-        .eq('id', interpreterId)
-        .single()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const fetchedStatus = data.status as Profile['status'];
-            console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
-            
-            if (fetchedStatus !== statusRef.current) {
-              setStatus(fetchedStatus);
-              setLastUpdateTime(new Date());
+      const cachedData = globalStatusCache.get(interpreterId);
+      const now = Date.now();
+      
+      if (cachedData && now - cachedData.timestamp < 60000) {
+        if (cachedData.status !== statusRef.current) {
+          console.log(`[useRealtimeStatus] Using cached status for ${interpreterId}: ${cachedData.status}`);
+          setStatus(cachedData.status);
+          setLastUpdateTime(new Date(cachedData.timestamp));
+          
+          if (onStatusChange) {
+            onStatusChange(cachedData.status);
+          }
+        }
+      } else {
+        supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', interpreterId)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              const fetchedStatus = data.status as Profile['status'];
+              console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
               
-              if (onStatusChange) {
-                onStatusChange(fetchedStatus);
+              globalStatusCache.set(interpreterId, {
+                status: fetchedStatus,
+                timestamp: now
+              });
+              
+              if (fetchedStatus !== statusRef.current) {
+                setStatus(fetchedStatus);
+                setLastUpdateTime(new Date());
+                
+                if (onStatusChange) {
+                  onStatusChange(fetchedStatus);
+                }
               }
             }
-          }
-        });
+          });
+      }
     }
     
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, handlerKey);
-      // No explicit cleanup needed for subscribeToInterpreterStatus
     };
   }, [interpreterId, onStatusChange]);
   
-  // Refresh status if connection is restored - with reduced frequency
   useEffect(() => {
     if (!interpreterId) return;
+    if (!isConnected) return;
     
-    let timeoutId: NodeJS.Timeout;
-    
-    if (isConnected) {
-      // If we're connected, refresh the status after a short delay, but less frequently
-      timeoutId = setTimeout(async () => {
-        try {
-          // Fetch the current status directly
-          const { data, error } = await supabase
-            .from('interpreter_profiles')
-            .select('status')
-            .eq('id', interpreterId)
-            .single();
-          
-          if (!error && data) {
-            const fetchedStatus = data.status as Profile['status'];
-            
-            if (fetchedStatus !== statusRef.current) {
-              console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
-              setStatus(fetchedStatus);
-              setLastUpdateTime(new Date());
-              
-              if (onStatusChange) {
-                onStatusChange(fetchedStatus);
-              }
-              
-              // Force broadcast to sync all components
-              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-                interpreterId,
-                status: fetchedStatus
-              });
-            }
-          }
-        } catch (error) {
-          console.error('[useRealtimeStatus] Error fetching status:', error);
-        }
-      }, 1000); // Increased delay for less frequent updates
+    const now = Date.now();
+    if (now - lastStatusRefreshRef.current < 60000) {
+      return;
     }
+    
+    lastStatusRefreshRef.current = now;
+    
+    const timeoutId = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', interpreterId)
+          .single();
+        
+        if (!error && data) {
+          const fetchedStatus = data.status as Profile['status'];
+          
+          globalStatusCache.set(interpreterId, {
+            status: fetchedStatus,
+            timestamp: Date.now()
+          });
+          
+          if (fetchedStatus !== statusRef.current) {
+            console.log(`[useRealtimeStatus] Status refresh for ${interpreterId}: ${fetchedStatus}`);
+            setStatus(fetchedStatus);
+            setLastUpdateTime(new Date());
+            
+            if (onStatusChange) {
+              onStatusChange(fetchedStatus);
+            }
+            
+            eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+              interpreterId,
+              status: fetchedStatus
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[useRealtimeStatus] Error fetching status:', error);
+      }
+    }, 3000);
     
     return () => {
       clearTimeout(timeoutId);
     };
   }, [interpreterId, isConnected, onStatusChange]);
   
-  /**
-   * Update an interpreter's status
-   */
   const updateStatus = useCallback(async (newStatus: Profile['status']): Promise<boolean> => {
     if (!interpreterId) return false;
     
     try {
-      // Optimistically update the local state
       setStatus(newStatus);
       statusRef.current = newStatus;
       const now = Date.now();
       
-      // Broadcast status change immediately for other components 
+      globalStatusCache.set(interpreterId, {
+        status: newStatus,
+        timestamp: now
+      });
+      
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: newStatus
       });
       
-      // If not connected, store the pending update
       if (!isConnected) {
         pendingUpdateRef.current = { status: newStatus, timestamp: now };
         console.log(`[useRealtimeStatus] Connection down, storing pending update: ${newStatus}`);
@@ -228,7 +242,6 @@ export const useRealtimeStatus = ({
         return false;
       }
       
-      // Update last update time
       setLastUpdateTime(new Date());
       
       return true;
@@ -245,3 +258,12 @@ export const useRealtimeStatus = ({
     lastUpdateTime
   };
 };
+
+setInterval(() => {
+  const now = Date.now();
+  globalStatusCache.forEach((value, key) => {
+    if (now - value.timestamp > 300000) {
+      globalStatusCache.delete(key);
+    }
+  });
+}, 300000);

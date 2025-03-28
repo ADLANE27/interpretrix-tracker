@@ -29,9 +29,13 @@ const Chat = ({
   userRole = 'admin', 
   messageListHeight = "calc(100vh - 300px)" // Default adjusted to account for header and footer
 }: ChatProps) => {
-  const { data: channel } = useQuery({
+  const { data: channel, isLoading: isChannelLoading } = useQuery({
     queryKey: ['channel', channelId],
     queryFn: async () => {
+      if (!channelId) {
+        return null;
+      }
+      
       const { data, error } = await supabase
         .from('chat_channels')
         .select('*')
@@ -40,7 +44,10 @@ const Chat = ({
       
       if (error) throw error;
       return data;
-    }
+    },
+    retry: 1, // Retry only once to prevent excessive retries
+    staleTime: 60000, // Cache for 1 minute
+    enabled: !!channelId
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -54,6 +61,8 @@ const Chat = ({
   const messageListKey = useRef<number>(0);
   const isMobile = useIsMobile();
   const orientation = useOrientation();
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isMessageLoadingTimedOut, setIsMessageLoadingTimedOut] = useState(false);
 
   useEffect(() => {
     if (channel?.name) {
@@ -63,7 +72,7 @@ const Chat = ({
 
   const {
     messages,
-    isLoading,
+    isLoading: isMessagesLoading,
     isSubscribed,
     subscriptionStatus,
     sendMessage,
@@ -77,8 +86,27 @@ const Chat = ({
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
-
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isMessagesLoading) {
+      loadingTimeoutRef.current = setTimeout(() => {
+        setIsMessageLoadingTimedOut(true);
+      }, 10000);
+    } else {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+      setIsMessageLoadingTimedOut(false);
+    }
+    
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [isMessagesLoading]);
 
   useEffect(() => {
     if (channelId) {
@@ -92,9 +120,11 @@ const Chat = ({
 
   useEffect(() => {
     const syncInterval = setInterval(() => {
-      console.log(`[Chat ${userRole}] Forcing message sync`);
-      forceFetch();
-    }, 60000); // Sync every minute
+      if (document.visibilityState === 'visible') {
+        console.log(`[Chat ${userRole}] Forcing message sync`);
+        forceFetch();
+      }
+    }, 120000); // Sync every 2 minutes (increased from 1 minute)
     
     return () => clearInterval(syncInterval);
   }, [forceFetch, userRole]);
@@ -107,12 +137,12 @@ const Chat = ({
     if (messageContainerRef.current && autoScrollEnabled) {
       const container = messageContainerRef.current;
       
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         container.scrollTo({
           top: container.scrollHeight,
           behavior: 'smooth'
         });
-      }, 100);
+      });
     }
   }, [messages, autoScrollEnabled]);
 
@@ -214,6 +244,8 @@ const Chat = ({
     }, 0);
   };
 
+  const showLoading = (isMessagesLoading || isChannelLoading) && !isMessageLoadingTimedOut;
+
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -265,7 +297,7 @@ const Chat = ({
                 </>
               ) : (
                 <>
-                  {channel?.name}
+                  {channel?.name || 'Chargement...'}
                   {userRole === 'admin' && (
                     <Button
                       variant="ghost"
@@ -280,42 +312,6 @@ const Chat = ({
               )}
             </motion.h2>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors" 
-                    onClick={forceFetch}
-                    aria-label="Actualiser les messages"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Actualiser les messages</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole={userRole}
-            >
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors"
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-            </ChannelMembersPopover>
-          </div>
         </div>
       </motion.div>
 
@@ -328,17 +324,47 @@ const Chat = ({
           onScroll={handleScroll}
           style={{ height: messageListHeight }}
         >
-          {isLoading ? (
+          {showLoading ? (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex items-center justify-center">
               <LoadingSpinner size="lg" text="Chargement des messages..." />
             </div>
+          ) : isMessageLoadingTimedOut ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="text-amber-600 dark:text-amber-400 mb-2">
+                <RefreshCw className="h-8 w-8 animate-spin-slow mx-auto mb-2" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Le chargement prend plus de temps que prévu</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Les messages sont en cours de chargement mais semblent prendre plus de temps que d'habitude.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={forceFetch}
+                className="group"
+              >
+                <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin" /> Réessayer
+              </Button>
+            </div>
           ) : !isSubscribed ? (
-            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex items-center justify-center">
-              <LoadingSpinner size="md" text="Connexion en cours..." />
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="text-amber-600 dark:text-amber-400 mb-2">
+                <RefreshCw className="h-8 w-8 animate-spin-slow mx-auto mb-2" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Connexion en cours...</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Tentative de connexion au service de messagerie en temps réel.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={forceFetch}
+                className="group"
+              >
+                <RefreshCw className="h-4 w-4 mr-2 group-hover:animate-spin" /> Recharger
+              </Button>
             </div>
           ) : null}
           
-          {hasMoreMessages && !isLoading && (
+          {hasMoreMessages && !showLoading && (
             <div className="flex justify-center my-3">
               <Button 
                 size="sm" 

@@ -1,211 +1,216 @@
 
+import { RETRY_MAX, RETRY_DELAY_BASE, CONNECTION_TIMEOUT, RECONNECT_PERIODIC_INTERVAL } from './constants';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
-import { CONNECTION_CONSTANTS } from '../../hooks/supabase-connection/constants';
-
-type RetryCallback = (key: string) => void;
-type ConnectionCallback = (connected: boolean) => void;
 
 /**
- * Monitors connection status and handles reconnection
+ * Monitors connection status and triggers reconnection when needed
  */
 export class ConnectionMonitor {
-  private retryCallback: RetryCallback;
-  private connectionCallback: ConnectionCallback;
-  private checkInterval: NodeJS.Timeout | null = null;
-  private isActive: boolean = false;
-  private lastConnectionStatus: boolean = true;
-  private retryTimers: Map<string, NodeJS.Timeout> = new Map();
-  private lastSuccessfulConnection: number = Date.now();
-  private consecutiveFailures: number = 0;
-
-  constructor(retryCallback: RetryCallback, connectionCallback: ConnectionCallback) {
-    this.retryCallback = retryCallback;
-    this.connectionCallback = connectionCallback;
+  private isConnectedFlag: boolean = true;
+  private checkTimer: NodeJS.Timeout | null = null;
+  private reconnectPeriodicTimer: NodeJS.Timeout | null = null;
+  private retryCount: Map<string, number> = new Map();
+  private lastConnectionCheck: number = Date.now();
+  private onSubscriptionRetryCallback: (key: string) => void;
+  private onConnectionStatusChangeCallback: (connected: boolean) => void;
+  private reconnectQueued: boolean = false;
+  
+  constructor(
+    onSubscriptionRetry: (key: string) => void,
+    onConnectionStatusChange: (connected: boolean) => void
+  ) {
+    this.onSubscriptionRetryCallback = onSubscriptionRetry;
+    this.onConnectionStatusChangeCallback = onConnectionStatusChange;
   }
-
+  
   /**
-   * Start monitoring connection status
+   * Start monitoring connections
    */
   public start(): void {
-    if (this.isActive) {
-      return;
-    }
-
-    console.log('[ConnectionMonitor] Starting connection monitoring');
-    this.isActive = true;
-    this.lastSuccessfulConnection = Date.now();
-    this.consecutiveFailures = 0;
-
-    // Initial connection check
-    this.checkConnectionStatus();
-
-    // Set up periodic check
-    this.checkInterval = setInterval(() => {
-      this.checkConnectionStatus();
-    }, CONNECTION_CONSTANTS.HEARTBEAT_INTERVAL);
-  }
-
-  /**
-   * Stop monitoring connection status
-   */
-  public stop(): void {
-    if (!this.isActive) {
-      return;
-    }
-
-    console.log('[ConnectionMonitor] Stopping connection monitoring');
-    this.isActive = false;
-
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-
-    // Clear all retry timers
-    this.retryTimers.forEach((timer) => clearTimeout(timer));
-    this.retryTimers.clear();
-  }
-
-  /**
-   * Check if monitor is connected
-   */
-  public isConnected(): boolean {
-    const statuses = subscriptionRegistry.getAllStatuses();
-    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    console.log('[ConnectionMonitor] Starting');
     
-    if (activeSubscriptions.length === 0) {
-      // No active subscriptions, consider it connected
-      return true;
-    }
-
-    // Check if any subscriptions are disconnected
-    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
-    return disconnectedSubscriptions.length === 0;
-  }
-
-  /**
-   * Attempt to reconnect all subscriptions
-   */
-  public reconnectAll(): void {
-    console.log('[ConnectionMonitor] Attempting to reconnect all subscriptions');
+    // Initial check
+    this.checkSubscriptions();
     
-    const statuses = subscriptionRegistry.getAllStatuses();
-    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
-    
-    if (activeSubscriptions.length === 0) {
-      // No active subscriptions to reconnect
-      return;
+    // Periodic full reconnects (every 5 minutes)
+    if (this.reconnectPeriodicTimer) {
+      clearInterval(this.reconnectPeriodicTimer);
     }
-
-    // Attempt to reconnect all subscriptions
-    activeSubscriptions.forEach(key => {
-      // Reset max retries flag
-      if (statuses[key].maxRetriesReached) {
-        statuses[key].maxRetriesReached = false;
-        statuses[key].retryCount = 0;
+    
+    this.reconnectPeriodicTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        console.log('[ConnectionMonitor] Performing periodic health check');
+        this.checkSubscriptions();
       }
-
-      // Stagger reconnections to avoid thundering herd
-      const delay = Math.random() * 3000;
-      setTimeout(() => {
-        if (this.isActive) {
-          console.log(`[ConnectionMonitor] Reconnecting subscription: ${key}`);
-          this.retryCallback(key);
+    }, RECONNECT_PERIODIC_INTERVAL);
+    
+    // Set up event handlers
+    this.setupEventHandlers();
+  }
+  
+  /**
+   * Set up event handlers for page visibility and other events
+   */
+  private setupEventHandlers(): void {
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        // Only check if it's been at least 10 seconds since the last check
+        if (now - this.lastConnectionCheck > 10000) {
+          console.log('[ConnectionMonitor] Page became visible, checking subscriptions');
+          this.lastConnectionCheck = now;
+          this.checkSubscriptions();
         }
-      }, delay);
+      }
+    });
+    
+    // Handle online/offline events
+    window.addEventListener('online', () => {
+      console.log('[ConnectionMonitor] Network connection restored');
+      this.checkSubscriptions();
+    });
+    
+    window.addEventListener('offline', () => {
+      console.log('[ConnectionMonitor] Network connection lost');
+      this.handleConnectionStatusChange(false);
     });
   }
-
+  
   /**
-   * Check connection status of all subscriptions
+   * Stop monitoring
    */
-  private checkConnectionStatus(): void {
-    if (!this.isActive) return;
+  public stop(): void {
+    console.log('[ConnectionMonitor] Stopping');
     
-    const statuses = subscriptionRegistry.getAllStatuses();
-    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    if (this.checkTimer) {
+      clearTimeout(this.checkTimer);
+      this.checkTimer = null;
+    }
     
-    if (activeSubscriptions.length === 0) {
-      // No active subscriptions to check
+    if (this.reconnectPeriodicTimer) {
+      clearInterval(this.reconnectPeriodicTimer);
+      this.reconnectPeriodicTimer = null;
+    }
+  }
+  
+  /**
+   * Check all subscriptions and reconnect if needed
+   */
+  private checkSubscriptions(): void {
+    if (this.reconnectQueued) {
+      return; // Avoid duplicate checks
+    }
+    
+    this.reconnectQueued = true;
+    
+    // Use setTimeout to offset this work
+    setTimeout(() => {
+      try {
+        this.lastConnectionCheck = Date.now();
+        const subscriptions = subscriptionRegistry.getAll();
+        let activeCount = 0;
+        let totalCount = 0;
+        
+        // Count active subscriptions
+        for (const subscription of subscriptions) {
+          totalCount++;
+          if (subscription.active) {
+            activeCount++;
+          }
+        }
+        
+        // If we have any subscriptions
+        if (totalCount > 0) {
+          // If less than 50% of subscriptions are active, consider disconnected
+          const connectionRatio = activeCount / totalCount;
+          const newConnectionStatus = connectionRatio >= 0.5;
+          
+          // Only log significant changes
+          if (newConnectionStatus !== this.isConnectedFlag) {
+            console.log(`[ConnectionMonitor] Connection status changed: ${newConnectionStatus} (${activeCount}/${totalCount} active)`);
+            this.handleConnectionStatusChange(newConnectionStatus);
+          }
+          
+          // Retry inactive subscriptions
+          for (const subscription of subscriptions) {
+            if (!subscription.active) {
+              this.retrySubscription(subscription.key);
+            }
+          }
+        } else {
+          // No subscriptions, consider connected
+          this.handleConnectionStatusChange(true);
+        }
+      } catch (error) {
+        console.error('[ConnectionMonitor] Error checking subscriptions:', error);
+      } finally {
+        this.reconnectQueued = false;
+      }
+    }, 50); // Add small delay to prevent immediate execution
+  }
+  
+  /**
+   * Retry a subscription with exponential backoff
+   */
+  private retrySubscription(key: string): void {
+    const retryCount = this.retryCount.get(key) || 0;
+    
+    if (retryCount >= RETRY_MAX) {
+      console.log(`[ConnectionMonitor] Max retries reached for ${key}`);
       return;
     }
-
-    // Check if any subscriptions are disconnected
-    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
-    const maxRetriesReachedSubscriptions = activeSubscriptions.filter(
-      key => statuses[key].maxRetriesReached === true
-    );
     
-    // If any subscription has reached max retries, we should try to recover it
-    if (maxRetriesReachedSubscriptions.length > 0) {
-      console.log(`[ConnectionMonitor] ${maxRetriesReachedSubscriptions.length} subscriptions have reached max retries`);
+    // Exponential backoff with jitter
+    const delay = RETRY_DELAY_BASE * Math.pow(1.5, retryCount) * (0.8 + Math.random() * 0.4);
+    
+    console.log(`[ConnectionMonitor] Scheduling retry ${retryCount + 1}/${RETRY_MAX} for ${key} in ${Math.round(delay)}ms`);
+    
+    setTimeout(() => {
+      this.onSubscriptionRetryCallback(key);
+      this.retryCount.set(key, retryCount + 1);
+    }, delay);
+  }
+  
+  /**
+   * Handle connection status change
+   */
+  private handleConnectionStatusChange(connected: boolean): void {
+    if (connected !== this.isConnectedFlag) {
+      this.isConnectedFlag = connected;
+      console.log(`[ConnectionMonitor] Connection status changed: ${connected}`);
+      this.onConnectionStatusChangeCallback(connected);
       
-      // Reset max retries flag and try again for these subscriptions
-      maxRetriesReachedSubscriptions.forEach(key => {
-        if (statuses[key].maxRetriesReached) {
-          statuses[key].maxRetriesReached = false;
-          statuses[key].retryCount = 0;
-          
-          // Add some delay to avoid thundering herd
-          const delay = Math.random() * 2000;
-          setTimeout(() => {
-            if (this.isActive) {
-              console.log(`[ConnectionMonitor] Attempting recovery for subscription: ${key}`);
-              this.retryCallback(key);
-            }
-          }, delay);
-        }
-      });
-    }
-    
-    const isAnyDisconnected = disconnectedSubscriptions.length > 0;
-    
-    // If status changed, notify via callback
-    if (this.lastConnectionStatus !== !isAnyDisconnected) {
-      this.lastConnectionStatus = !isAnyDisconnected;
-      
-      if (!isAnyDisconnected) {
-        // Reset failure count on successful connection
-        this.consecutiveFailures = 0;
-        this.lastSuccessfulConnection = Date.now();
-        console.log('[ConnectionMonitor] Connection status changed: connected');
-      } else {
-        this.consecutiveFailures++;
-        console.log(`[ConnectionMonitor] Connection status changed: disconnected (failures: ${this.consecutiveFailures})`);
+      if (connected) {
+        // Clear retry counters when connection is restored
+        this.retryCount.clear();
       }
-      
-      this.connectionCallback(!isAnyDisconnected);
     }
-
-    // Handle disconnected subscriptions with exponential backoff
-    const currentTime = Date.now();
-    const timeSinceLastSuccess = currentTime - this.lastSuccessfulConnection;
+  }
+  
+  /**
+   * Reconnect all subscriptions
+   */
+  public reconnectAll(): void {
+    console.log('[ConnectionMonitor] Reconnecting all subscriptions');
+    this.retryCount.clear(); // Reset retry counters
+    const subscriptions = subscriptionRegistry.getAll();
     
-    // If we've been trying to reconnect for too long, attempt a full recovery
-    if (isAnyDisconnected && timeSinceLastSuccess > CONNECTION_CONSTANTS.HEARTBEAT_TIMEOUT * 2) {
-      console.log('[ConnectionMonitor] Extended disconnect detected, attempting full recovery');
-      
-      disconnectedSubscriptions.forEach((key) => {
-        // Clear any existing retry timer
-        if (this.retryTimers.has(key)) {
-          clearTimeout(this.retryTimers.get(key));
-        }
-        
-        // Setup staggered reconnection
-        const delay = Math.random() * 3000; // Random delay up to 3 seconds to avoid thundering herd
-        const timer = setTimeout(() => {
-          if (this.isActive) {
-            console.log(`[ConnectionMonitor] Attempting recovery for subscription: ${key}`);
-            this.retryCallback(key);
-            this.retryTimers.delete(key);
-          }
-        }, delay);
-        
-        this.retryTimers.set(key, timer);
-      });
-      
-      // Reset the last successful connection time to avoid repeated recovery attempts
-      this.lastSuccessfulConnection = currentTime;
+    // Mark all as inactive
+    for (const subscription of subscriptions) {
+      subscriptionRegistry.updateStatus(subscription.key, false);
     }
+    
+    // Retry all subscriptions
+    for (const subscription of subscriptions) {
+      this.onSubscriptionRetryCallback(subscription.key);
+    }
+  }
+  
+  /**
+   * Get current connection status
+   */
+  public isConnected(): boolean {
+    return this.isConnectedFlag;
   }
 }

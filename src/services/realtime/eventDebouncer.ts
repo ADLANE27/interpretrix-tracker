@@ -6,6 +6,7 @@ export class EventDebouncer {
   private cleanupTimeout: NodeJS.Timeout | null = null;
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
   private eventCounts: Map<string, number> = new Map(); // Track event occurrences
+  private statusUpdateCache = new Map<string, string>(); // Cache for status updates
   
   constructor(private defaultDebounceTime: number = EVENT_COOLDOWN) {
     // Set up periodic cleanup to prevent memory leaks
@@ -20,7 +21,7 @@ export class EventDebouncer {
     this.cleanupTimeout = setTimeout(() => {
       this.cleanupOldEvents();
       this.setupCleanupInterval();
-    }, 60000); // Run cleanup every 60 seconds
+    }, 120000); // Run cleanup every 2 minutes (increased from 60s)
   }
   
   private cleanupOldEvents() {
@@ -29,7 +30,7 @@ export class EventDebouncer {
     
     // Find old entries
     this.recentEvents.forEach((timestamp, key) => {
-      if (now - timestamp > 60000) { // Increased to 60 seconds for better cleanup
+      if (now - timestamp > 300000) { // Increased to 5 minutes for better cleanup
         keysToDelete.push(key);
       }
     });
@@ -42,24 +43,47 @@ export class EventDebouncer {
         this.eventCounts.delete(key);
       });
     }
+    
+    // Also clean up status cache periodically
+    if (this.statusUpdateCache.size > 50) {
+      this.statusUpdateCache.clear();
+    }
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
+    // Special handling for status updates to prevent duplicates
+    if (eventKey.includes('status')) {
+      const parts = eventKey.split('-');
+      if (parts.length >= 3) {
+        const interpreterId = parts[1];
+        const newStatus = parts[2];
+        const cacheKey = `status-${interpreterId}`;
+        
+        // Skip if status hasn't changed
+        if (this.statusUpdateCache.get(cacheKey) === newStatus) {
+          return false;
+        }
+        
+        // Update cache
+        this.statusUpdateCache.set(cacheKey, newStatus);
+      }
+    }
+    
     // Increment event count
     const currentCount = this.eventCounts.get(eventKey) || 0;
     this.eventCounts.set(eventKey, currentCount + 1);
     
-    // Prioritize status updates to make them nearly instant
+    // Prioritize status updates to make them less frequent but still timely
     const isStatusUpdate = eventKey.includes('status') || eventKey.includes('STATUS');
                           
-    // Much shorter cooldown for status updates
+    // Much longer cooldown for status updates
     const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      // Don't log on every event to reduce console spam
-      if (DEBUG_MODE && !isStatusUpdate && currentCount % 10 === 0) {
+      // Only log once per 50 events to drastically reduce logging
+      if (DEBUG_MODE && currentCount % 50 === 0) {
         console.log(`[EventDebouncer] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey} (count: ${currentCount})`);
       }
       return false;
@@ -68,7 +92,7 @@ export class EventDebouncer {
     this.recentEvents.set(eventKey, now);
     
     // Automatic cleanup if Map gets too large
-    if (this.recentEvents.size > 100) { // Reduced from 500 to trigger cleanup more often
+    if (this.recentEvents.size > 50) { // Further reduced from 100 to trigger cleanup more often
       this.cleanupOldEvents();
     }
     
@@ -76,7 +100,7 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use nearly zero timeout for status updates
+    // Use longer timeout for status updates
     const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
     const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
     
@@ -107,5 +131,6 @@ export class EventDebouncer {
     // Clear all event tracking
     this.recentEvents.clear();
     this.eventCounts.clear();
+    this.statusUpdateCache.clear();
   }
 }
