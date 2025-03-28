@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MemberSuggestion, Suggestion } from '@/types/messaging';
@@ -25,7 +24,7 @@ export function useMessageMentions() {
   const checkForMentions = useCallback((text: string, cursorPos: number) => {
     const textBeforeCursor = text.substring(0, cursorPos);
     
-    // Improved regex to better match mentions at cursor position
+    // Improved regex to match mentions at cursor position
     const mentionMatch = textBeforeCursor.match(/@([^\s@]*)$/);
     
     if (mentionMatch) {
@@ -161,14 +160,12 @@ export function useMessageMentions() {
     }
   };
 
-  // Simplified function to apply mention formatting with no special handling for complex names
   const handleMentionSelect = (suggestion: Suggestion, message: string, cursorPosition: number) => {
     if (mentionStartIndex === -1) return message;
     
     const textBeforeMention = message.substring(0, mentionStartIndex);
     const textAfterCursor = message.substring(cursorPosition);
     
-    // Simple mention insertion, preserving exactly the displayed name regardless of type
     const insertText = `@${suggestion.name} `;
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;
