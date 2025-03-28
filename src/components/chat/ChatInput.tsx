@@ -43,7 +43,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const { formatMessage } = useMessageFormatter();
   const { toast } = useToast();
   
-  // Use our improved mentions hook
+  // Use our mention hooks
   const { 
     mentionSuggestionsVisible,
     mentionSearchTerm,
@@ -96,8 +96,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSend = () => {
     try {
-      const formattedMessage = formatMessage(message);
-      setMessage(formattedMessage);
+      // No formatting or special handling for mentions - just send the message as is
       onSendMessage();
     } catch (error) {
       console.error("Error sending message:", error);

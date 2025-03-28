@@ -161,22 +161,15 @@ export function useMessageMentions() {
     }
   };
 
-  // Function to apply mention formatting properly for complex language names
+  // Simplified function to apply mention formatting with no special handling for complex names
   const handleMentionSelect = (suggestion: Suggestion, message: string, cursorPosition: number) => {
     if (mentionStartIndex === -1) return message;
     
     const textBeforeMention = message.substring(0, mentionStartIndex);
     const textAfterCursor = message.substring(cursorPosition);
     
-    let insertText = '';
-    
-    if ('type' in suggestion && suggestion.type === 'language') {
-      // For language mentions, preserve the exact case and format of the language name
-      insertText = `@${suggestion.name} `;
-    } else {
-      // For user mentions
-      insertText = `@${suggestion.name} `;
-    }
+    // Simple mention insertion, preserving exactly the displayed name regardless of type
+    const insertText = `@${suggestion.name} `;
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;
     return newMessage;
