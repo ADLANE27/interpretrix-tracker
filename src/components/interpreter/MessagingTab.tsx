@@ -34,16 +34,17 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   return (
     <motion.div 
       className="flex h-full overflow-hidden rounded-xl 
-        bg-white/90 dark:bg-gray-800/90
-        border-[1px] border-slate-200/60 dark:border-slate-700/40
-        shadow-sm backdrop-blur-md"
+        bg-gradient-to-r from-palette-soft-blue/30 via-palette-soft-purple/20 to-palette-soft-peach/30
+        dark:from-palette-ocean-blue/20 dark:via-palette-vivid-purple/10 dark:to-palette-bright-orange/20
+        border border-white/20 dark:border-gray-700/20
+        shadow-md backdrop-blur-md"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {(!selectedChannelId || !isMobile) && (
         <motion.div 
-          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-slate-200/60 dark:border-slate-700/30 h-full overflow-hidden rounded-l-xl`}
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
