@@ -11,4 +11,5 @@ export const EVENT_CONNECTION_STATUS_CHANGE = 'connection-status-change';
 export const eventEmitter = new CustomEventEmitter();
 
 // Set max listeners to avoid memory leak warnings
-eventEmitter.setMaxListeners(20);
+// Status updates need more listeners due to the number of interpreter cards
+eventEmitter.setMaxListeners(100);

@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,15 +26,15 @@ export function useRealtimeSubscription2(
     callbackRef.current = callback;
   }, [callback]);
 
-  useEffect(() => {
-    if (!enabled) return;
+  // Memoize the channel setup to prevent recreating on each render
+  const setupChannel = useCallback(() => {
+    if (!enabled) return null;
     
     let channel = supabase.channel('custom-realtime-channel');
     
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        // Add a type assertion to resolve the TypeScript error
         'postgres_changes' as any, 
         {
           event: opt.event,
@@ -42,11 +42,20 @@ export function useRealtimeSubscription2(
           table: opt.table,
           filter: opt.filter
         } as any,
-        (payload) => {
+        (payload: any) => {
           callbackRef.current(payload);
         }
       );
     });
+    
+    return channel;
+  }, [enabled, optionsArray]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    
+    const channel = setupChannel();
+    if (!channel) return;
     
     // Subscribe to the channel
     const subscription = channel.subscribe();
@@ -54,9 +63,11 @@ export function useRealtimeSubscription2(
     
     // Cleanup function
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, [optionsArray, enabled]);
+  }, [enabled, setupChannel]);
 
   return channelRef.current;
 }

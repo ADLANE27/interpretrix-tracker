@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { Profile } from '@/types/profile';
@@ -22,14 +22,23 @@ export const useInterpreterStatusSync = ({
   initialStatus = 'available',
   isAdmin = false
 }: UseInterpreterStatusSyncOptions) => {
+  const onStatusChangeRef = useRef(onStatusChange);
+  
+  // Update ref when prop changes
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
+  
   const {
-    status,
-    updateStatus,
-    isConnected
+    updateStatus
   } = useRealtimeStatus({
     interpreterId,
-    onStatusChange,
-    initialStatus
+    initialStatus,
+    onStatusChange: (newStatus) => {
+      if (onStatusChangeRef.current) {
+        onStatusChangeRef.current(newStatus);
+      }
+    }
   });
   
   return {

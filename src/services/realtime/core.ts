@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
@@ -19,9 +18,17 @@ class RealtimeService {
   private initialized: boolean = false;
   private eventDebouncer: EventDebouncer;
   private activeSubscriptions: Map<string, () => void> = new Map();
+  private interpreterSubscriptions: Map<string, () => void> = new Map();
 
   constructor() {
     this.eventDebouncer = new EventDebouncer();
+  }
+  
+  /**
+   * Check if the service is already initialized
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
   }
 
   /**
@@ -64,6 +71,10 @@ class RealtimeService {
     // Clean up all active subscriptions
     this.activeSubscriptions.forEach(cleanup => cleanup());
     this.activeSubscriptions.clear();
+    
+    // Clean up interpreter subscriptions
+    this.interpreterSubscriptions.forEach(cleanup => cleanup());
+    this.interpreterSubscriptions.clear();
     
     subscriptionRegistry.cleanupAll();
     this.initialized = false;
@@ -118,8 +129,15 @@ class RealtimeService {
   /**
    * Subscribe to interpreter status updates
    */
-  public subscribeToInterpreterStatus(interpreterId: string): void {
+  public subscribeToInterpreterStatus(interpreterId: string): () => void {
     const subscriptionKey = `interpreter-status-${interpreterId}`;
+    
+    // Check if we already have an active subscription
+    if (this.interpreterSubscriptions.has(subscriptionKey)) {
+      console.log(`[RealtimeService] Reusing existing interpreter status subscription: ${interpreterId}`);
+      return this.interpreterSubscriptions.get(subscriptionKey)!;
+    }
+    
     const existingStatus = subscriptionRegistry.getStatus(subscriptionKey);
     
     // Unsubscribe from existing subscription if any
@@ -171,9 +189,27 @@ class RealtimeService {
       
       // Register in our subscription registry
       subscriptionRegistry.register(subscriptionKey, channel);
+      
+      // Create cleanup function
+      const cleanup = () => {
+        console.log(`[RealtimeService] Removing interpreter status subscription: ${interpreterId}`);
+        try {
+          supabase.removeChannel(channel);
+          subscriptionRegistry.unregister(subscriptionKey);
+          this.interpreterSubscriptions.delete(subscriptionKey);
+        } catch (error) {
+          console.error(`[RealtimeService] Error removing channel: ${error}`);
+        }
+      };
+      
+      // Store in our interpreterSubscriptions map
+      this.interpreterSubscriptions.set(subscriptionKey, cleanup);
+      
+      return cleanup;
     } catch (error) {
       console.error(`[RealtimeService] Error subscribing to interpreter status: ${error}`);
       subscriptionRegistry.updateStatus(subscriptionKey, false);
+      return () => {};
     }
   }
   

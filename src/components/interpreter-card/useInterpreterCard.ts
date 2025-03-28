@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
@@ -32,41 +32,44 @@ export const useInterpreterCard = (
   const [isFlipped, setIsFlipped] = useState(false);
   const prevStatusRef = useRef<Profile['status']>(interpreter.status);
   
-  const flipCard = () => {
+  const flipCard = useCallback(() => {
     setIsFlipped(prev => !prev);
-  };
+  }, []);
+  
+  const handleStatusChangeCallback = useCallback((newStatus: Profile['status']) => {
+    console.log(`[InterpreterCard] Status sync updated status to: ${newStatus}`);
+    setStatus(newStatus);
+    
+    if (onStatusChange && newStatus !== prevStatusRef.current) {
+      onStatusChange(interpreter.id, newStatus);
+    }
+    
+    prevStatusRef.current = newStatus;
+  }, [interpreter.id, onStatusChange]);
   
   const { updateStatus, isConnected } = useRealtimeStatus({
     interpreterId: interpreter.id,
     initialStatus: interpreter.status,
-    onStatusChange: (newStatus) => {
-      console.log(`[InterpreterCard] Status sync updated status to: ${newStatus}`);
-      setStatus(newStatus);
-      
-      if (onStatusChange && newStatus !== prevStatusRef.current) {
-        onStatusChange(interpreter.id, newStatus);
-      }
-      
-      prevStatusRef.current = newStatus;
-    }
+    onStatusChange: handleStatusChangeCallback
   });
+  
+  // Handle global status updates with memoized handler
+  const handleStatusUpdate = useCallback((data: { interpreterId: string, status: Profile['status'] }) => {
+    if (data.interpreterId === interpreter.id && data.status !== status) {
+      console.log(`[InterpreterCard] Global status update for ${interpreter.name} to ${data.status}`);
+      setStatus(data.status);
+      prevStatusRef.current = data.status;
+    }
+  }, [interpreter.id, interpreter.name, status]);
   
   // Listen for global status updates
   useEffect(() => {
-    const handleStatusUpdate = (data: { interpreterId: string, status: Profile['status'] }) => {
-      if (data.interpreterId === interpreter.id && data.status !== status) {
-        console.log(`[InterpreterCard] Global status update for ${interpreter.name} to ${data.status}`);
-        setStatus(data.status);
-        prevStatusRef.current = data.status;
-      }
-    };
-    
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
-  }, [interpreter.id, interpreter.name, status]);
+  }, [handleStatusUpdate]);
   
   // Effect to sync status from props
   useEffect(() => {
@@ -77,10 +80,14 @@ export const useInterpreterCard = (
     }
   }, [interpreter.status, status, interpreter.name]);
 
-  const handleStatusChange = async (newStatus: Profile['status']) => {
+  const handleStatusChange = useCallback(async (newStatus: Profile['status']) => {
     console.log(`[InterpreterCard] Status change requested for ${interpreter.name} to ${newStatus}`);
-    setStatus(newStatus);
-    prevStatusRef.current = newStatus;
+    
+    // Avoid setting state if it's already set to this value
+    if (newStatus !== status) {
+      setStatus(newStatus);
+      prevStatusRef.current = newStatus;
+    }
     
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
@@ -92,7 +99,7 @@ export const useInterpreterCard = (
     } catch (error) {
       console.error(`[InterpreterCard] Failed to update status for ${interpreter.name}:`, error);
     }
-  };
+  }, [interpreter.id, interpreter.name, onStatusChange, status, updateStatus]);
 
   const parsedLanguages = interpreter.languages
     .map(lang => {

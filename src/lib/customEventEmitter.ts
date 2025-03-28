@@ -4,6 +4,7 @@
  */
 export class CustomEventEmitter {
   private events: Record<string, Function[]> = {};
+  private maxListeners: number = 10;
 
   /**
    * Register an event listener
@@ -12,7 +13,18 @@ export class CustomEventEmitter {
     if (!this.events[event]) {
       this.events[event] = [];
     }
-    this.events[event].push(listener);
+
+    // Check if we're exceeding maxListeners and provide a warning
+    if (this.events[event].length >= this.maxListeners) {
+      console.warn(
+        `[CustomEventEmitter] Possible memory leak detected. ${this.events[event].length} listeners added for event: ${event}`
+      );
+    }
+    
+    // Check if this exact listener is already registered to avoid duplicates
+    if (!this.events[event].some(l => l === listener)) {
+      this.events[event].push(listener);
+    }
   }
 
   /**
@@ -44,9 +56,26 @@ export class CustomEventEmitter {
 
   /**
    * Set the maximum number of listeners for an event
-   * (Compatibility with Node.js EventEmitter, ignored in this implementation)
    */
   setMaxListeners(n: number): void {
-    // This is a no-op method for compatibility with Node.js EventEmitter
+    this.maxListeners = n;
+  }
+  
+  /**
+   * Get the current number of listeners for an event
+   */
+  listenerCount(event: string): number {
+    return this.events[event]?.length || 0;
+  }
+  
+  /**
+   * Remove all listeners for a specific event or all events
+   */
+  removeAllListeners(event?: string): void {
+    if (event) {
+      this.events[event] = [];
+    } else {
+      this.events = {};
+    }
   }
 }
