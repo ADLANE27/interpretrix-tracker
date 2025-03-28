@@ -108,14 +108,14 @@ export class ConnectionMonitor {
     setTimeout(() => {
       try {
         this.lastConnectionCheck = Date.now();
-        const subscriptions = subscriptionRegistry.getAll();
+        const statuses = subscriptionRegistry.getAllStatuses();
         let activeCount = 0;
         let totalCount = 0;
         
         // Count active subscriptions
-        for (const subscription of subscriptions) {
+        for (const key in statuses) {
           totalCount++;
-          if (subscription.active) {
+          if (statuses[key].isActive) {
             activeCount++;
           }
         }
@@ -133,9 +133,9 @@ export class ConnectionMonitor {
           }
           
           // Retry inactive subscriptions
-          for (const subscription of subscriptions) {
-            if (!subscription.active) {
-              this.retrySubscription(subscription.key);
+          for (const key in statuses) {
+            if (!statuses[key].isActive) {
+              this.retrySubscription(key);
             }
           }
         } else {
@@ -194,16 +194,16 @@ export class ConnectionMonitor {
   public reconnectAll(): void {
     console.log('[ConnectionMonitor] Reconnecting all subscriptions');
     this.retryCount.clear(); // Reset retry counters
-    const subscriptions = subscriptionRegistry.getAll();
+    const statuses = subscriptionRegistry.getAllStatuses();
     
     // Mark all as inactive
-    for (const subscription of subscriptions) {
-      subscriptionRegistry.updateStatus(subscription.key, false);
+    for (const key in statuses) {
+      subscriptionRegistry.updateStatus(key, false);
     }
     
     // Retry all subscriptions
-    for (const subscription of subscriptions) {
-      this.onSubscriptionRetryCallback(subscription.key);
+    for (const key in statuses) {
+      this.onSubscriptionRetryCallback(key);
     }
   }
   

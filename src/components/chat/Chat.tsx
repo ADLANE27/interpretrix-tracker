@@ -220,7 +220,7 @@ const Chat = ({
       setAutoScrollEnabled(true);
     }
     
-    if (target.scrollTop < 50 && !isLoading && hasMoreMessages) {
+    if (target.scrollTop < 50 && !isMessagesLoading && hasMoreMessages) {
       loadMoreMessages();
     }
   };
