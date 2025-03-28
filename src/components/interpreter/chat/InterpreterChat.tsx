@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -44,7 +45,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "50%"
+  messageListHeight = "calc(100vh - 200px)"
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -394,14 +395,14 @@ export const InterpreterChat = ({
         )}
       </motion.div>
 
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md">
+      <div className="flex flex-col flex-1 overflow-hidden bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md">
         <div 
-          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none"
+          className="flex-1 overflow-y-auto p-3 sm:p-4 scrollbar-none"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ maxHeight: messageListHeight, height: messageListHeight }}
+          style={{ height: messageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-gradient-to-br from-white/70 to-palette-soft-blue/30 dark:from-gray-800/70 dark:to-palette-ocean-blue/20 backdrop-blur-md flex items-center justify-center">

@@ -53,8 +53,8 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full min-h-screen pb-24 bg-gradient-to-br from-white via-palette-soft-blue/20 to-palette-soft-purple/30 dark:from-gray-900 dark:via-palette-ocean-blue/10 dark:to-palette-vivid-purple/10">
-      <div className="container mx-auto p-0 h-full">
+    <div className="flex-1 flex flex-col h-[calc(100vh-56px)] overflow-hidden bg-gradient-to-br from-white via-palette-soft-blue/20 to-palette-soft-purple/30 dark:from-gray-900 dark:via-palette-ocean-blue/10 dark:to-palette-vivid-purple/10">
+      <div className="container mx-auto p-0 flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -62,11 +62,11 @@ export const DashboardContent = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, type: "spring", stiffness: 200, damping: 20 }}
-            className="w-full h-full"
+            className="w-full h-full flex flex-col"
           >
             <div className={`
               ${isMobile ? 'p-2 sm:p-3' : 'p-4 md:p-6'} 
-              h-full overflow-auto
+              flex-1 overflow-hidden
               rounded-xl
             `}>
               {renderActiveTab()}

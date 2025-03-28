@@ -28,7 +28,7 @@ interface ChatProps {
 const Chat = ({ 
   channelId, 
   userRole = 'admin', 
-  messageListHeight = "50vh" 
+  messageListHeight = "calc(100vh - 200px)" 
 }: ChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -320,14 +320,14 @@ const Chat = ({
         </div>
       </motion.div>
 
-      <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <div 
-          className="flex-grow overflow-y-auto p-2 sm:p-4 scrollbar-none"
+          className="flex-1 overflow-y-auto p-2 sm:p-4 scrollbar-none"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ maxHeight: messageListHeight, height: messageListHeight }}
+          style={{ height: messageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex items-center justify-center">
