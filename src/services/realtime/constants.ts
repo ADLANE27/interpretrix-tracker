@@ -26,3 +26,17 @@ export const CHANNEL_PREFIX = {
   MISSION: 'mission-',
   TERMINOLOGY: 'terminology-'
 };
+
+// Connection monitor constants
+export const RETRY_MAX = 10;
+export const RETRY_DELAY_BASE = 2000;
+export const CONNECTION_TIMEOUT = 15000;
+export const RECONNECT_STAGGER_INTERVAL = 500;
+export const RECONNECT_STAGGER_MAX_DELAY = 10000;
+export const RECONNECT_PERIODIC_INTERVAL = 60000;
+
+// Debouncing and event handling constants
+export const CONNECTION_STATUS_DEBOUNCE_TIME = 500;
+export const EVENT_COOLDOWN = 1000;
+export const STATUS_UPDATE_DEBOUNCE = 200;
+export const DEBUG_MODE = false;
