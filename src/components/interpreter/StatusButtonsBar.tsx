@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -28,7 +27,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Use the interpreterId passed in props or the userId from the component state
   const effectiveInterpreterId = interpreterId || userId;
 
   const {
@@ -39,12 +37,10 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     interpreterId: effectiveInterpreterId || '',
     initialStatus: currentStatus,
     onStatusChange: (newStatus) => {
-      // This handler is called when status is updated via realtime
       console.log('[StatusButtonsBar] Status updated via realtime:', newStatus);
     }
   });
 
-  // Set userId from auth if interpreterId is not provided
   useEffect(() => {
     if (!interpreterId) {
       import('@/integrations/supabase/client').then(({ supabase }) => {
@@ -140,7 +136,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   useEffect(() => {
-    // Debug logging to track props and state
     console.log('[StatusButtonsBar] Props/State update:', {
       currentStatus,
       localStatus,
