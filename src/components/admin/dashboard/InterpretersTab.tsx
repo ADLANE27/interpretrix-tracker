@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,8 +9,9 @@ import { StatisticsCards } from "@/components/admin/dashboard/StatisticsCards";
 import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
-import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { useTableSubscription } from "@/hooks/useTableSubscription";
+import { v4 as uuidv4 } from 'uuid';
 
 interface WorkHours {
   start_morning?: string;
@@ -74,6 +76,34 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
+  // Direct subscription to interpreter status updates
+  useEffect(() => {
+    console.log('[InterpretersTab] Setting up direct interpreter status update listener');
+    
+    const handleInterpreterStatusUpdate = (data: {
+      interpreterId: string;
+      status: Profile['status'];
+      timestamp?: number;
+      uuid?: string;
+    }) => {
+      console.log(`[InterpretersTab] Received status update for interpreter ${data.interpreterId}: ${data.status}`);
+      
+      setInterpreters(current => 
+        current.map(interpreter => 
+          interpreter.id === data.interpreterId 
+            ? { ...interpreter, status: data.status } 
+            : interpreter
+        )
+      );
+    };
+    
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleInterpreterStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleInterpreterStatusUpdate);
+    };
+  }, []);
+
   // Subscribe to reservation changes using the centralized hook
   useTableSubscription(
     'private_reservations',
@@ -88,7 +118,9 @@ export const InterpretersTab: React.FC = () => {
 
   const handleInterpreterStatusChange = async (interpreterId: string, newStatus: Profile['status']) => {
     try {
-      // This is now handled by useRealtimeStatus, but we'll update our local state immediately for better UX
+      console.log(`[InterpretersTab] Status change requested for ${interpreterId} to ${newStatus}`);
+      
+      // Update our local state immediately for better UX
       setInterpreters(current => 
         current.map(interpreter => 
           interpreter.id === interpreterId 
@@ -97,6 +129,14 @@ export const InterpretersTab: React.FC = () => {
         )
       );
 
+      // Emit event for better sync across components
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status: newStatus,
+        timestamp: Date.now(),
+        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+      });
+
       const interpreter = interpreters.find(i => i.id === interpreterId);
       if (interpreter) {
         toast({
@@ -104,25 +144,41 @@ export const InterpretersTab: React.FC = () => {
           description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour en ${newStatus}`,
         });
       }
+      
+      // Update in database
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: newStatus
+      });
+      
+      if (error) {
+        console.error('[InterpretersTab] Error updating interpreter status:', error);
+        throw error;
+      }
     } catch (error) {
-      console.error('Error updating interpreter status:', error);
+      console.error('[InterpretersTab] Error updating interpreter status:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut de l'interprète",
         variant: "destructive"
       });
+      
+      // Fetch interpreters again to ensure our state is in sync with the database
+      fetchInterpreters();
     }
   };
   
-  // Subscribe to interpreter profile changes
+  // Direct subscription to interpreter profile changes for immediate UI updates
   useTableSubscription(
     'interpreter_profiles',
     'UPDATE',
-    'status=eq.available,status=eq.unavailable,status=eq.busy,status=eq.pause',
+    null, // Use null to catch all updates without filtering
     (payload) => {
       if (payload.new && payload.old && payload.new.status !== payload.old.status) {
         const interpreterId = payload.new.id;
         const newStatus = payload.new.status;
+        
+        console.log(`[InterpretersTab] DB update detected: Interpreter ${interpreterId} status changed to ${newStatus}`);
         
         setInterpreters(current => 
           current.map(interpreter => 
@@ -131,6 +187,14 @@ export const InterpretersTab: React.FC = () => {
               : interpreter
           )
         );
+        
+        // Broadcast to ensure all components have the latest status
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+          interpreterId: interpreterId,
+          status: newStatus,
+          timestamp: Date.now(),
+          uuid: uuidv4()
+        });
       }
     }
   );
@@ -330,6 +394,7 @@ export const InterpretersTab: React.FC = () => {
         interpreters={filteredInterpreters}
         onStatusChange={handleInterpreterStatusChange}
         viewMode={viewMode}
+        key={`interpreters-list-${interpreters.map(i => `${i.id}-${i.status}`).join('-')}`}
       />
     </div>
   );

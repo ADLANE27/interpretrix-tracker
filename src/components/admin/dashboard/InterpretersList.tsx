@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import InterpreterCard from "@/components/InterpreterCard";
 import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterListItem";
 import { Profile } from "@/types/profile";
@@ -42,6 +42,10 @@ interface InterpretersListProps {
   viewMode?: "grid" | "list";
 }
 
+// Memoize the individual list item to prevent unnecessary re-renders
+const MemoizedInterpreterListItem = memo(InterpreterListItem);
+const MemoizedInterpreterCard = memo(InterpreterCard);
+
 export const InterpretersList: React.FC<InterpretersListProps> = ({
   interpreters,
   onStatusChange,
@@ -51,8 +55,8 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
     return (
       <div className="space-y-2">
         {interpreters.map(interpreter => (
-          <InterpreterListItem 
-            key={interpreter.id} 
+          <MemoizedInterpreterListItem 
+            key={`${interpreter.id}-${interpreter.status}`}
             interpreter={{
               id: interpreter.id,
               name: `${interpreter.first_name} ${interpreter.last_name}`,
@@ -79,8 +83,8 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {interpreters.map(interpreter => (
-        <div key={interpreter.id} className="h-auto">
-          <InterpreterCard 
+        <div key={`${interpreter.id}-${interpreter.status}`} className="h-auto">
+          <MemoizedInterpreterCard 
             interpreter={{
               id: interpreter.id,
               name: `${interpreter.first_name} ${interpreter.last_name}`,

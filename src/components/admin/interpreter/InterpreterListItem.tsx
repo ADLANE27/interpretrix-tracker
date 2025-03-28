@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -6,9 +5,10 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -48,6 +48,8 @@ const workLocationConfig = {
 
 export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
   const { toast } = useToast();
+  const [localStatus, setLocalStatus] = useState<Profile['status']>(interpreter.status);
+  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const {
     status: interpreterStatus,
@@ -57,22 +59,70 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     interpreterId: interpreter.id,
     initialStatus: interpreter.status,
     onStatusChange: (newStatus) => {
-      console.log(`Status for ${interpreter.id} changed to ${newStatus}`);
+      console.log(`[InterpreterListItem] Status for ${interpreter.id} changed to ${newStatus}`);
+      setLocalStatus(newStatus);
     }
   });
 
-  const handleStatusChange = async (newStatus: Profile['status']) => {
-    const success = await updateStatus(newStatus);
+  useEffect(() => {
+    console.log(`[InterpreterListItem] Setting up status listener for ${interpreter.id}`);
     
-    if (success && onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
-    } else if (!success) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
-        variant: "destructive",
-      });
+    const handleStatusUpdate = (data: { 
+      interpreterId: string, 
+      status: Profile['status'],
+      timestamp?: number
+    }) => {
+      if (data.interpreterId === interpreter.id) {
+        console.log(`[InterpreterListItem] Received status update for ${interpreter.id}: ${data.status}`);
+        setLocalStatus(data.status);
+      }
+    };
+    
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    };
+  }, [interpreter.id]);
+
+  useEffect(() => {
+    if (interpreter.status !== localStatus) {
+      console.log(`[InterpreterListItem] Prop status changed for ${interpreter.id}: ${interpreter.status}`);
+      setLocalStatus(interpreter.status);
     }
+  }, [interpreter.status, localStatus, interpreter.id]);
+
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    console.log(`[InterpreterListItem] Status change requested for ${interpreter.id} to ${newStatus}`);
+    
+    setLocalStatus(newStatus);
+    
+    if (statusUpdateTimeoutRef.current) {
+      clearTimeout(statusUpdateTimeoutRef.current);
+    }
+    
+    statusUpdateTimeoutRef.current = setTimeout(async () => {
+      try {
+        const success = await updateStatus(newStatus);
+        
+        if (success && onStatusChange) {
+          onStatusChange(interpreter.id, newStatus);
+        } else if (!success) {
+          toast({
+            title: "Erreur",
+            description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error(`[InterpreterListItem] Error updating status: ${error}`);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      }
+    }, 50);
   };
 
   const parsedLanguages = interpreter.languages
@@ -93,13 +143,13 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     interpreter.booth_number;
 
   return (
-    <Card className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`}>
+    <Card className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`} key={`${interpreter.id}-${localStatus}`}>
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
-              currentStatus={interpreterStatus}
+              currentStatus={localStatus}
               displayFormat="badge"
               onStatusChange={handleStatusChange}
             />

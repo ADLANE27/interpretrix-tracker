@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
@@ -121,13 +122,29 @@ class RealtimeService {
   public broadcastStatusUpdate(interpreterId: string, status: Profile['status']): void {
     console.log(`[RealtimeService] Broadcasting status update for ${interpreterId}: ${status}`);
     
-    // Immediate broadcast
-    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-      interpreterId,
-      status,
-      timestamp: Date.now(),
-      uuid: uuidv4() // Add unique ID to ensure event is always processed
-    });
+    // Generate a unique ID for this update to prevent duplicate processing
+    const updateId = uuidv4();
+    
+    // Immediate broadcast with minimal delay to ensure event is processed
+    setTimeout(() => {
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status,
+        timestamp: Date.now(),
+        uuid: updateId 
+      });
+    }, 0);
+    
+    // Send a second broadcast after a short delay to ensure it propagates
+    // This helps in cases where components might have missed the first event
+    setTimeout(() => {
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status,
+        timestamp: Date.now(),
+        uuid: `${updateId}-followup`
+      });
+    }, 100);
   }
 
   /**

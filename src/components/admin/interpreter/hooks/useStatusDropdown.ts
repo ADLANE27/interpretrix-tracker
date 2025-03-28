@@ -1,9 +1,10 @@
-
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { realtimeService } from "@/services/realtime";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { v4 as uuidv4 } from 'uuid';
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -11,6 +12,7 @@ export function useStatusDropdown(
   onStatusChange?: (newStatus: Status) => void
 ) {
   const [isOpen, setIsOpen] = useState(false);
+  const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -19,7 +21,7 @@ export function useStatusDropdown(
   const retryAttemptsRef = useRef(0);
   
   const {
-    status: localStatus,
+    status: hookStatus,
     updateStatus,
     isConnected
   } = useRealtimeStatus({
@@ -30,8 +32,41 @@ export function useStatusDropdown(
       if (connected) {
         retryAttemptsRef.current = 0;
       }
+    },
+    onStatusChange: (newStatus) => {
+      console.log(`[useStatusDropdown] Status from hook updated to ${newStatus} for ${interpreterId}`);
+      setLocalStatus(newStatus);
     }
   });
+
+  // Listen for global status updates
+  useEffect(() => {
+    const handleStatusUpdate = (data: { 
+      interpreterId: string,
+      status: Status,
+      timestamp?: number,
+      uuid?: string
+    }) => {
+      if (data.interpreterId === interpreterId && data.status !== localStatus) {
+        console.log(`[useStatusDropdown] Received status update event for ${interpreterId}: ${data.status}`);
+        setLocalStatus(data.status);
+      }
+    };
+    
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    };
+  }, [interpreterId, localStatus]);
+
+  // Keep local status in sync with current status prop
+  useEffect(() => {
+    if (currentStatus !== localStatus) {
+      console.log(`[useStatusDropdown] Prop status changed for ${interpreterId}: ${currentStatus}`);
+      setLocalStatus(currentStatus);
+    }
+  }, [currentStatus, interpreterId, localStatus]);
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
@@ -50,13 +85,21 @@ export function useStatusDropdown(
       setIsUpdating(true);
       console.log(`[StatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      // Update local state immediately for responsive UI
+      setLocalStatus(pendingStatus);
+      
       // Call parent callback if provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Immediate broadcast for instant UI updates
-      realtimeService.broadcastStatusUpdate(interpreterId, pendingStatus);
+      // Broadcast status change for immediate UI updates across components
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status: pendingStatus,
+        timestamp: Date.now(),
+        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+      });
       
       const success = await updateStatus(pendingStatus);
       
