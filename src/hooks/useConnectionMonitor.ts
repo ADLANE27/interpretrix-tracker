@@ -1,173 +1,187 @@
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { realtimeService } from '@/services/realtimeService';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
-import { realtimeService } from '@/services/realtime';
+import { CONNECTION_CONSTANTS } from './supabase-connection/constants';
 
-export function useConnectionMonitor() {
-  const { toast } = useToast();
-  const [connectionError, setConnectionError] = useState(false);
-  const [reconnectingFor, setReconnectingFor] = useState(0);
-  const [isForceReconnecting, setIsForceReconnecting] = useState(false);
-  const reconnectAttemptRef = useRef(0);
-  const reconnectStartTimeRef = useRef<number | null>(null);
-  const reconnectTimerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSuccessfulConnectionRef = useRef<number>(Date.now());
+export const useConnectionMonitor = () => {
+  const [connectionError, setConnectionError] = useState<boolean>(false);
+  const [reconnectingFor, setReconnectingFor] = useState<number>(0);
+  const [isForceReconnecting, setIsForceReconnecting] = useState<boolean>(false);
+  const disconnectedSince = useRef<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { toast, dismiss } = useToast();
   const toastIdRef = useRef<string | null>(null);
-  
-  // Initialize realtime service and listen for connection status changes
-  useEffect(() => {
-    console.log('[ConnectionMonitor] Initializing connection monitor');
-    const cleanup = realtimeService.init();
+
+  // Clear any existing connection error toast
+  const clearErrorToast = useCallback(() => {
+    if (toastIdRef.current) {
+      dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+  }, [dismiss]);
+
+  // Show connection error toast
+  const showConnectionErrorToast = useCallback(() => {
+    clearErrorToast();
     
+    // Create a new toast with a unique ID
+    const id = `connection-error-${Date.now()}`;
+    toastIdRef.current = id;
+    
+    toast({
+      id,
+      title: "Problème de connexion",
+      description: "La connexion au serveur a été perdue. Tentative de reconnexion en cours...",
+      variant: "destructive",
+      duration: 0, // Keep it visible until dismissed
+    });
+  }, [toast, clearErrorToast]);
+
+  // Show connection restored toast
+  const showConnectionRestoredToast = useCallback(() => {
+    clearErrorToast();
+    
+    const id = `connection-restored-${Date.now()}`;
+    toastIdRef.current = id;
+    
+    toast({
+      id,
+      title: "Connexion rétablie",
+      description: "La connexion au serveur a été rétablie avec succès.",
+      variant: "success",
+      duration: 5000,
+    });
+  }, [toast, clearErrorToast]);
+
+  // Update the reconnection timer
+  useEffect(() => {
+    if (!connectionError) {
+      // Reset timer when connected
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      disconnectedSince.current = null;
+      setReconnectingFor(0);
+      return;
+    }
+
+    // Start tracking disconnection time
+    if (!disconnectedSince.current) {
+      disconnectedSince.current = Date.now();
+    }
+
+    // Update the timer every second
+    intervalRef.current = setInterval(() => {
+      if (disconnectedSince.current) {
+        const seconds = Math.floor((Date.now() - disconnectedSince.current) / 1000);
+        setReconnectingFor(seconds);
+      }
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [connectionError]);
+
+  // Listen for connection status changes
+  useEffect(() => {
     const handleConnectionStatusChange = (connected: boolean) => {
       console.log('[ConnectionMonitor] Connection status changed:', connected);
       
+      setConnectionError(!connected);
+      
       if (connected) {
-        // Connection is back, reset error state
-        if (connectionError) {
-          setConnectionError(false);
-          setIsForceReconnecting(false);
-          
-          // Dismiss previous error toast if it exists
-          if (toastIdRef.current) {
-            const result = toast({
-              title: "Connexion rétablie",
-              description: "La connexion temps réel a été rétablie",
-              duration: 3000,
-            });
-            toastIdRef.current = null;
-          } else {
-            toast({
-              title: "Connexion rétablie",
-              description: "La connexion temps réel a été rétablie",
-              duration: 3000,
-            });
-          }
+        // Connection restored
+        if (disconnectedSince.current) {
+          showConnectionRestoredToast();
+          disconnectedSince.current = null;
+          setReconnectingFor(0);
         }
-        reconnectAttemptRef.current = 0;
-        reconnectStartTimeRef.current = null;
-        setReconnectingFor(0);
-        
-        if (reconnectTimerIntervalRef.current) {
-          clearInterval(reconnectTimerIntervalRef.current);
-          reconnectTimerIntervalRef.current = null;
-        }
-        
-        lastSuccessfulConnectionRef.current = Date.now();
       } else {
-        // Connection lost, start tracking time
-        if (!reconnectStartTimeRef.current) {
-          reconnectStartTimeRef.current = Date.now();
-          
-          // Start a timer to track how long we've been reconnecting
-          if (reconnectTimerIntervalRef.current) {
-            clearInterval(reconnectTimerIntervalRef.current);
-          }
-          
-          reconnectTimerIntervalRef.current = setInterval(() => {
-            if (reconnectStartTimeRef.current) {
-              const elapsedSeconds = Math.floor((Date.now() - reconnectStartTimeRef.current) / 1000);
-              setReconnectingFor(elapsedSeconds);
-              
-              // Only show toast after 5 seconds of disconnection
-              if (elapsedSeconds === 5 && !toastIdRef.current) {
-                const result = toast({
-                  title: "Problème de connexion",
-                  description: "Tentative de reconnexion en cours...",
-                  duration: 0, // Persistent until connection is restored
-                });
-                toastIdRef.current = result.id;
-              }
-            }
-          }, 1000);
+        // Connection lost
+        if (!disconnectedSince.current) {
+          disconnectedSince.current = Date.now();
+          showConnectionErrorToast();
         }
-        
-        setConnectionError(true);
-        reconnectAttemptRef.current += 1;
       }
     };
     
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
     
-    // Initial connection check with delay
-    const initialCheckTimeout = setTimeout(() => {
-      const isConnected = realtimeService.isConnected();
-      if (!isConnected) {
-        handleConnectionStatusChange(false);
-      }
-    }, 5000);
+    // Start monitoring connection
+    realtimeService.monitorConnection();
+    
+    // Check current connection status
+    const isCurrentlyConnected = realtimeService.isConnected();
+    setConnectionError(!isCurrentlyConnected);
+    
+    if (!isCurrentlyConnected && !disconnectedSince.current) {
+      disconnectedSince.current = Date.now();
+      showConnectionErrorToast();
+    }
     
     return () => {
       eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
-      clearTimeout(initialCheckTimeout);
-      cleanup();
+      clearErrorToast();
       
-      if (reconnectTimerIntervalRef.current) {
-        clearInterval(reconnectTimerIntervalRef.current);
-      }
-      
-      // Clear any persistent toast on unmount
-      if (toastIdRef.current) {
-        toast({
-          duration: 1,
-        });
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [toast, connectionError]);
+  }, [showConnectionErrorToast, showConnectionRestoredToast, clearErrorToast]);
 
-  // Effect to update the connection status when component mounts
-  useEffect(() => {
-    const isConnected = realtimeService.isConnected();
-    if (!isConnected && !connectionError) {
-      setConnectionError(true);
-    } else if (isConnected && connectionError) {
-      setConnectionError(false);
-    }
-  }, [connectionError]);
-
-  // Manual force reconnect handler
+  // Handler for manual force reconnect
   const handleForceReconnect = useCallback(() => {
-    console.log('[ConnectionMonitor] Manual reconnection requested');
+    if (isForceReconnecting) return;
+    
     setIsForceReconnecting(true);
+    clearErrorToast();
     
-    // Reset timers for tracking reconnection time
-    if (reconnectStartTimeRef.current) {
-      reconnectStartTimeRef.current = Date.now();
-      setReconnectingFor(0);
-    }
+    // Show reconnecting toast
+    const id = `force-reconnect-${Date.now()}`;
+    toastIdRef.current = id;
     
-    // Attempt full service reconnection
-    realtimeService.reconnectAll();
-    
-    // Show toast notification
     toast({
-      title: "Reconnexion initiée",
-      description: "Tentative de reconnexion en cours...",
-      duration: 5000,
+      id,
+      title: "Reconnexion en cours",
+      description: "Tentative de reconnexion forcée...",
+      variant: "default",
+      duration: 0,
     });
     
-    // Reset force reconnecting state after a timeout
+    // Attempt reconnection
+    realtimeService.reconnectAll();
+    
+    // Reset state after a delay
     setTimeout(() => {
       setIsForceReconnecting(false);
+      clearErrorToast();
       
       // Check if reconnection was successful
       const isConnected = realtimeService.isConnected();
-      if (!isConnected) {
-        toast({
-          title: "Échec de la reconnexion",
-          description: "La connexion n'a pas pu être rétablie. Veuillez rafraîchir la page.",
-          variant: "destructive",
-          duration: 0,
-        });
+      
+      if (isConnected) {
+        showConnectionRestoredToast();
+        setConnectionError(false);
+        disconnectedSince.current = null;
+        setReconnectingFor(0);
+      } else {
+        showConnectionErrorToast();
       }
-    }, 8000);
-  }, [toast]);
+    }, 3000);
+  }, [isForceReconnecting, toast, clearErrorToast, showConnectionRestoredToast, showConnectionErrorToast]);
 
   return {
     connectionError,
-    reconnectingFor, 
+    reconnectingFor,
     isForceReconnecting,
-    handleForceReconnect
+    handleForceReconnect,
   };
-}
+};

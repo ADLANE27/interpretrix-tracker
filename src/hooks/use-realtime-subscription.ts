@@ -1,6 +1,8 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { CONNECTION_CONSTANTS } from './supabase-connection/constants';
 
 interface SubscriptionConfig {
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -44,7 +46,7 @@ export function useRealtimeSubscription(
   const {
     enabled = true,
     retryInterval = 5000,
-    maxRetries = isProduction() ? 10 : 3, // Increased retries in production
+    maxRetries = isProduction() ? 15 : 5, // Increased retries in production
     onError,
     debugMode = isProduction() ? false : true, // Disable debug mode in production
     enableRealtimeConfig = true
@@ -55,6 +57,7 @@ export function useRealtimeSubscription(
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
@@ -106,9 +109,31 @@ export function useRealtimeSubscription(
     
     try {
       log(`Enabling realtime for table ${tableName}`);
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+      
+      // Set a timeout for the fetch request
+      const timeoutId = setTimeout(() => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+      }, CONNECTION_CONSTANTS.HEARTBEAT_TIMEOUT);
+
       const { data, error } = await supabase.functions.invoke('enable-realtime', {
         body: { table: tableName }
       });
+      
+      clearTimeout(timeoutId);
+      
+      if (signal.aborted) {
+        logError(`Request to enable realtime for ${tableName} was aborted`);
+        return false;
+      }
       
       if (error) {
         logError(`Error enabling realtime for table ${tableName}:`, error);
@@ -151,11 +176,26 @@ export function useRealtimeSubscription(
     }
   }, [enableRealtimeConfig, shouldTryEnableRealtime, log, logError]);
 
+  // Calculate exponential backoff with jitter
+  const calculateBackoff = useCallback((attempt: number, baseDelay: number) => {
+    // Apply exponential backoff with a cap
+    const exponentialDelay = Math.min(
+      baseDelay * Math.pow(1.5, attempt), 
+      CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS * 1000
+    );
+    
+    // Add random jitter (±20%) to prevent all clients from reconnecting simultaneously
+    const jitter = exponentialDelay * 0.2 * (Math.random() - 0.5);
+    
+    return Math.floor(exponentialDelay + jitter);
+  }, []);
+
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
+    let mounted = true;
 
     const setupChannel = async () => {
-      if (!enabled) return;
+      if (!enabled || !mounted) return;
 
       try {
         if (channelRef.current) {
@@ -186,6 +226,8 @@ export function useRealtimeSubscription(
             filter: config.filter 
           }, 
           (payload: RealtimePostgresChangesPayload<any>) => {
+            if (!mounted) return;
+            
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
               (payload.old as any)?.id : 
@@ -205,11 +247,18 @@ export function useRealtimeSubscription(
             }
             
             log(`Received ${config.event} event for ${config.table}:`, payload);
-            callback(payload);
+            
+            try {
+              callback(payload);
+            } catch (error) {
+              logError(`Error in callback for ${config.table}:`, error);
+            }
           }
         );
 
         channelRef.current = channel.subscribe((status) => {
+          if (!mounted) return;
+          
           log(`Subscription status for ${config.table}: ${status}`);
           
           if (status === 'SUBSCRIBED') {
@@ -220,10 +269,16 @@ export function useRealtimeSubscription(
             
             if (retryCountRef.current < maxRetries) {
               const currentRetry = retryCountRef.current + 1;
-              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1);
+              const delayMs = calculateBackoff(currentRetry, retryInterval);
+              
               log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
               retryCountRef.current = currentRetry;
-              timeoutId = setTimeout(setupChannel, delayMs);
+              
+              if (timeoutId) clearTimeout(timeoutId);
+              
+              timeoutId = setTimeout(() => {
+                if (mounted) setupChannel();
+              }, delayMs);
             } else {
               logError(`Max retries reached for ${config.table}`);
               if (onError) {
@@ -244,10 +299,22 @@ export function useRealtimeSubscription(
     setupChannel();
 
     return () => {
+      mounted = false;
       log(`Cleaning up subscription for ${config.table}`);
-      clearTimeout(timeoutId);
+      
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        supabase.removeChannel(channelRef.current).catch(err => {
+          logError(`Error removing channel for ${config.table}:`, err);
+        });
       }
     };
   }, [
@@ -261,6 +328,7 @@ export function useRealtimeSubscription(
     retryInterval, 
     onError, 
     enableRealtimeForTable,
+    calculateBackoff,
     log,
     logError
   ]);
