@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
+import { Message } from "@/types/messaging";
 
 interface Channel {
   id: string;
@@ -57,6 +58,12 @@ export const MessagesTab = () => {
   const isMobile = useIsMobile();
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Chat related state
+  const [message, setMessage] = useState('');
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // First effect: just get the current user once
   useEffect(() => {
@@ -206,6 +213,35 @@ export const MessagesTab = () => {
         description: "Failed to rename channel",
         variant: "destructive"
       });
+    }
+  };
+
+  // Handle file changes for the chat input
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    
+    const fileArray = Array.from(files);
+    setAttachments(prev => [...prev, ...fileArray]);
+  };
+
+  // Handle removing attachments
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => {
+      const newAttachments = [...prev];
+      newAttachments.splice(index, 1);
+      return newAttachments;
+    });
+  };
+
+  // Handle sending messages
+  const handleSendMessage = () => {
+    if (selectedChannel && message.trim()) {
+      const chatInstance = useChat(selectedChannel.id);
+      chatInstance.sendMessage(message, replyTo?.id, attachments);
+      setMessage('');
+      setAttachments([]);
+      setReplyTo(null);
     }
   };
 
@@ -410,31 +446,32 @@ export const MessagesTab = () => {
                   </div>
 
                   <div className="flex-1 overflow-hidden">
-                    {/* Use shared components for chat functionality */}
-                    <div className="h-full">
-                      <div className="h-[calc(100%-110px)] overflow-auto">
-                        <MessageList
-                          messages={useChat(selectedChannel.id).messages}
-                          currentUserId={currentUser.current?.id}
-                          onDeleteMessage={useChat(selectedChannel.id).deleteMessage}
-                          onReactToMessage={useChat(selectedChannel.id).reactToMessage}
-                          channelId={selectedChannel.id}
-                        />
+                    {selectedChannel.id && (
+                      <div className="h-full">
+                        <div className="h-[calc(100%-110px)] overflow-auto">
+                          <MessageList
+                            messages={useChat(selectedChannel.id).messages}
+                            currentUserId={currentUser.current?.id}
+                            onDeleteMessage={useChat(selectedChannel.id).deleteMessage}
+                            onReactToMessage={useChat(selectedChannel.id).reactToMessage}
+                            channelId={selectedChannel.id}
+                          />
+                        </div>
+                        <div className="h-[110px] border-t">
+                          <ChatInput
+                            message={message}
+                            setMessage={setMessage}
+                            onSendMessage={handleSendMessage}
+                            handleFileChange={handleFileChange}
+                            attachments={attachments}
+                            handleRemoveAttachment={handleRemoveAttachment}
+                            inputRef={inputRef}
+                            replyTo={replyTo}
+                            setReplyTo={setReplyTo}
+                          />
+                        </div>
                       </div>
-                      <div className="h-[110px] border-t">
-                        <ChatInput
-                          message={useChat(selectedChannel.id).message || ""}
-                          setMessage={useChat(selectedChannel.id).setMessage}
-                          onSendMessage={useChat(selectedChannel.id).sendMessage}
-                          handleFileChange={useChat(selectedChannel.id).handleFileChange}
-                          attachments={useChat(selectedChannel.id).attachments || []}
-                          handleRemoveAttachment={useChat(selectedChannel.id).handleRemoveAttachment}
-                          inputRef={useChat(selectedChannel.id).inputRef}
-                          replyTo={useChat(selectedChannel.id).replyTo}
-                          setReplyTo={useChat(selectedChannel.id).setReplyTo}
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
