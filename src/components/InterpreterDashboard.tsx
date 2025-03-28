@@ -319,7 +319,6 @@ export const InterpreterDashboard = () => {
               setProfile(updatedProfile);
             }
           }}
-          onMenuClick={toggleSidebar}
           isMobile={isMobile}
         />
 
