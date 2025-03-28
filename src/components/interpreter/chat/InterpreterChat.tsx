@@ -65,10 +65,8 @@ export const InterpreterChat = ({
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const orientation = useOrientation();
-
-  // Track whether we should include thread replies in filtering
-  const [includeThreadReplies, setIncludeThreadReplies] = useState(true);
-
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
     { id: 'threads', name: 'Mes fils de discussion' },
@@ -96,35 +94,25 @@ export const InterpreterChat = ({
 
     if (filters.userId) {
       if (filters.userId === 'current') {
-        // Show messages sent by the current user
         filtered = filtered.filter(msg => msg.sender.id === currentUserId);
       } else if (filters.userId === 'threads') {
-        // Show messages that are part of threads the current user has participated in
-        // First, find all thread IDs where the user has participated
         const userThreadIds = new Set<string>();
         
         messages.forEach(msg => {
-          // If this is a user's message that is a reply, add the parent message id
           if (msg.sender.id === currentUserId && msg.parent_message_id) {
             userThreadIds.add(msg.parent_message_id);
           }
           
-          // If this is a thread parent message from the user, add it
           if (msg.sender.id === currentUserId && !msg.parent_message_id) {
             userThreadIds.add(msg.id);
           }
         });
         
-        // Filter to get all messages that are either:
-        // 1. Parent messages of threads where the user participated
-        // 2. Replies in threads where the user participated
         filtered = filtered.filter(msg => {
-          // Include all thread parent messages that the user participated in
           if (userThreadIds.has(msg.id)) {
             return true;
           }
           
-          // Include all replies to threads that the user participated in
           if (msg.parent_message_id && userThreadIds.has(msg.parent_message_id)) {
             return true;
           }
@@ -132,7 +120,6 @@ export const InterpreterChat = ({
           return false;
         });
       } else {
-        // Regular user filter
         filtered = filtered.filter(msg => msg.sender.id === filters.userId);
       }
     }
@@ -208,7 +195,6 @@ export const InterpreterChat = ({
   }, [channelId, markMentionsAsRead]);
 
   useEffect(() => {
-    // Add data-in-chat attribute to body to indicate we're in chat
     document.body.setAttribute('data-in-chat', 'true');
     
     return () => {
@@ -216,22 +202,18 @@ export const InterpreterChat = ({
     };
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive, but only if already at bottom
   useEffect(() => {
-    if (messageContainerRef.current) {
+    if (messageContainerRef.current && autoScrollEnabled) {
       const container = messageContainerRef.current;
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
       
-      if (isAtBottom) {
-        setTimeout(() => {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 100);
-      }
+      setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
-  }, [messages]);
+  }, [messages, autoScrollEnabled]);
 
   useEffect(() => {
     const uniqueMembers = new Map();
@@ -270,6 +252,7 @@ export const InterpreterChat = ({
       setMessage('');
       setAttachments([]);
       setReplyTo(null);
+      setAutoScrollEnabled(true);
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
@@ -286,7 +269,6 @@ export const InterpreterChat = ({
     });
   };
 
-  // Function to trigger @mention
   const triggerMention = () => {
     if (!inputRef.current) return;
     
@@ -306,16 +288,21 @@ export const InterpreterChat = ({
     }, 0);
   };
 
-  // Function to handle scroll to load more messages
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-    // Load more messages when user scrolls near the top
+    
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 50;
+    if (!isAtBottom) {
+      setAutoScrollEnabled(false);
+    } else {
+      setAutoScrollEnabled(true);
+    }
+    
     if (target.scrollTop < 50 && !isLoading && hasMoreMessages) {
       loadMoreMessages();
     }
   };
 
-  // Show status buttons in all cases when in mobile portrait mode
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
   return (
@@ -377,7 +364,6 @@ export const InterpreterChat = ({
           </div>
         </div>
 
-        {/* Afficher les boutons de statut uniquement dans l'en-tête du chat si StatusButtonsBar-in-header n'existe pas */}
         {showStatusButtons && profile && onStatusChange && !document.querySelector('.StatusButtonsBar-in-header') && (
           <div className="pb-2 w-full overflow-visible">
             <StatusButtonsBar 
@@ -389,6 +375,25 @@ export const InterpreterChat = ({
         )}
       </motion.div>
 
+      <div className={`
+        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
+        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+        border-b border-gray-200 dark:border-gray-700
+      `}>
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+        />
+      </div>
+      
       <div 
         className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
         ref={messageContainerRef} 
@@ -429,24 +434,6 @@ export const InterpreterChat = ({
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
-        />
-      </div>
-
-      <div className={`
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
-        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
-      `}>
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSendMessage={handleSendMessage}
-          handleFileChange={handleFileChange}
-          attachments={attachments}
-          handleRemoveAttachment={handleRemoveAttachment}
-          inputRef={inputRef}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
         />
       </div>
     </div>

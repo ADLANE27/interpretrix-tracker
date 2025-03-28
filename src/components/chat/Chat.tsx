@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -44,6 +43,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const messageListKey = useRef<number>(0);
@@ -75,26 +75,11 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const { toast } = useToast();
 
-  // Auto-scroll to bottom when new messages arrive, but only if already at bottom
   useEffect(() => {
-    if (messageContainerRef.current) {
-      const container = messageContainerRef.current;
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-      
-      if (isAtBottom) {
-        setTimeout(() => {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 100);
-      }
+    if (channelId) {
+      markMentionsAsRead();
     }
-  }, [messages]);
-
-  useEffect(() => {
-    messageListKey.current += 1;
-  }, [channelId]);
+  }, [channelId, markMentionsAsRead]);
 
   useEffect(() => {
     // Demander la permission pour les notifications du navigateur
@@ -111,10 +96,21 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   }, [forceFetch, userRole]);
 
   useEffect(() => {
-    if (channelId) {
-      markMentionsAsRead();
+    messageListKey.current += 1;
+  }, [channelId]);
+
+  useEffect(() => {
+    if (messageContainerRef.current && autoScrollEnabled) {
+      const container = messageContainerRef.current;
+      
+      setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
-  }, [channelId, markMentionsAsRead]);
+  }, [messages, autoScrollEnabled]);
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -150,6 +146,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       setMessage('');
       setAttachments([]);
       setReplyTo(null);
+      setAutoScrollEnabled(true);
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
@@ -179,16 +176,21 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     });
   };
 
-  // Function to handle scroll to load more messages
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
-    // Load more messages when user scrolls near the top
+    
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 50;
+    if (!isAtBottom) {
+      setAutoScrollEnabled(false);
+    } else {
+      setAutoScrollEnabled(true);
+    }
+    
     if (target.scrollTop < 50 && !isLoading && hasMoreMessages) {
       loadMoreMessages();
     }
   };
 
-  // Function to trigger @mention
   const triggerMention = () => {
     if (!inputRef.current) return;
     
@@ -303,6 +305,25 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         </div>
       </motion.div>
       
+      <div className={`
+        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
+        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+        border-b border-gray-200 dark:border-gray-700
+      `}>
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+        />
+      </div>
+      
       <div 
         className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
         ref={messageContainerRef} 
@@ -344,24 +365,6 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
-        />
-      </div>
-      
-      <div className={`
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
-        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
-      `}>
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSendMessage={handleSendMessage}
-          handleFileChange={handleFileChange}
-          attachments={attachments}
-          handleRemoveAttachment={handleRemoveAttachment}
-          inputRef={inputRef}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
         />
       </div>
     </div>
