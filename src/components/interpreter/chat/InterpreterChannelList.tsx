@@ -1,9 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Bell, Trash2, Settings, Pencil } from "lucide-react";
+import { MessageCircle, Bell, Trash2, Settings } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -208,9 +209,13 @@ export const InterpreterChannelList = ({
   };
 
   return (
-    <>
-      <ScrollArea className="h-[calc(100vh-400px)] overflow-x-hidden">
-        <div className="space-y-2 pr-4 overflow-x-hidden overscroll-x-none">
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-3 flex items-center justify-between border-b border-white/10 dark:border-gray-700/30">
+        <h2 className="text-lg font-semibold text-gradient-primary">Channels</h2>
+      </div>
+      
+      <ScrollArea className="h-[calc(100vh-400px)] overflow-x-hidden px-2">
+        <div className="space-y-2 py-3 pr-2 overflow-x-hidden overscroll-x-none">
           {channels.length === 0 ? (
             <div className="text-center text-muted-foreground p-4">
               You are not a member of any chat channels
@@ -223,12 +228,12 @@ export const InterpreterChannelList = ({
                   flex items-center gap-3 p-3 rounded-lg 
                   cursor-pointer transition-all duration-200
                   ${selectedChannelId === channel.id 
-                    ? 'bg-interpreter-navy text-white' 
-                    : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
+                    ? 'bg-gradient-to-r from-palette-ocean-blue/90 to-palette-vivid-purple/80 text-white shadow-md' 
+                    : 'hover:bg-white/30 dark:hover:bg-gray-800/30 text-gray-800 dark:text-gray-200'}
                 `}
                 onClick={() => handleChannelSelect(channel.id)}
               >
-                <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
+                <MessageCircle className={`h-5 w-5 flex-shrink-0 ${selectedChannelId === channel.id ? 'text-white' : 'text-palette-ocean-blue dark:text-palette-soft-blue'}`} />
                 <div className="flex items-center justify-between flex-1 min-w-0">
                   {editingChannel?.id === channel.id ? (
                     <Input
@@ -249,7 +254,7 @@ export const InterpreterChannelList = ({
                   ) : (
                     <span className="font-medium truncate">{channel.display_name}</span>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-1 flex-shrink-0">
                     {unreadMentions[channel.id] > 0 && (
                       <Badge 
                         variant="destructive" 
@@ -265,7 +270,7 @@ export const InterpreterChannelList = ({
                         e.stopPropagation();
                         console.log("Settings clicked for channel:", channel.id);
                       }}
-                      className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                      className="p-1 rounded-md hover:bg-white/20 dark:hover:bg-gray-700/50"
                     >
                       <Settings className="h-4 w-4 text-gray-500 hover:text-blue-500" />
                     </button>
@@ -279,7 +284,7 @@ export const InterpreterChannelList = ({
                             channelName: channel.display_name
                           });
                         }}
-                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                        className="p-1 rounded-md hover:bg-white/20 dark:hover:bg-gray-700/50"
                       >
                         <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                       </button>
@@ -326,6 +331,6 @@ export const InterpreterChannelList = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };

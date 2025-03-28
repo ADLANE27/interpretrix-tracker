@@ -33,14 +33,14 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
   return (
     <motion.div 
-      className="flex h-full overflow-hidden rounded-lg bg-white/70 dark:bg-gray-800/70 backdrop-blur-md shadow-lg"
+      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {(!selectedChannelId || !isMobile) && (
         <motion.div 
-          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border/50 h-full overflow-hidden`}
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
@@ -53,7 +53,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
       {selectedChannelId && (
         <motion.div 
-          className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full`}
+          className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full rounded-r-xl`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
