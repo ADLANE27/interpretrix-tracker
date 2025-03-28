@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
 
@@ -58,7 +59,7 @@ export const useRealtimeSubscription = (
           unsubscribeRef.current = null;
         }
 
-        // Create the subscription
+        // Create the subscription using the realtimeService
         const unsubscribe = realtimeService.subscribeToTable(
           config.table,
           config.event,

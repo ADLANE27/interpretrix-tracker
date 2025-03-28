@@ -1,7 +1,10 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { EventDebouncer } from './eventDebouncer';
+
+interface EventDebouncerLike {
+  debounce: (fn: Function) => void;
+}
 
 /**
  * Creates a subscription to database table changes
@@ -11,7 +14,7 @@ export function createTableSubscription(
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
   filter: string | null,
   callback: (payload: any) => void,
-  eventDebouncer: EventDebouncer
+  eventDebouncer: EventDebouncerLike
 ): [() => void, string, RealtimeChannel] {
   const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
   const key = `table-${table}-${event}${filterSuffix}`;
@@ -32,7 +35,7 @@ export function createTableSubscription(
       };
       
       console.log(`[RealtimeService] ${event} event on ${table}:`, enhancedPayload);
-      callback(enhancedPayload);
+      eventDebouncer.debounce(() => callback(enhancedPayload));
     })
     .subscribe((status) => {
       console.log(`[RealtimeService] Subscription status for ${key}: ${status}`);

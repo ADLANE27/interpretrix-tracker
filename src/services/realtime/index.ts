@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter } from '@/lib/events';
 import { ConnectionMonitor } from './connectionMonitor';
+import { createTableSubscription } from './tableSubscriptions';
 
 class RealtimeService {
   private connectionMonitor: ConnectionMonitor;
@@ -36,6 +37,23 @@ class RealtimeService {
         broadcast: { self: true }
       }
     });
+  }
+
+  // Add the subscribeToTable method
+  public subscribeToTable(
+    table: string,
+    event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',
+    filter: string | null,
+    callback: (payload: any) => void
+  ): () => void {
+    const [cleanup] = createTableSubscription(
+      table,
+      event,
+      filter,
+      callback,
+      { debounce: (fn) => fn() } // Simple pass-through implementation
+    );
+    return cleanup;
   }
 
   // Add more service methods as needed
