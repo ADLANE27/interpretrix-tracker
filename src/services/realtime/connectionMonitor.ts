@@ -67,6 +67,56 @@ export class ConnectionMonitor {
   }
 
   /**
+   * Check if monitor is connected
+   */
+  public isConnected(): boolean {
+    const statuses = subscriptionRegistry.getAllStatuses();
+    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    
+    if (activeSubscriptions.length === 0) {
+      // No active subscriptions, consider it connected
+      return true;
+    }
+
+    // Check if any subscriptions are disconnected
+    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
+    return disconnectedSubscriptions.length === 0;
+  }
+
+  /**
+   * Attempt to reconnect all subscriptions
+   */
+  public reconnectAll(): void {
+    console.log('[ConnectionMonitor] Attempting to reconnect all subscriptions');
+    
+    const statuses = subscriptionRegistry.getAllStatuses();
+    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    
+    if (activeSubscriptions.length === 0) {
+      // No active subscriptions to reconnect
+      return;
+    }
+
+    // Attempt to reconnect all subscriptions
+    activeSubscriptions.forEach(key => {
+      // Reset max retries flag
+      if (statuses[key].maxRetriesReached) {
+        statuses[key].maxRetriesReached = false;
+        statuses[key].retryCount = 0;
+      }
+
+      // Stagger reconnections to avoid thundering herd
+      const delay = Math.random() * 3000;
+      setTimeout(() => {
+        if (this.isActive) {
+          console.log(`[ConnectionMonitor] Reconnecting subscription: ${key}`);
+          this.retryCallback(key);
+        }
+      }, delay);
+    });
+  }
+
+  /**
    * Check connection status of all subscriptions
    */
   private checkConnectionStatus(): void {

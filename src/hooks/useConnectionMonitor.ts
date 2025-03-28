@@ -27,32 +27,32 @@ export const useConnectionMonitor = () => {
     clearErrorToast();
     
     // Create a new toast with a unique ID
-    const id = `connection-error-${Date.now()}`;
-    toastIdRef.current = id;
+    const uniqueId = `connection-error-${Date.now()}`;
     
-    toast({
-      id,
+    const { id } = toast({
       title: "Problème de connexion",
       description: "La connexion au serveur a été perdue. Tentative de reconnexion en cours...",
       variant: "destructive",
       duration: 0, // Keep it visible until dismissed
     });
+    
+    toastIdRef.current = id;
   }, [toast, clearErrorToast]);
 
   // Show connection restored toast
   const showConnectionRestoredToast = useCallback(() => {
     clearErrorToast();
     
-    const id = `connection-restored-${Date.now()}`;
-    toastIdRef.current = id;
+    const uniqueId = `connection-restored-${Date.now()}`;
     
-    toast({
-      id,
+    const { id } = toast({
       title: "Connexion rétablie",
       description: "La connexion au serveur a été rétablie avec succès.",
-      variant: "success",
+      variant: "default",
       duration: 5000,
     });
+    
+    toastIdRef.current = id;
   }, [toast, clearErrorToast]);
 
   // Update the reconnection timer
@@ -115,7 +115,8 @@ export const useConnectionMonitor = () => {
     eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionStatusChange);
     
     // Start monitoring connection
-    realtimeService.monitorConnection();
+    // Initialize realtime service which will handle connection monitoring internally
+    realtimeService.init();
     
     // Check current connection status
     const isCurrentlyConnected = realtimeService.isConnected();
@@ -145,16 +146,16 @@ export const useConnectionMonitor = () => {
     clearErrorToast();
     
     // Show reconnecting toast
-    const id = `force-reconnect-${Date.now()}`;
-    toastIdRef.current = id;
+    const uniqueId = `force-reconnect-${Date.now()}`;
     
-    toast({
-      id,
+    const { id } = toast({
       title: "Reconnexion en cours",
       description: "Tentative de reconnexion forcée...",
       variant: "default",
       duration: 0,
     });
+    
+    toastIdRef.current = id;
     
     // Attempt reconnection
     realtimeService.reconnectAll();
