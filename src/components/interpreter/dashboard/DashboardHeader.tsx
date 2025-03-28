@@ -95,9 +95,7 @@ export const DashboardHeader = ({
           )}
         </div>
         
-        <div className="flex items-center gap-2 md:gap-3">
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </div>
       
       {showStatusButtons && (
