@@ -54,7 +54,8 @@ export function useRealtimeSubscription2(
     // Add all subscriptions to the channel
     optionsArray.forEach(opt => {
       channel = channel.on(
-        'postgres_changes',
+        // Use the correct type expected by the Supabase SDK
+        'postgres_changes', 
         {
           event: opt.event,
           schema: opt.schema || 'public',
