@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -304,26 +305,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           </div>
         </div>
       </motion.div>
-      
-      <div className={`
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
-        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
-        border-b border-gray-200 dark:border-gray-700
-      `}>
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSendMessage={handleSendMessage}
-          handleFileChange={handleFileChange}
-          attachments={attachments}
-          handleRemoveAttachment={handleRemoveAttachment}
-          inputRef={inputRef}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
-        />
-      </div>
-      
+
       <div 
         className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
         ref={messageContainerRef} 
@@ -365,6 +347,25 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
+        />
+      </div>
+      
+      <div className={`
+        sticky bottom-0 z-10 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700
+        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md" : ""}
+        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+      `}>
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
         />
       </div>
     </div>
