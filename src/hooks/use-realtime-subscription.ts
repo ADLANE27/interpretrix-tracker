@@ -1,154 +1,134 @@
-
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { realtimeService } from '@/services/realtime';
 
-type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-
-interface SubscriptionConfig {
-  event: RealtimeEvent;
+interface PostgresChangesConfig {
+  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
   schema?: string;
   table: string;
-  filter?: string;
+  filter?: string | null;
 }
 
 interface SubscriptionOptions {
   debugMode?: boolean;
   maxRetries?: number;
   retryInterval?: number;
-  onError?: (error: Error) => void;
+  onError?: (error: any) => void;
 }
 
 /**
- * Hook for subscribing to realtime changes from Supabase
+ * Hook to subscribe to Supabase Realtime changes
+ * 
+ * @param config PostgresChangesConfig object
+ * @param callback Function to call when a change is detected
+ * @param options Subscription options
  */
-export function useRealtimeSubscription(
-  config: SubscriptionConfig,
+export const useRealtimeSubscription = (
+  config: PostgresChangesConfig,
   callback: (payload: any) => void,
   options: SubscriptionOptions = {}
-) {
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const retryCountRef = useRef(0);
-  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+) => {
   const {
     debugMode = false,
-    maxRetries = 5,
+    maxRetries = 3,
     retryInterval = 3000,
-    onError
+    onError = (error: any) => {
+      console.error('[useRealtimeSubscription] Error:', error);
+    }
   } = options;
-  
+
+  // Keep a reference to the callback to avoid unnecessary re-subscriptions
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  // Keep track of the subscription
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    let isMounted = true;
-    
-    const setupChannel = () => {
-      if (!isMounted) return null;
-      
-      // Clean up previous subscription if it exists
-      if (channelRef.current) {
-        try {
-          supabase.removeChannel(channelRef.current);
-        } catch (error) {
-          if (debugMode) console.error('[useRealtimeSubscription] Error removing channel:', error);
-        }
-        channelRef.current = null;
+    const setupSubscription = () => {
+      if (debugMode) {
+        console.log('[useRealtimeSubscription] Setting up subscription:', config);
       }
-      
+
       try {
-        // Create unique channel name based on table and timestamp
-        const channelName = `${config.table}-changes-${Date.now()}`;
-        if (debugMode) console.log(`[useRealtimeSubscription] Setting up channel: ${channelName}`);
-        
-        channelRef.current = supabase
-          .channel(channelName)
-          .on(
-            'postgres_changes',
-            {
-              event: config.event,
-              schema: config.schema || 'public',
-              table: config.table,
-              filter: config.filter
-            },
-            (payload) => {
-              if (debugMode) console.log(`[useRealtimeSubscription] Received ${config.event} for ${config.table}:`, payload);
-              callback(payload);
+        // Cleanup any existing subscription
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+
+        // Create the subscription
+        const unsubscribe = realtimeService.subscribeToTable(
+          config.table,
+          config.event,
+          config.filter || null,
+          (payload) => {
+            if (debugMode) {
+              console.log(`[useRealtimeSubscription] Received ${config.event} in ${config.table}:`, payload);
             }
-          )
-          .subscribe((status) => {
-            if (debugMode) console.log(`[useRealtimeSubscription] Channel ${channelName} status:`, status);
-            
-            if (status === 'SUBSCRIBED') {
-              // Reset retry count on successful subscription
-              retryCountRef.current = 0;
-              if (retryTimerRef.current) {
-                clearTimeout(retryTimerRef.current);
-                retryTimerRef.current = null;
-              }
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              // Handle channel errors with retry logic
-              if (isMounted && retryCountRef.current < maxRetries) {
-                if (debugMode) {
-                  console.error(`[useRealtimeSubscription] Channel error: ${status}, retrying (${retryCountRef.current + 1}/${maxRetries})`);
-                }
-                
-                if (onError) onError(new Error(`Realtime subscription issue. Status: ${status}`));
-                
-                // Clear previous retry timer
-                if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
-                
-                // Set up retry with exponential backoff
-                const delay = retryInterval * Math.pow(1.5, retryCountRef.current);
-                retryTimerRef.current = setTimeout(() => {
-                  retryCountRef.current += 1;
-                  if (isMounted) setupChannel();
-                }, delay);
-              } else if (isMounted) {
-                const error = new Error(`[useMissionUpdates] Realtime subscription issue. Will auto-retry.`);
-                if (onError) onError(error);
-                console.error(error);
-              }
-            }
-          });
-          
-        return channelRef.current;
+            callbackRef.current(payload);
+          }
+        );
+
+        // Store the unsubscribe function
+        unsubscribeRef.current = unsubscribe;
+
+        // Reset retry count on successful subscription
+        retryCountRef.current = 0;
+
+        return unsubscribe;
       } catch (error) {
         console.error('[useRealtimeSubscription] Error setting up subscription:', error);
-        if (onError) onError(error as Error);
-        return null;
-      }
-    };
-    
-    setupChannel();
-    
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      
-      if (channelRef.current) {
-        try {
-          supabase.removeChannel(channelRef.current);
-        } catch (error) {
-          if (debugMode) console.error('[useRealtimeSubscription] Error cleaning up channel:', error);
+        onError(error);
+        
+        // Retry setup if under max retries
+        if (retryCountRef.current < maxRetries) {
+          if (debugMode) {
+            console.log(`[useRealtimeSubscription] Retrying in ${retryInterval}ms (${retryCountRef.current + 1}/${maxRetries})`);
+          }
+          
+          // Clear any existing timeout
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+          
+          // Set retry timeout
+          retryTimeoutRef.current = setTimeout(() => {
+            retryCountRef.current++;
+            setupSubscription();
+          }, retryInterval);
         }
-        channelRef.current = null;
+        
+        return () => {};
       }
     };
-  }, [config.event, config.schema, config.table, config.filter, callback, debugMode, maxRetries, retryInterval, onError]);
-  
-  // Return a function to manually reconnect if needed
-  return {
-    reconnect: () => {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
+
+    // Initial setup
+    const unsubscribe = setupSubscription();
+
+    // Cleanup on unmount
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
       }
       
-      retryCountRef.current = 0;
-      return setupChannel();
-    }
-  };
-}
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      } else if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [
+    config.event, 
+    config.table, 
+    config.filter, 
+    config.schema,
+    debugMode,
+    maxRetries,
+    retryInterval,
+    onError
+  ]);
+};

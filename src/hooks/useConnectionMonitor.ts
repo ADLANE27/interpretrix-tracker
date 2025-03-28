@@ -32,7 +32,7 @@ export function useConnectionMonitor() {
           // Dismiss previous error toast if it exists
           if (toastIdRef.current) {
             toast({
-              // Remove the id property as it's not in the Toast type
+              // Remove id property since it doesn't exist in Toast type
               title: "Connexion rétablie",
               description: "La connexion temps réel a été rétablie",
               duration: 3000,
@@ -73,13 +73,13 @@ export function useConnectionMonitor() {
               
               // Only show toast after 5 seconds of disconnection
               if (elapsedSeconds === 5 && !toastIdRef.current) {
-                const toastResponse = toast({
+                toast({
                   title: "Problème de connexion",
                   description: "Tentative de reconnexion en cours...",
                   duration: 0, // Persistent until connection is restored
                 });
-                // Store the toast ID in a way compatible with our toast system
-                toastIdRef.current = typeof toastResponse === 'object' ? 'toast-id' : 'toast-id';
+                // Store reference that toast was shown (not the actual id)
+                toastIdRef.current = 'connection-toast';
               }
             }
           }, 1000);
@@ -112,7 +112,7 @@ export function useConnectionMonitor() {
       // Clear any persistent toast on unmount
       if (toastIdRef.current) {
         toast({
-          // Remove the id property as it's not in the Toast type
+          // Remove id property since it doesn't exist in Toast type
           duration: 1,
         });
       }

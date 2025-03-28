@@ -12,7 +12,6 @@ export type SubscriptionStatus = {
   retryCount: number;
   retryTimeout: NodeJS.Timeout | null;
   channel: RealtimeChannel | null;
-  // We don't have maxRetriesReached property, using computed property instead
 };
 
 export class ConnectionMonitor {

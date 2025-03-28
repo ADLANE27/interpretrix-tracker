@@ -2,11 +2,11 @@
 import React from 'react';
 import { RouteObject } from 'react-router-dom';
 
-// Import your pages here
-import Home from './pages/Home';
-import About from './pages/About';
-import Admin from './pages/Admin';
-import Interpreter from './pages/Interpreter';
+// Create placeholder components for now
+const Home = () => <div>Home Page</div>;
+const About = () => <div>About Page</div>;
+const Admin = () => <div>Admin Page</div>;
+const Interpreter = () => <div>Interpreter Page</div>;
 
 export const routes: RouteObject[] = [
   {
