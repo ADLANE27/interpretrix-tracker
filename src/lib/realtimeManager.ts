@@ -1,6 +1,6 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { EventEmitter } from 'events';
+import { EventEmitter } from './eventEmitter';
 
 export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
 export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread-mentions-updated';
