@@ -44,7 +44,7 @@ export const InterpreterChat = ({
   profile,
   onStatusChange,
   onMenuClick,
-  messageListHeight = "calc(100vh - 320px)" // Default adjusted to account for header, footer, and status bar
+  messageListHeight = "calc(100vh - 320px)"
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -349,42 +349,6 @@ export const InterpreterChat = ({
               )}
             </motion.h2>
           </AnimatePresence>
-          
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" 
-                    onClick={forceFetch}
-                    aria-label="Refresh messages"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh messages</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole="interpreter"
-            >
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60"
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-            </ChannelMembersPopover>
-          </div>
         </div>
 
         {showStatusButtons && profile && onStatusChange && (
