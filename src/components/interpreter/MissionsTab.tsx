@@ -11,12 +11,14 @@ import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 import { Box, CalendarClock, Clock, Inbox, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("all");
+  const isMobile = useIsMobile();
   
   // Count for different mission types
   const [pendingCount, setPendingCount] = useState<number>(0);
@@ -110,46 +112,60 @@ export const MissionsTab = () => {
   // Check if there are no missions in the current filtered view
   const noFilteredMissions = filteredMissions.length === 0;
 
+  // Custom rendering for tab triggers based on device size
+  const renderTabTrigger = (value: string, icon: React.ReactNode, label: string, count?: number) => {
+    if (isMobile) {
+      return (
+        <TabsTrigger value={value} className="px-2 py-1.5">
+          <div className="flex flex-col items-center">
+            {icon}
+            {count !== undefined && count > 0 && (
+              <Badge variant={value === "pending" ? "destructive" : "default"} 
+                className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]">
+                {count}
+              </Badge>
+            )}
+          </div>
+        </TabsTrigger>
+      );
+    }
+    
+    return (
+      <TabsTrigger value={value}>
+        <div className="flex items-center gap-1">
+          {icon}
+          <span>{label}</span>
+          {count !== undefined && count > 0 && (
+            <Badge variant={value === "pending" ? "destructive" : "default"} className="ml-1">{count}</Badge>
+          )}
+        </div>
+      </TabsTrigger>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-4 mb-4">
-          <TabsTrigger value="all">
-            Toutes
-            {missions.length > 0 && (
-              <Badge variant="secondary" className="ml-2">{missions.length}</Badge>
-            )}
-          </TabsTrigger>
+          {renderTabTrigger("all", 
+            <Box className={isMobile ? "h-5 w-5" : "h-4 w-4"} />, 
+            "Toutes", 
+            missions.length)}
           
-          <TabsTrigger value="pending">
-            <div className="flex items-center gap-1">
-              <Inbox className="h-4 w-4" />
-              <span>En attente</span>
-              {pendingCount > 0 && (
-                <Badge variant="destructive" className="ml-1">{pendingCount}</Badge>
-              )}
-            </div>
-          </TabsTrigger>
+          {renderTabTrigger("pending", 
+            <Inbox className={isMobile ? "h-5 w-5" : "h-4 w-4"} />, 
+            "En attente", 
+            pendingCount)}
           
-          <TabsTrigger value="upcoming">
-            <div className="flex items-center gap-1">
-              <CalendarClock className="h-4 w-4" />
-              <span>À venir</span>
-              {upcomingCount > 0 && (
-                <Badge variant="default" className="ml-1">{upcomingCount}</Badge>
-              )}
-            </div>
-          </TabsTrigger>
+          {renderTabTrigger("upcoming", 
+            <CalendarClock className={isMobile ? "h-5 w-5" : "h-4 w-4"} />, 
+            "À venir", 
+            upcomingCount)}
           
-          <TabsTrigger value="incoming">
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>Immédiates</span>
-              {incomingCount > 0 && (
-                <Badge variant="default" className="ml-1">{incomingCount}</Badge>
-              )}
-            </div>
-          </TabsTrigger>
+          {renderTabTrigger("incoming", 
+            <Clock className={isMobile ? "h-5 w-5" : "h-4 w-4"} />, 
+            "Immédiates", 
+            incomingCount)}
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-0">
