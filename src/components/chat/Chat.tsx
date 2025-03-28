@@ -280,42 +280,6 @@ const Chat = ({
               )}
             </motion.h2>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors" 
-                    onClick={forceFetch}
-                    aria-label="Actualiser les messages"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Actualiser les messages</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole={userRole}
-            >
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10 hover:text-primary transition-colors"
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-            </ChannelMembersPopover>
-          </div>
         </div>
       </motion.div>
 
