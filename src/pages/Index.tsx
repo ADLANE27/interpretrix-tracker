@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { WelcomeContent } from "@/components/WelcomeContent";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button"; // Import the Button component
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -109,7 +109,7 @@ const Index = () => {
   if (!userRole) {
     return (
       <motion.div 
-        className="min-h-screen bg-white dark:bg-gray-900"
+        className="min-h-screen bg-white dark:bg-gray-900 overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
@@ -121,7 +121,7 @@ const Index = () => {
 
   return (
     <motion.div 
-      className="min-h-screen bg-gray-50 dark:bg-gray-900"
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}

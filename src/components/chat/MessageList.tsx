@@ -14,6 +14,7 @@ import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
+
 interface MessageListProps {
   messages: Message[];
   currentUserId: string | null;
@@ -23,6 +24,7 @@ interface MessageListProps {
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
 }
+
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
@@ -48,6 +50,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const {
     theme
   } = useTheme();
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
@@ -55,6 +58,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       });
     }
   }, [messages]);
+
   useEffect(() => {
     if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
       const threadElement = threadRefsMap.current.get(activeThreadId);
@@ -68,9 +72,11 @@ export const MessageList: React.FC<MessageListProps> = ({
       }
     }
   }, [activeThreadId, expandedThreads]);
+
   const getInitials = (name: string) => {
     return name.split(' ').map(part => part[0]).join('').toUpperCase().slice(0, 2);
   };
+
   const formatMessageDate = (date: Date) => {
     if (isToday(date)) {
       return "Aujourd'hui";
@@ -81,12 +87,14 @@ export const MessageList: React.FC<MessageListProps> = ({
       locale: fr
     });
   };
+
   const shouldShowDate = (currentMessage: Message, previousMessage?: Message) => {
     if (!previousMessage) return true;
     const currentDate = new Date(currentMessage.timestamp);
     const previousDate = new Date(previousMessage.timestamp);
     return currentDate.getDate() !== previousDate.getDate() || currentDate.getMonth() !== previousDate.getMonth() || currentDate.getFullYear() !== previousDate.getFullYear();
   };
+
   const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
     if (!previousMessage) return true;
     if (currentMessage.sender.id !== previousMessage.sender.id) return true;
@@ -95,6 +103,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     const fiveMinutesInMs = 5 * 60 * 1000;
     return currentTime - previousTime > fiveMinutesInMs;
   };
+
   const toggleThread = (messageId: string) => {
     setExpandedThreads(prev => {
       const newSet = new Set(prev);
@@ -108,6 +117,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       return newSet;
     });
   };
+
   const processMessages = () => {
     const messageThreads: {
       [key: string]: Message[];
@@ -140,10 +150,12 @@ export const MessageList: React.FC<MessageListProps> = ({
       messageThreads
     };
   };
+
   const {
     displayMessages,
     messageThreads
   } = processMessages();
+
   const renderReactions = (message: Message) => {
     if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
     return <div className="flex flex-wrap gap-1 mt-1">
@@ -153,10 +165,12 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>)}
       </div>;
   };
+
   const handleEmojiSelect = (messageId: string, emoji: any) => {
     onReactToMessage(messageId, emoji.native);
     setOpenEmojiPickerId(null);
   };
+
   const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
     const showSender = shouldShowSender(message, previousMessage);
     const isSelfMessage = message.sender.id === currentUserId;
@@ -241,14 +255,25 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>}
       </div>;
   };
-  return <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-md">
-      {messages.length === 0 ? <div className="flex items-center justify-center h-32 text-gray-500">
-          Aucun message à afficher
-        </div> : <>
-          {messages.map((message, index) => <div key={message.id}>
-              {renderMessage(message, index, false, index > 0 ? messages[index - 1] : undefined)}
-            </div>)}
-        </>}
-      <div ref={messagesEndRef} />
-    </div>;
+
+  return (
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 rounded-md w-full h-full overflow-hidden">
+      <ScrollArea className="flex-1 px-4 py-2">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-gray-500">
+            Aucun message à afficher
+          </div>
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <div key={message.id}>
+                {renderMessage(message, index, false, index > 0 ? messages[index - 1] : undefined)}
+              </div>
+            ))}
+          </>
+        )}
+        <div ref={messagesEndRef} />
+      </ScrollArea>
+    </div>
+  );
 };

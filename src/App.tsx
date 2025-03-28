@@ -8,30 +8,34 @@ import Admin from './pages/Admin';
 import Index from './pages/Index';
 import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
+import { Footer } from './components/Footer';
 
 function App() {
   return (
-    <>
-      <Routes>
-        {/* Landing Page */}
-        <Route path="/" element={<Index />} />
+    <div className="flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Routes>
+          {/* Landing Page */}
+          <Route path="/" element={<Index />} />
 
-        {/* Interpreter Routes */}
-        <Route path="/interpreter/login" element={<InterpreterLogin />} />
-        <Route path="/interpreter" element={<AuthenticatedLayout />} />
+          {/* Interpreter Routes */}
+          <Route path="/interpreter/login" element={<InterpreterLogin />} />
+          <Route path="/interpreter" element={<AuthenticatedLayout />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<Admin />} />
-        
-        {/* Password Reset */}
-        <Route path="/reset-password" element={<ResetPassword />} />
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<Admin />} />
+          
+          {/* Password Reset */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* 404 - Redirect to home */}
-        <Route path="*" element={<Index />} />
-      </Routes>
+          {/* 404 - Redirect to home */}
+          <Route path="*" element={<Index />} />
+        </Routes>
+      </div>
+      <Footer />
       <Toaster />
-    </>
+    </div>
   );
 }
 

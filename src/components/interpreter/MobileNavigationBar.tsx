@@ -11,7 +11,7 @@ interface MobileNavigationBarProps {
   onTabChange: (tab: string) => void;
   pendingMissionsCount?: number;
   unreadMessagesCount?: number;
-  onMenuClick?: () => void; // Ajout de la fonction pour gérer le clic sur le menu
+  onMenuClick?: () => void;
 }
 
 export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({ 
@@ -33,18 +33,17 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
 
   return (
     <motion.div 
-      className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 safe-area-bottom z-50 shadow-lg"
+      className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 safe-area-bottom z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3, type: "spring" }}
     >
-      <div className="flex items-center justify-around px-2 py-1">
-        {/* Bouton de menu ajouté à la barre de navigation mobile */}
+      <div className="flex items-center justify-around px-2 py-3">
         <button
           className={cn(
             "flex flex-col items-center justify-center py-2 px-3 relative",
             "transition-all duration-200 rounded-lg",
-            "focus:outline-none touch-feedback",
+            "focus:outline-none active:scale-95",
             "text-gray-500 dark:text-gray-400"
           )}
           onClick={onMenuClick}
@@ -65,7 +64,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
               className={cn(
                 "flex flex-col items-center justify-center py-2 px-3 relative",
                 "transition-all duration-200 rounded-lg",
-                "focus:outline-none touch-feedback",
+                "focus:outline-none active:scale-95",
                 isActive 
                   ? "text-primary" 
                   : "text-gray-500 dark:text-gray-400"
