@@ -33,7 +33,11 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
   return (
     <motion.div 
-      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
+      className="flex h-full overflow-hidden rounded-xl 
+        bg-gradient-to-br from-[#D3E4FD] to-[#E5DEFF] 
+        dark:from-[#0EA5E9]/40 dark:to-[#8B5CF6]/40
+        border border-white/30 dark:border-gray-700/40
+        shadow-lg backdrop-blur-md"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
