@@ -33,14 +33,14 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
   return (
     <motion.div 
-      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
+      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/90 via-white/80 to-palette-soft-blue/30 dark:from-gray-800/95 dark:via-gray-800/80 dark:to-palette-ocean-blue/30 backdrop-blur-md shadow-lg border border-white/20 dark:border-gray-700/40"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {(!selectedChannelId || !isMobile) && (
         <motion.div 
-          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/30 dark:border-gray-700/40 h-full overflow-hidden rounded-l-xl bg-gradient-to-b from-white/60 to-palette-soft-blue/20 dark:from-gray-800/90 dark:to-palette-ocean-blue/20`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
