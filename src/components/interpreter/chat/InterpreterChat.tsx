@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -311,24 +310,26 @@ export const InterpreterChat = ({
   return (
     <div className="flex flex-col h-full">
       <motion.div 
-        className="bg-gradient-to-r from-white/80 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md flex flex-col px-4 md:px-6 sticky top-0 z-40 safe-area-top border-b border-white/20 dark:border-gray-700/30 shadow-sm"
+        className={cn(
+          "bg-gradient-to-r from-white/80 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20",
+          "backdrop-blur-md flex flex-col px-4 md:px-6 sticky top-0 z-40 safe-area-top",
+          "border-b border-white/20 dark:border-gray-700/30 shadow-sm"
+        )}
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="h-[56px] md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isMobile && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" onClick={onBackToChannels}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
-            {isMobile && onMenuClick && (
-              <Button variant="ghost" size="icon" className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" onClick={onMenuClick}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
+        <div className="h-[56px] md:h-16 flex items-center justify-between px-2">
+          {isMobile && onBackToChannels && (
+            <Button variant="ghost" size="icon" className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" onClick={onBackToChannels}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          {isMobile && onMenuClick && (
+            <Button variant="ghost" size="icon" className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" onClick={onMenuClick}>
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
           
           <AnimatePresence mode="wait">
             <motion.h2 
@@ -397,7 +398,7 @@ export const InterpreterChat = ({
 
       <div className="flex flex-col h-full min-h-0 overflow-hidden">
         <div 
-          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none"
+          className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none px-4"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
@@ -439,7 +440,7 @@ export const InterpreterChat = ({
           />
         </div>
         
-        <div className="bg-gradient-to-r from-white/90 to-palette-soft-blue/20 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 border-t border-white/20 dark:border-gray-700/30 backdrop-blur-md p-3 md:p-4 rounded-b-xl">
+        <div className="bg-gradient-to-r from-white/90 to-palette-soft-blue/20 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 border-t border-white/20 dark:border-gray-700/30 backdrop-blur-md p-3 md:p-4 rounded-b-xl px-4">
           <ChatInput
             message={message}
             setMessage={setMessage}
@@ -450,7 +451,7 @@ export const InterpreterChat = ({
             inputRef={inputRef}
             replyTo={replyTo}
             setReplyTo={setReplyTo}
-            style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+            style={{ width: '100%' }}
           />
         </div>
       </div>
