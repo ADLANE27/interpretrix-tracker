@@ -5,20 +5,16 @@ import { useOrientation } from "@/hooks/use-orientation";
 import { StatusButtonsBar } from "../StatusButtonsBar";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
   onStatusChange: (newStatus: Profile['status']) => Promise<void>;
-  onMenuClick: () => void;
   isMobile: boolean;
 }
 
 export const DashboardHeader = ({
   profile,
   onStatusChange,
-  onMenuClick,
   isMobile
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
@@ -62,29 +58,15 @@ export const DashboardHeader = ({
       transition={{ duration: 0.4, type: "spring" }}
     >
       <div className="h-[56px] md:h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={onMenuClick}
-              className="rounded-full bg-gray-100/50 dark:bg-gray-800/50 hover:bg-primary/10"
-            >
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          )}
-        </div>
-        
-        {showStatusButtons && (
-          <div className="flex-1 mr-4">
+        <div className="flex-1 mr-4">
+          {showStatusButtons && (
             <StatusButtonsBar 
               currentStatus={profile?.status} 
               onStatusChange={onStatusChange}
               variant={isMobile ? 'compact' : 'default'} 
             />
-          </div>
-        )}
+          )}
+        </div>
         
         <ThemeToggle />
       </div>
