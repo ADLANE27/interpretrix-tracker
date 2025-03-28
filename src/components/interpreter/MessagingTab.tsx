@@ -51,6 +51,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
+            messageListHeight="70vh" // Adding fixed height for message list
           />
         </div>
       )}

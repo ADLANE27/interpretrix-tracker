@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -33,6 +32,7 @@ interface InterpreterChatProps {
   profile?: Profile | null;
   onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
   onMenuClick?: () => void;
+  messageListHeight?: string;
 }
 
 export const InterpreterChat = ({ 
@@ -43,7 +43,8 @@ export const InterpreterChat = ({
   onBackToChannels,
   profile,
   onStatusChange,
-  onMenuClick
+  onMenuClick,
+  messageListHeight = "100%"
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -378,11 +379,12 @@ export const InterpreterChat = ({
 
       <div className="flex flex-col h-full min-h-0 overflow-hidden">
         <div 
-          className="flex-1 overflow-y-auto p-2 sm:p-4"
+          className="flex-grow overflow-y-auto p-2 sm:p-4"
           ref={messageContainerRef} 
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
+          style={{ maxHeight: messageListHeight, height: messageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
