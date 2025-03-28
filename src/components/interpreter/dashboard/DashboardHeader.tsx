@@ -1,4 +1,3 @@
-
 import { ThemeToggle } from "../ThemeToggle";
 import { Profile } from "@/types/profile";
 import { useOrientation } from "@/hooks/use-orientation";
@@ -21,17 +20,14 @@ export const DashboardHeader = ({
   const [isInChatTab, setIsInChatTab] = useState(false);
   const [isInMessagesTab, setIsInMessagesTab] = useState(false);
   
-  // Use an effect to update the states whenever data attributes change
   useEffect(() => {
     const updateStates = () => {
       setIsInChatTab(document.body.hasAttribute('data-in-chat'));
       setIsInMessagesTab(document.body.hasAttribute('data-in-messages-tab'));
     };
 
-    // Initial check
     updateStates();
 
-    // Set up a MutationObserver to watch for changes to the attributes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes' && 
@@ -49,15 +45,13 @@ export const DashboardHeader = ({
     };
   }, []);
   
-  // Show status buttons in header except when in chat tab on portrait mode
-  // Now also checks if we're in messages tab, which is handled separately
   const showStatusButtons = !isMobile || 
                           (isMobile && orientation === "landscape") || 
                           (isMobile && !isInChatTab && !isInMessagesTab);
 
   return (
     <motion.header 
-      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm"
+      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm pt-4 safe-area-top"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, type: "spring" }}
