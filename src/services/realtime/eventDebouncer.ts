@@ -28,7 +28,7 @@ export class EventDebouncer {
     
     // Find old entries
     this.recentEvents.forEach((timestamp, key) => {
-      if (now - timestamp > 30000) { // 30 seconds timeout for cleanup
+      if (now - timestamp > 30000) { // 30 seconds instead of 10
         keysToDelete.push(key);
       }
     });
@@ -41,23 +41,17 @@ export class EventDebouncer {
   }
   
   public shouldProcessEvent(eventKey: string, now: number): boolean {
-    // Mentions related events should not be debounced as aggressively
-    const isMentionEvent = eventKey.includes('mention') || eventKey.includes('MENTION');
+    // Prioritize status updates to make them nearly instant
     const isStatusUpdate = eventKey.includes('status') || eventKey.includes('STATUS');
                           
-    // Different cooldown times based on event type
-    let cooldownTime = this.defaultDebounceTime;
-    if (isStatusUpdate) {
-      cooldownTime = STATUS_UPDATE_DEBOUNCE;
-    } else if (isMentionEvent) {
-      cooldownTime = 10; // Nearly instant processing for mention events
-    }
+    // Much shorter cooldown for status updates
+    const cooldownTime = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : this.defaultDebounceTime;
     
     const lastProcessed = this.recentEvents.get(eventKey);
     
     if (lastProcessed && now - lastProcessed < cooldownTime) {
-      if (DEBUG_MODE && !isStatusUpdate && !isMentionEvent) {
-        console.log(`[EventDebouncer] Debouncing ${isStatusUpdate ? 'status' : isMentionEvent ? 'mention' : 'duplicate'} event: ${eventKey}`);
+      if (DEBUG_MODE && !isStatusUpdate) {
+        console.log(`[EventDebouncer] Debouncing ${isStatusUpdate ? 'status' : 'duplicate'} event: ${eventKey}`);
       }
       return false;
     }
@@ -65,7 +59,7 @@ export class EventDebouncer {
     this.recentEvents.set(eventKey, now);
     
     // Automatic cleanup if Map gets too large
-    if (this.recentEvents.size > 300) { // Reduced threshold
+    if (this.recentEvents.size > 500) { // Reduced from 1000
       this.cleanupOldEvents();
     }
     
@@ -73,16 +67,9 @@ export class EventDebouncer {
   }
   
   public debounce(callback: Function, debounceKey: string = 'default', timeout: number = this.defaultDebounceTime): void {
-    // Use appropriate timeout based on event type
-    const isMentionEvent = debounceKey.includes('mention') || debounceKey.includes('MENTION');
+    // Use nearly zero timeout for status updates
     const isStatusUpdate = debounceKey.includes('status') || debounceKey.includes('STATUS');
-    
-    let useTimeout = timeout;
-    if (isStatusUpdate) {
-      useTimeout = STATUS_UPDATE_DEBOUNCE;
-    } else if (isMentionEvent) {
-      useTimeout = 10; // Nearly instant processing for mention events
-    }
+    const useTimeout = isStatusUpdate ? STATUS_UPDATE_DEBOUNCE : timeout;
     
     // Clear existing timer for this key if it exists
     if (this.debounceTimers.has(debounceKey)) {

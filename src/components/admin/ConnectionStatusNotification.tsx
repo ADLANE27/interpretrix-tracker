@@ -43,11 +43,7 @@ export function ConnectionStatusNotification({
             <span className="text-xs ml-2 bg-amber-200 px-1.5 py-0.5 rounded-full">{reconnectingFor}s</span>
           </div>
           
-          <div className="mt-1 text-xs text-amber-800">
-            Les messages ou mentions pourraient ne pas s'envoyer correctement.
-          </div>
-          
-          {reconnectingFor > 5 && !isForceReconnecting && (
+          {reconnectingFor > 8 && !isForceReconnecting && (
             <Button 
               variant="outline"
               size="sm"
@@ -69,7 +65,7 @@ export function ConnectionStatusNotification({
             </Button>
           )}
           
-          {reconnectingFor > 20 && !isForceReconnecting && (
+          {reconnectingFor > 30 && !isForceReconnecting && (
             <div className="mt-2 text-xs text-amber-800">
               Si le problème persiste, essayez de rafraîchir la page.
             </div>

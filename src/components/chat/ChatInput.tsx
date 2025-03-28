@@ -1,8 +1,7 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
-import { Paperclip, Send, Smile, AtSign, X } from 'lucide-react';
+import { Paperclip, Send, Smile, AtSign } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface ChatInputProps {
   message: string;
@@ -48,9 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number>(0);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const { formatMessage, validateMentions } = useMessageFormatter();
+  const { formatMessage } = useMessageFormatter();
 
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
@@ -226,7 +222,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setMessage(newMessage);
     
     setMentionSuggestionsVisible(false);
-    setSendError(null);
     
     setTimeout(() => {
       if (inputRef.current) {
@@ -249,142 +244,95 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const handleSendWithValidation = async () => {
-    if (sendingMessage) return;
-    
-    try {
-      setSendingMessage(true);
-      setSendError(null);
-      
-      const { isValid, error } = validateMentions(message);
-      if (!isValid) {
-        setSendError(error || "Format de message invalide");
-        return;
-      }
-      
-      const formattedMessage = formatMessage(message);
-      setMessage(formattedMessage);
-      
-      await onSendMessage();
-      
-      setSendError(null);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setSendError(error instanceof Error ? error.message : "Impossible d'envoyer le message");
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
   useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
     
-    const adjustHeight = () => {
-      textarea.style.height = 'auto';
-      const newHeight = Math.min(Math.max(textarea.scrollHeight, 40), 200);
-      textarea.style.height = `${newHeight}px`;
-    };
-    
-    textarea.addEventListener('input', adjustHeight);
-    adjustHeight(); // Initial adjustment
+    textarea.addEventListener('click', handleSelectionChange);
+    textarea.addEventListener('keyup', handleSelectionChange);
     
     return () => {
-      textarea.removeEventListener('input', adjustHeight);
+      textarea.removeEventListener('click', handleSelectionChange);
+      textarea.removeEventListener('keyup', handleSelectionChange);
     };
-  }, [message, inputRef]);
+  }, [inputRef]);
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-900 border-t-0" style={style}>
-      <AnimatePresence>
-        {replyTo && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -10, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center gap-2 mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/70 rounded-lg text-sm text-gray-600 dark:text-gray-300 border-l-2 border-purple-400 shadow-sm"
+    <div className="p-3 bg-white dark:bg-gray-900" style={style}>
+      {replyTo && (
+        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+          <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setReplyTo(null)}
+            className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
           >
-            <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyTo(null)}
-              className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-red-500 transition-colors"
-            >
-              <X className="h-3.5 w-3.5 mr-1" />
-              Annuler
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            Annuler
+          </Button>
+        </div>
+      )}
       <div className="relative">
-        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500 transition-all duration-200">
+        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
           <div className="flex-1 min-h-[40px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={handleInputChange}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] max-h-[200px] py-3 px-3.5 text-base rounded-none"
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 text-base rounded-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSendWithValidation();
+                  
+                  const formattedMessage = formatMessage(message);
+                  setMessage(formattedMessage);
+                  
+                  onSendMessage();
                 }
               }}
             />
           </div>
-          <div className="flex items-center p-2 pr-2.5 gap-1.5">
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full transition-colors"
-                onClick={() => {
-                  const textarea = inputRef.current;
-                  if (textarea) {
-                    const cursorPos = textarea.selectionStart || 0;
-                    const textBeforeCursor = message.substring(0, cursorPos);
-                    const textAfterCursor = message.substring(cursorPos);
-                    const newMessage = textBeforeCursor + '@' + textAfterCursor;
-                    setMessage(newMessage);
+          <div className="flex items-center p-1.5 pr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              onClick={() => {
+                const textarea = inputRef.current;
+                if (textarea) {
+                  const cursorPos = textarea.selectionStart || 0;
+                  const textBeforeCursor = message.substring(0, cursorPos);
+                  const textAfterCursor = message.substring(cursorPos);
+                  const newMessage = textBeforeCursor + '@' + textAfterCursor;
+                  setMessage(newMessage);
+                  
+                  setTimeout(() => {
+                    textarea.focus();
+                    const newPos = cursorPos + 1;
+                    textarea.setSelectionRange(newPos, newPos);
+                    setCursorPosition(newPos);
                     
-                    setTimeout(() => {
-                      textarea.focus();
-                      const newPos = cursorPos + 1;
-                      textarea.setSelectionRange(newPos, newPos);
-                      setCursorPosition(newPos);
-                      
-                      checkForMentions(newMessage, newPos);
-                    }, 0);
-                  }
-                }}
-              >
-                <AtSign className="h-5 w-5" />
-              </Button>
-            </motion.div>
+                    checkForMentions(newMessage, newPos);
+                  }, 0);
+                }
+              }}
+            >
+              <AtSign className="h-5 w-5" />
+            </Button>
           
             <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
               <PopoverTrigger asChild>
-                <motion.div 
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
                 >
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full transition-colors"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
-                </motion.div>
+                  <Smile className="h-5 w-5" />
+                </Button>
               </PopoverTrigger>
               <PopoverContent 
-                className="w-auto p-0 border border-gray-200 dark:border-gray-700 shadow-lg" 
+                className="w-auto p-0" 
                 side="top" 
                 align="end"
               >
@@ -416,37 +364,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               multiple
               className="hidden"
             />
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="h-5 w-5" />
-              </Button>
-            </motion.div>
-            <motion.div 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
+              onClick={() => {
+                const formattedMessage = formatMessage(message);
+                setMessage(formattedMessage);
+                onSendMessage();
+              }}
             >
-              <Button
-                size="icon"
-                className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center shadow-sm transition-all duration-200 hover:shadow"
-                onClick={handleSendWithValidation}
-                disabled={sendingMessage}
-              >
-                {sendingMessage ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </motion.div>
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         
@@ -459,53 +395,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             searchTerm={mentionSearchTerm}
           />
         )}
-        
-        <AnimatePresence>
-          {sendError && (
-            <motion.div 
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-1.5 text-sm text-red-500 px-2"
-            >
-              {sendError}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-      <AnimatePresence>
-        {attachments.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-3 space-y-1.5 px-1"
-          >
-            {attachments.map((file, index) => (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800/70 rounded-lg border border-gray-100 dark:border-gray-800 shadow-sm"
+      {attachments.length > 0 && (
+        <div className="mt-2 space-y-1.5 px-1">
+          {attachments.map((file, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 hover:text-red-500 px-2"
+                onClick={() => handleRemoveAttachment(index)}
               >
-                <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 hover:text-red-500 px-2 transition-colors"
-                  onClick={() => handleRemoveAttachment(index)}
-                >
-                  <X className="h-3.5 w-3.5 mr-1" />
-                  Supprimer
-                </Button>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                Supprimer
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

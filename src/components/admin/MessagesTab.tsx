@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Chat from "@/components/chat/Chat";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface Channel {
   id: string;
@@ -57,6 +57,7 @@ export const MessagesTab = () => {
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -65,6 +66,7 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
+  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true);
@@ -80,6 +82,7 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
+          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -97,7 +100,7 @@ export const MessagesTab = () => {
     };
 
     fetchChannels();
-  }, []);
+  }, []); // No dependencies, only run once on component mount
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -184,6 +187,7 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
+      // Update the channels list with the new name
       setChannels(channels.map(channel => 
         channel.id === channelId 
           ? { ...channel, display_name: newName.trim() }
@@ -204,16 +208,11 @@ export const MessagesTab = () => {
     }
   };
 
+  // Display a loading state while fetching channels
   if (isLoading && channels.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-lg text-muted-foreground"
-        >
-          Loading channels...
-        </motion.p>
+        <p className="text-lg text-muted-foreground">Loading channels...</p>
       </div>
     );
   }
@@ -221,176 +220,142 @@ export const MessagesTab = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
-        <AnimatePresence>
-          {(isMobile ? showChannelList : true) && (
-            <motion.div 
-              initial={isMobile ? { x: -300, opacity: 0 } : { opacity: 1 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={isMobile ? { x: -300, opacity: 0 } : { opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`${
-                isMobile 
-                  ? showChannelList 
-                    ? 'absolute inset-0 z-30 bg-background' 
-                    : 'hidden'
-                  : 'w-80'
-              } border-r flex flex-col`}
-            >
-              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Canaux</h2>
-                  <div className="flex gap-2">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDirectMessageDialog(true)}
-                        className="h-9 w-9 p-0 rounded-full"
-                      >
-                        <UserPlus className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowCreateDialog(true)}
-                        className="h-9 w-9 p-0 rounded-full"
-                      >
-                        <PlusCircle className="h-5 w-5" />
-                      </Button>
-                    </motion.div>
-                  </div>
-                </div>
-                <Input
-                  placeholder="Rechercher un canal..."
-                  className="w-full"
-                />
+        <div 
+          className={`${
+            isMobile 
+              ? showChannelList 
+                ? 'absolute inset-0 z-30 bg-background' 
+                : 'hidden'
+              : 'w-80'
+          } border-r flex flex-col`}
+        >
+          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Canaux</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDirectMessageDialog(true)}
+                  className="h-9 w-9 p-0"
+                >
+                  <UserPlus className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCreateDialog(true)}
+                  className="h-9 w-9 p-0"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                </Button>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
-                {channels.map((channel, index) => (
-                  <motion.div
-                    key={channel.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03, duration: 0.2 }}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.01, backgroundColor: 'rgba(0,0,0,0.02)' }}
-                      transition={{ duration: 0.2 }}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                        selectedChannel?.id === channel.id ? 'bg-accent shadow-sm' : ''
-                      }`}
-                      onClick={() => {
-                        setSelectedChannel(channel);
-                        if (isMobile) setShowChannelList(false);
+            </div>
+            <Input
+              placeholder="Rechercher un canal..."
+              className="w-full"
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            {channels.map((channel) => (
+              <div
+                key={channel.id}
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
+                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                }`}
+                onClick={() => {
+                  setSelectedChannel(channel);
+                  if (isMobile) setShowChannelList(false);
+                }}
+              >
+                <span className="truncate text-sm font-medium">
+                  {editingChannel?.id === channel.id ? (
+                    <Input
+                      value={editingChannel.name}
+                      onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') {
+                          handleRename(channel.id, editingChannel.name);
+                        } else if (e.key === 'Escape') {
+                          setEditingChannel(null);
+                        }
                       }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8"
+                      autoFocus
+                    />
+                  ) : (
+                    channel.display_name
+                  )}
+                </span>
+                {selectedChannel?.id === channel.id && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingChannel({ id: channel.id, name: channel.display_name });
+                      }}
+                      className="h-8 w-8 p-0"
                     >
-                      <span className="truncate text-sm font-medium">
-                        {editingChannel?.id === channel.id ? (
-                          <Input
-                            value={editingChannel.name}
-                            onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
-                            onKeyDown={(e) => {
-                              e.stopPropagation();
-                              if (e.key === 'Enter') {
-                                handleRename(channel.id, editingChannel.name);
-                              } else if (e.key === 'Escape') {
-                                setEditingChannel(null);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-8"
-                            autoFocus
-                          />
-                        ) : (
-                          channel.display_name
-                        )}
-                      </span>
-                      {selectedChannel?.id === channel.id && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingChannel({ id: channel.id, name: channel.display_name });
-                            }}
-                            className="h-8 w-8 p-0 rounded-full"
-                          >
-                            <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowMemberManagement(true);
-                            }}
-                            className="h-8 w-8 p-0 rounded-full"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setChannelToDelete(channel);
-                              setShowDeleteDialog(true);
-                            }}
-                            className="h-8 w-8 p-0 text-destructive rounded-full"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </motion.div>
-                  </motion.div>
-                ))}
+                      <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMemberManagement(true);
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChannelToDelete(channel);
+                        setShowDeleteDialog(true);
+                      }}
+                      className="h-8 w-8 p-0 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        </div>
 
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex-1 flex flex-col h-full"
-            >
+            <div className="flex-1 flex flex-col h-full">
               {isMobile && (
-                <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChannelList(true)}
+                  className="h-9 w-9 p-0 absolute top-4 left-4 z-10"
                 >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowChannelList(true)}
-                    className="h-9 w-9 p-0 absolute top-4 left-4 z-10 rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                </motion.div>
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
               )}
               
+              {/* Use the standardized Chat component */}
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
               />
-            </motion.div>
+            </div>
           ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center"
-            >
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center">
               <p>Sélectionnez un canal pour commencer à discuter</p>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
@@ -413,7 +378,7 @@ export const MessagesTab = () => {
         />
       )}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="sm:max-w-[425px]">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce canal ?</AlertDialogTitle>
             <AlertDialogDescription>

@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
-import { useMessageFormatter } from '@/hooks/chat/useMessageFormatter';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
 const ALLOWED_FILE_TYPES = new Set([
@@ -81,7 +80,6 @@ export const useMessageActions = (
   fetchMessages: () => Promise<void>
 ) => {
   const { toast } = useToast();
-  const { validateMentions } = useMessageFormatter();
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
     // Check connection before attempting upload
@@ -157,31 +155,13 @@ export const useMessageActions = (
       });
       throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
     }
-
-    // Validate mentions for proper format
-    const { isValid, error } = validateMentions(content);
-    if (!isValid) {
-      toast({
-        title: "Erreur de format",
-        description: error || "Format de mention invalide",
-        variant: "destructive",
-      });
-      throw new Error(error || "Format de mention invalide");
-    }
     
     try {
-      console.log('[Chat] Starting message send process');
-      console.log('[Chat] Message content:', content);
-      console.log('[Chat] Channel ID:', channelId);
-      console.log('[Chat] Parent message ID:', parentMessageId);
-      console.log('[Chat] Files count:', files.length);
-      
-      // Upload any attachments first
-      const uploadedAttachments = files.length > 0 
-        ? await Promise.all(files.map(file => uploadAttachment(file)))
-        : [];
-        
-      console.log('[Chat] All files uploaded successfully:', uploadedAttachments.length);
+      console.log('[Chat] Starting file uploads:', files.length);
+      const uploadedAttachments = await Promise.all(
+        files.map(file => uploadAttachment(file))
+      );
+      console.log('[Chat] All files uploaded successfully');
 
       const attachmentsForDb = uploadedAttachments.map(att => ({
         ...att
@@ -196,25 +176,15 @@ export const useMessageActions = (
         reactions: {} as Json
       };
 
-      console.log('[Chat] Sending message to database:', { ...newMessage, content: newMessage.content.substring(0, 50) + (newMessage.content.length > 50 ? '...' : '') });
-
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(newMessage)
         .select('*')
         .single();
 
-      if (error) {
-        console.error('[Chat] Error inserting message:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.error('[Chat] No data returned from message insertion');
-        throw new Error("Aucune donnée retournée lors de l'insertion");
-      }
+      if (error) throw error;
+      if (!data) throw new Error("Aucune donnée retournée lors de l'insertion");
 
-      console.log('[Chat] Message sent successfully with ID:', data.id);
       await fetchMessages();
       return data.id;
     } catch (error) {

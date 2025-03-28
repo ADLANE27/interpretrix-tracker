@@ -1,42 +1,30 @@
 
-// Types d'événements
-export const EVENT_CONNECTION_ESTABLISHED = 'connection-established';
-export const EVENT_CONNECTION_LOST = 'connection-lost';
+// Constants for configuration
+export const RETRY_MAX = 15; // Reduced from 20 to be more reasonable
+export const RETRY_DELAY_BASE = 1000; // Increased from 500ms for better backoff
+export const CONNECTION_TIMEOUT = 20000; // Increased from 15000ms
+export const EVENT_COOLDOWN = 100; // Increased from 50ms to reduce event floods
 
-// Pattern utilisé pour détecter les mentions dans les messages
-export const MENTION_PATTERN = /@([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)/g;
+// Health check constants
+export const HEALTH_CHECK_INTERVAL = 5000; // Increased from 3000ms for less frequent checks
+export const HEARTBEAT_INTERVAL = 15000; // Increased from 10000ms
+export const HEARTBEAT_TIMEOUT = 20000; // Increased from 15000ms
 
-// Constants utilisées dans le processus d'abonnement en temps réel
-export const REALTIME_SUBSCRIPTION_STATES = {
-  SUBSCRIBED: 'SUBSCRIBED',
-  TIMED_OUT: 'TIMED_OUT',
-  CLOSED: 'CLOSED',
-  CHANNEL_ERROR: 'CHANNEL_ERROR'
-};
+// Connection status change debounce to prevent UI flickering
+export const CONNECTION_STATUS_DEBOUNCE_TIME = 500; // Increased from 150ms
 
-// Paramètres standard de reconnexion
-export const RECONNECT_BASE_DELAY_MS = 1000;
-export const MAX_RECONNECT_ATTEMPTS = 5;
+// Staggered reconnection parameters
+export const RECONNECT_STAGGER_INTERVAL = 100; // Increased from 30ms
+export const RECONNECT_STAGGER_MAX_DELAY = 1000; // Increased from 500ms
 
-// Noms de canaux
-export const CHANNEL_PREFIX = {
-  MESSAGE: 'message-channel-',
-  CHAT: 'chat-',
-  INTERPRETER: 'interpreter-',
-  MISSION: 'mission-',
-  TERMINOLOGY: 'terminology-'
-};
+// Periodic reconnection interval (in milliseconds)
+export const RECONNECT_PERIODIC_INTERVAL = 60000; // Increased from 30000ms for less frequent attempts
 
-// Constantes du moniteur de connexion
-export const RETRY_MAX = 10;
-export const RETRY_DELAY_BASE = 2000;
-export const CONNECTION_TIMEOUT = 15000;
-export const RECONNECT_STAGGER_INTERVAL = 500;
-export const RECONNECT_STAGGER_MAX_DELAY = 10000;
-export const RECONNECT_PERIODIC_INTERVAL = 60000;
+// Telemetry and debugging
+export const DEBUG_MODE = true;
+export const TELEMETRY_BATCH_SIZE = 10;
+export const TELEMETRY_INTERVAL = 60000;
 
-// Constantes de debouncing et de gestion d'événements
-export const CONNECTION_STATUS_DEBOUNCE_TIME = 500;
-export const EVENT_COOLDOWN = 1000;
-export const STATUS_UPDATE_DEBOUNCE = 200;
-export const DEBUG_MODE = false;
+// Status update-specific constants
+export const STATUS_UPDATE_DEBOUNCE = 50; // Increased from 10ms for status updates
+export const STATUS_EVENT_PRIORITY = true; // Flag to indicate status events should be prioritized

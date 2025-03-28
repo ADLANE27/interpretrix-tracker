@@ -25,7 +25,7 @@ export const MentionSuggestions = ({
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
-  // Convertir les langues standardisées au format de suggestions
+  // Convert standardized languages to suggestions format
   const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
     name: lang,
     type: 'language'
@@ -33,31 +33,20 @@ export const MentionSuggestions = ({
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   
-  // Filtrer les suggestions de langue en fonction du terme de recherche si fourni
+  // Filter language suggestions based on search term if provided
   const languageSuggestions = searchTerm 
-    ? standardLanguageSuggestions.filter(lang => {
-        // Normaliser les deux chaînes pour la comparaison
-        const normalizedLang = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        
-        return normalizedLang.includes(normalizedSearch);
-      })
+    ? standardLanguageSuggestions.filter(lang => 
+        lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
     : standardLanguageSuggestions;
 
   if (loading) {
     return (
       <motion.div 
-        className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
+        className="absolute bottom-full mb-1 w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        style={{
-          transform: 'translate3d(0,0,0)',
-          willChange: 'transform',
-          maxHeight: '300px',
-          overflowY: 'auto',
-          bottom: 'auto'
-        }}
       >
         <Command className="rounded-lg">
           <CommandInput 
@@ -79,21 +68,14 @@ export const MentionSuggestions = ({
   if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
     return (
       <motion.div 
-        className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
+        className="absolute bottom-full mb-1 w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        style={{
-          transform: 'translate3d(0,0,0)',
-          willChange: 'transform',
-          maxHeight: '300px',
-          overflowY: 'auto',
-          bottom: 'auto'
-        }}
       >
         <Command className="rounded-lg">
           <CommandInput 
-            placeholder="Rechercher un utilisateur ou une langue..." 
+            placeholder="Rechercher un utilisateur..." 
             className="border-b" 
             value={searchTerm} 
           />
@@ -107,59 +89,32 @@ export const MentionSuggestions = ({
 
   return (
     <motion.div 
-      className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
+      className="absolute bottom-full mb-1 w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      style={{
-        transform: 'translate3d(0,0,0)',
-        willChange: 'transform',
-        maxHeight: '300px',
-        overflowY: 'auto',
-        bottom: 'auto'
-      }}
     >
       <Command
         className="rounded-lg"
         filter={(value, search) => {
-          // Recherche améliorée pour gérer les diacritiques et la casse
+          // Improved search to handle diacritics and case
           const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           
-          // Vérifier si la valeur commence par ou contient le terme de recherche
+          // Check if value starts with or contains the search term
           if (normalizedValue.startsWith(normalizedSearch)) return 1;
-          if (normalizedValue.includes(normalizedSearch)) return 0.75;
-          // Essayer la comparaison mot par mot pour les noms de langues complexes
-          if (normalizedValue.split(/\s+/).some(word => word.startsWith(normalizedSearch))) return 0.5;
+          if (normalizedValue.includes(normalizedSearch)) return 0.5;
           return 0;
         }}
       >
         <CommandInput 
-          placeholder="Rechercher un utilisateur ou une langue..." 
+          placeholder="Rechercher un utilisateur..." 
           className="border-b" 
           value={searchTerm}
           autoFocus
         />
         <CommandList>
           <ScrollArea className="max-h-[250px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-            {languageSuggestions.length > 0 && (
-              <CommandGroup heading="Langues">
-                {languageSuggestions.map((lang) => (
-                  <CommandItem
-                    key={lang.name}
-                    value={lang.name.toLowerCase()}
-                    onSelect={() => onSelect(lang)}
-                    className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
-                  >
-                    <div className="h-8 w-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300 border border-border">
-                      <Languages className="h-4 w-4" />
-                    </div>
-                    <div className="font-medium">{lang.name}</div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-
             {memberSuggestions.length > 0 && (
               <CommandGroup heading="Membres">
                 {memberSuggestions.map((member) => (
@@ -192,6 +147,22 @@ export const MentionSuggestions = ({
                 ))}
               </CommandGroup>
             )}
+
+            <CommandGroup heading="Langues">
+              {languageSuggestions.map((lang) => (
+                <CommandItem
+                  key={lang.name}
+                  value={lang.name.toLowerCase()}
+                  onSelect={() => onSelect(lang)}
+                  className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-accent transition-colors"
+                >
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300 border border-border">
+                    <Languages className="h-4 w-4" />
+                  </div>
+                  <div className="font-medium">{lang.name}</div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </ScrollArea>
         </CommandList>
       </Command>
