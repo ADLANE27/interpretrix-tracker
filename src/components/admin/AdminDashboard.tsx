@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,10 +102,8 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="messages" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
-              <MessagesTab />
-            </div>
+          <TabsContent value="messages" className="absolute inset-0 bg-slate-50">
+            <MessagesTab />
           </TabsContent>
 
           <TabsContent value="users" className="absolute inset-0 overflow-auto bg-[#1a2844]">
