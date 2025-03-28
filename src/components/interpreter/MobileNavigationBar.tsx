@@ -5,7 +5,15 @@ import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
-import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions'; // Add this import
+import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
+
+// Define the props interface
+interface MobileNavigationBarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  pendingMissionsCount?: number;
+  onMenuClick?: () => void;
+}
 
 export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({ 
   activeTab, 
@@ -14,7 +22,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
   onMenuClick
 }) => {
   const isMobile = useIsMobile();
-  const { totalUnreadMentionsCount } = useUnreadMentions(); // Get unread mentions
+  const { totalUnreadCount } = useUnreadMentions(); // Use totalUnreadCount instead of totalUnreadMentionsCount
   
   if (!isMobile) return null;
   
@@ -31,7 +39,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
       label: "Messages", 
       mobileLabel: "Messages", 
       icon: MessageCircle, 
-      badge: totalUnreadMentionsCount 
+      badge: totalUnreadCount 
     },
     { 
       id: "profile", 
@@ -101,7 +109,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
                 "text-xs font-medium",
                 isActive ? "text-primary" : "text-gray-500 dark:text-gray-400"
               )}>
-                {tab.mobileLabel}
+                {tab.id === "profile" ? "Profil" : tab.id === "missions" ? "Missions" : "Messages"}
               </span>
               
               {isActive && (

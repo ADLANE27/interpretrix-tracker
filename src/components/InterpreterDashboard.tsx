@@ -345,7 +345,6 @@ export const InterpreterDashboard = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             pendingMissionsCount={scheduledMissions.length}
-            unreadMessagesCount={0}
             onMenuClick={toggleSidebar}
           />
         )}
