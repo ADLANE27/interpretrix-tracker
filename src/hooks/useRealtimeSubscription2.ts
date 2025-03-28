@@ -62,7 +62,8 @@ export function useRealtimeSubscription2(
           table: opt.table,
           filter: opt.filter
         },
-        (payload) => {
+        // Type assertion to fix the payload type mismatch
+        (payload: any) => {
           if (!mountedRef.current) return;
           callbackRef.current(payload);
         }
