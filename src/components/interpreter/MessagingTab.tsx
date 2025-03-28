@@ -31,9 +31,9 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full`}>
+        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full overflow-hidden`}>
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />
@@ -41,7 +41,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
       )}
 
       {selectedChannelId && (
-        <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
+        <div className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full`}>
           <InterpreterChat 
             channelId={selectedChannelId} 
             filters={filters} 
