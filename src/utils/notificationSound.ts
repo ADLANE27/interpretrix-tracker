@@ -3,33 +3,57 @@ let audioContext: AudioContext | null = null;
 let audioBuffer: AudioBuffer | null = null;
 let initializationPromise: Promise<void> | null = null;
 let userInteracted = false;
+let interactionListenerAdded = false;
 
 const createAudioContext = () => {
   try {
-    return new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    return new AudioCtx();
   } catch (error) {
     console.error('[Audio] Failed to create AudioContext:', error);
     return null;
   }
 };
 
-// Track user interaction to enable audio
-document.addEventListener('click', () => {
-  userInteracted = true;
-  // Resume AudioContext when user interacts with the page
-  if (audioContext?.state === 'suspended') {
-    audioContext.resume().catch(err => 
-      console.error('[Audio] Failed to resume context after interaction:', err)
-    );
-  }
+// Track user interaction to enable audio - only add once
+const setupInteractionListener = () => {
+  if (interactionListenerAdded) return;
   
-  // Lazy load the sound file after user interaction
-  if (!audioBuffer) {
-    initializeNotificationSound().catch(error => {
-      console.error('[Audio] Failed to preload notification sound after interaction:', error);
-    });
-  }
-}, { once: true });
+  interactionListenerAdded = true;
+  
+  // Function to handle user interaction
+  const handleInteraction = () => {
+    userInteracted = true;
+    // Resume AudioContext when user interacts with the page
+    if (audioContext?.state === 'suspended') {
+      audioContext.resume().catch(err => 
+        console.error('[Audio] Failed to resume context after interaction:', err)
+      );
+    }
+    
+    // Lazy load the sound file after user interaction
+    if (!audioBuffer) {
+      initializeNotificationSound().catch(error => {
+        console.error('[Audio] Failed to preload notification sound after interaction:', error);
+      });
+    }
+    
+    // Remove listeners after first interaction
+    document.removeEventListener('click', handleInteraction);
+    document.removeEventListener('touchstart', handleInteraction);
+    document.removeEventListener('keydown', handleInteraction);
+  };
+
+  // Listen for various user interactions
+  document.addEventListener('click', handleInteraction, { once: true });
+  document.addEventListener('touchstart', handleInteraction, { once: true });
+  document.addEventListener('keydown', handleInteraction, { once: true });
+  
+  console.log('[Audio] Interaction listeners added for audio initialization');
+};
+
+// Call this early in your app initialization
+setupInteractionListener();
 
 export const initializeNotificationSound = async () => {
   // Return existing promise if there's one in progress
@@ -42,6 +66,7 @@ export const initializeNotificationSound = async () => {
       }
       
       if (!audioBuffer && audioContext) {
+        console.log('[Audio] Loading notification sound...');
         const response = await fetch('/notification-sound.mp3');
         const arrayBuffer = await response.arrayBuffer();
         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -67,7 +92,12 @@ export const playNotificationSound = async () => {
     
     // Make sure user has interacted with the page first
     if (audioContext?.state === 'suspended') {
-      await audioContext.resume();
+      try {
+        await audioContext.resume();
+      } catch (err) {
+        console.error('[Audio] Failed to resume audio context:', err);
+        return false;
+      }
     }
     
     // Lazy initialize on demand
@@ -88,3 +118,10 @@ export const playNotificationSound = async () => {
     return false;
   }
 };
+
+// Auto-initialize in the background after user interaction
+if (userInteracted && !audioBuffer) {
+  initializeNotificationSound().catch(err => {
+    console.error('[Audio] Background initialization failed:', err);
+  });
+}

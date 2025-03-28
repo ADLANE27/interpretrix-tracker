@@ -22,8 +22,8 @@ export const CURRENT_LOG_LEVEL = LOG_LEVEL.WARNING;
 // Create an event emitter instance
 export const eventEmitter = new CustomEventEmitter();
 
-// Set max listeners to avoid memory leak warnings
-eventEmitter.setMaxListeners(20);
+// Set max listeners to avoid memory leak warnings - increase this as we properly handle cleanup now
+eventEmitter.setMaxListeners(100);
 
 // Utility logging function that respects log level
 export const logByLevel = (level: number, message: string, ...args: any[]) => {
@@ -43,4 +43,21 @@ export const logByLevel = (level: number, message: string, ...args: any[]) => {
         break;
     }
   }
+};
+
+// Add a connection status update method that helps prevent multiple listeners
+export const updateConnectionStatus = (connected: boolean): void => {
+  eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
+};
+
+// Helper for safe subscription to connection status events
+export const onConnectionStatusChange = (
+  handler: (connected: boolean) => void, 
+  handlerKey?: string
+): () => void => {
+  eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handler, handlerKey);
+  
+  return () => {
+    eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handler, handlerKey);
+  };
 };

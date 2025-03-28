@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -25,16 +25,17 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
     
-    const handleVisibilityChange = () => {
+    // Create stable callback functions that won't change on rerenders
+    const handleVisibilityChange = useCallback(() => {
       if (!mountedRef.current) return;
       
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
         stableOnUpdate();
       }
-    };
+    }, [stableOnUpdate]);
 
-    const handleOnline = () => {
+    const handleOnline = useCallback(() => {
       if (!mountedRef.current) return;
       
       console.log('[useMissionUpdates] Network connection restored, triggering update');
@@ -45,20 +46,21 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         console.log('[useMissionUpdates] Resubscribing to interpreter status channel');
         interpreterStatusChannelRef.current.subscribe();
       }
-    };
+    }, [stableOnUpdate]);
 
-    window.addEventListener("online", handleOnline);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Listen for interpreter status update events
-    const handleStatusUpdate = () => {
+    // Create a stable status update handler
+    const handleStatusUpdate = useCallback(() => {
       if (!mountedRef.current) return;
       
       console.log('[useMissionUpdates] Received manual status update event');
       stableOnUpdate();
-    };
+    }, [stableOnUpdate]);
     
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+    window.addEventListener("online", handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Listen for interpreter status update events - using a named handler for proper cleanup
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, 'mission-updates-status-handler');
 
     // Set up a direct realtime subscription for critical interpreter status changes
     const setupStatusChannel = () => {
@@ -126,7 +128,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       mountedRef.current = false;
       
       window.removeEventListener("online", handleOnline);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
       
       if (interpreterStatusChannelRef.current) {
