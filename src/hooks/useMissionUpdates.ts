@@ -12,6 +12,9 @@ const isProduction = () => {
          !window.location.hostname.includes('preview');
 };
 
+// Prevent multiple initializations of the same handler
+let isInitialized = false;
+
 // Create a stable callback that doesn't change on each render
 export const useMissionUpdates = (onUpdate: () => void) => {
   const interpreterStatusChannelRef = useRef<RealtimeChannel | null>(null);
@@ -19,6 +22,20 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   const retryCountRef = useRef(0);
   const MAX_RETRIES = isProduction() ? 15 : 5;
   const mountedRef = useRef(true);
+  const alreadyInitializedRef = useRef(false);
+  
+  // Skip initialization if already done
+  if (isInitialized && !alreadyInitializedRef.current) {
+    console.log('[useMissionUpdates] Already initialized, skipping');
+    alreadyInitializedRef.current = true;
+    return;
+  }
+  
+  if (!alreadyInitializedRef.current) {
+    isInitialized = true;
+    alreadyInitializedRef.current = true;
+    console.log('[useMissionUpdates] First initialization');
+  }
   
   // Stabilize the callback to prevent effect re-triggers
   const stableOnUpdate = useCallback(onUpdate, [onUpdate]);
@@ -158,8 +175,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
+      
+      // Reset initialization flags on unmount
+      isInitialized = false;
     };
-  }, []); // Empty dependency array since we use stable callbacks - prevents recreation of the effect
+  }, []); // Empty dependency array since we use stable callbacks
 
   // Common subscription options
   const subscriptionOptions = {
