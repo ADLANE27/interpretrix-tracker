@@ -1,4 +1,3 @@
-
 // Constants for the application
 
 // Theme constants
@@ -145,7 +144,7 @@ export const TRANSLATIONS = {
     ar: "تحميل",
     zh: "下载",
     ja: "ダウンロード",
-    ko: "다운ロード"
+    ko: "다운로드"
   },
   preview: {
     fr: "Aperçu",
