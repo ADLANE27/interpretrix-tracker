@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -439,20 +438,18 @@ export const InterpreterChat = ({
           />
         </div>
         
-        <div className="bg-gradient-to-r from-white/90 to-palette-soft-blue/20 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 border-t border-white/20 dark:border-gray-700/30 backdrop-blur-md p-3 md:p-4 rounded-b-xl">
-          <ChatInput
-            message={message}
-            setMessage={setMessage}
-            onSendMessage={handleSendMessage}
-            handleFileChange={handleFileChange}
-            attachments={attachments}
-            handleRemoveAttachment={handleRemoveAttachment}
-            inputRef={inputRef}
-            replyTo={replyTo}
-            setReplyTo={setReplyTo}
-            style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
-          />
-        </div>
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+        />
       </div>
     </div>
   );
