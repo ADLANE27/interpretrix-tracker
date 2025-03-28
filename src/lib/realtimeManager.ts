@@ -1,11 +1,11 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import EventEmitter from 'events';
+import { CustomEventEmitter } from './customEventEmitter';
 
 export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
 export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread-mentions-updated';
 export const EVENT_NEW_MESSAGE_RECEIVED = 'new-message-received';
 
-const eventEmitter = new EventEmitter();
+const eventEmitter = new CustomEventEmitter();
 
 interface RealtimeConfig {
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -145,7 +145,7 @@ class RealtimeManager {
     if (eventName === EVENT_INTERPRETER_STATUS_UPDATE) {
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
     } else if (eventName === EVENT_UNREAD_MENTIONS_UPDATED) {
-      (eventEmitter as any).emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
     } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
       eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, data);
     }
