@@ -310,7 +310,7 @@ export const InterpreterChat = ({
   return (
     <div className="flex flex-col h-full">
       <motion.div 
-        className="bg-gradient-to-r from-white/80 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md flex flex-col px-4 md:px-6 sticky top-0 z-40 safe-area-top border-b border-white/20 dark:border-gray-700/30 shadow-sm"
+        className="bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md flex flex-col px-4 md:px-6 sticky top-0 z-40 safe-area-top border-b border-transparent dark:border-transparent shadow-sm"
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.2 }}
@@ -394,7 +394,7 @@ export const InterpreterChat = ({
         )}
       </motion.div>
 
-      <div className="flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md">
         <div 
           className="flex-grow overflow-y-auto p-3 sm:p-4 scrollbar-none"
           ref={messageContainerRef} 
@@ -449,6 +449,7 @@ export const InterpreterChat = ({
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+          className="bg-transparent"
         />
       </div>
     </div>
