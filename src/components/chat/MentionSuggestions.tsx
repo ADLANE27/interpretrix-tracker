@@ -47,7 +47,7 @@ export const MentionSuggestions = ({
   if (loading) {
     return (
       <motion.div 
-        className="absolute bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
+        className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
@@ -55,7 +55,8 @@ export const MentionSuggestions = ({
           transform: 'translate3d(0,0,0)',
           willChange: 'transform',
           maxHeight: '300px',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          bottom: 'auto'
         }}
       >
         <Command className="rounded-lg">
@@ -78,7 +79,7 @@ export const MentionSuggestions = ({
   if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
     return (
       <motion.div 
-        className="absolute bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-50 bg-background shadow-lg rounded-lg border border-border"
+        className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
@@ -86,7 +87,8 @@ export const MentionSuggestions = ({
           transform: 'translate3d(0,0,0)',
           willChange: 'transform',
           maxHeight: '300px',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          bottom: 'auto'
         }}
       >
         <Command className="rounded-lg">
@@ -105,7 +107,7 @@ export const MentionSuggestions = ({
 
   return (
     <motion.div 
-      className="absolute bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[1000] bg-background shadow-lg rounded-lg border border-border"
+      className="fixed bottom-full left-0 mb-1 w-full max-w-[300px] sm:w-72 z-[9999] bg-background shadow-lg rounded-lg border border-border"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -113,7 +115,8 @@ export const MentionSuggestions = ({
         transform: 'translate3d(0,0,0)',
         willChange: 'transform',
         maxHeight: '300px',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        bottom: 'auto'
       }}
     >
       <Command
