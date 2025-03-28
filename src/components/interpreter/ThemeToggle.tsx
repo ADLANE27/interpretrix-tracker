@@ -32,14 +32,14 @@ export const ThemeToggle = () => {
       onClick={toggleTheme}
       className={`
         relative overflow-hidden rounded-full w-10 h-10
-        bg-gradient-to-br from-white/80 to-palette-soft-blue/40 
-        dark:from-gray-800/90 dark:to-palette-ocean-blue/40 
+        bg-gradient-to-br from-white/70 to-palette-soft-blue/30 
+        dark:from-gray-800/80 dark:to-palette-ocean-blue/30 
         backdrop-blur-md
-        border border-white/40 dark:border-gray-700/40
+        border border-white/30 dark:border-gray-700/30
         shadow-inner transition-all duration-500
         hover:shadow-md hover:border-primary/30 
         text-gray-700 dark:text-gray-300
-        hover:bg-gradient-to-r hover:from-palette-ocean-blue/30 hover:to-palette-vivid-purple/30
+        hover:bg-gradient-to-r hover:from-palette-ocean-blue/20 hover:to-palette-vivid-purple/20
       `}
     >
       <motion.div

@@ -53,7 +53,7 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full pb-16 bg-gradient-to-br from-palette-soft-blue/30 via-white/50 to-palette-soft-purple/40 dark:from-gray-900/95 dark:via-palette-ocean-blue/20 dark:to-palette-vivid-purple/20">
+    <div className="flex-1 overflow-auto h-full pb-16 bg-gradient-to-br from-white via-palette-soft-blue/20 to-palette-soft-purple/30 dark:from-gray-900 dark:via-palette-ocean-blue/10 dark:to-palette-vivid-purple/10">
       <div className="container mx-auto p-0 h-full">
         <AnimatePresence mode="wait">
           <motion.div
