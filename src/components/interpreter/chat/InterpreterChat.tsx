@@ -1,10 +1,8 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { Message } from "@/types/messaging";
-import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrientation } from "@/hooks/use-orientation";
 import { useQuery } from "@tanstack/react-query";
@@ -13,12 +11,11 @@ import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { StatusButtonsBar } from "@/components/interpreter/StatusButtonsBar";
-import { Menu, ArrowLeft, Users, RefreshCw } from "lucide-react";
+import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -308,10 +305,7 @@ export const InterpreterChat = ({
 
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
-  // Dynamic height adjustment based on whether status buttons are shown
-  const adjustedMessageListHeight = showStatusButtons 
-    ? "calc(100vh - 360px)" // More space for status buttons
-    : messageListHeight;
+  const adjustedMessageListHeight = "calc(100vh - 240px)";
   
   return (
     <div className="flex flex-col h-full">
@@ -352,40 +346,8 @@ export const InterpreterChat = ({
             </motion.h2>
           </AnimatePresence>
           
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60" 
-                    onClick={forceFetch}
-                    aria-label="Refresh messages"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh messages</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole="interpreter"
-            >
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="rounded-full bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm hover:bg-white/60 dark:hover:bg-gray-700/60"
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-            </ChannelMembersPopover>
+          <div className="w-16 md:w-24"> 
+            {/* Empty space to balance the layout */}
           </div>
         </div>
 
@@ -427,7 +389,6 @@ export const InterpreterChat = ({
                 onClick={loadMoreMessages}
                 className="text-xs flex items-center gap-1 bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-gray-700/30 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
               >
-                <RefreshCw className="h-3 w-3" />
                 Load more messages
               </Button>
             </div>
