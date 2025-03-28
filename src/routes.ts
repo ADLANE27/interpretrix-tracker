@@ -11,18 +11,18 @@ import Interpreter from './pages/Interpreter';
 export const routes: RouteObject[] = [
   {
     path: "/",
-    element: <Home />,
+    element: React.createElement(Home),
   },
   {
     path: "/about",
-    element: <About />,
+    element: React.createElement(About),
   },
   {
     path: "/admin/*",
-    element: <Admin />,
+    element: React.createElement(Admin),
   },
   {
     path: "/interpreter/*",
-    element: <Interpreter />,
+    element: React.createElement(Interpreter),
   },
 ];
