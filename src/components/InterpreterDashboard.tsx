@@ -322,7 +322,7 @@ export const InterpreterDashboard = () => {
           isMobile={isMobile}
         />
 
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative pt-[56px] md:pt-16">
           <DashboardContent 
             activeTab={activeTab}
             profile={profile}
