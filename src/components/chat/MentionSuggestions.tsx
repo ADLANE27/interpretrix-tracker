@@ -7,7 +7,6 @@ import { LANGUAGES } from '@/lib/constants';
 import { MemberSuggestion, LanguageSuggestion, Suggestion } from '@/types/messaging';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion } from 'framer-motion';
-import { useMessageFormatter } from '@/hooks/chat/useMessageFormatter';
 
 interface MentionSuggestionsProps {
   suggestions: Suggestion[];
@@ -24,8 +23,6 @@ export const MentionSuggestions = ({
   loading = false,
   searchTerm = ''
 }: MentionSuggestionsProps) => {
-  const { normalizeString } = useMessageFormatter();
-  
   if (!visible) return null;
 
   // Convert standardized languages to suggestions format
@@ -39,9 +36,9 @@ export const MentionSuggestions = ({
   // Filter language suggestions based on search term if provided
   const languageSuggestions = searchTerm 
     ? standardLanguageSuggestions.filter(lang => {
-        // Use the normalizeString function for consistent comparison
-        const normalizedLang = normalizeString(lang.name);
-        const normalizedSearch = normalizeString(searchTerm);
+        // Normalize both strings for comparison
+        const normalizedLang = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         return normalizedLang.includes(normalizedSearch);
       })
@@ -104,14 +101,14 @@ export const MentionSuggestions = ({
       <Command
         className="rounded-lg"
         filter={(value, search) => {
-          // Use the normalizeString function for consistent matching
-          const normalizedSearch = normalizeString(search);
-          const normalizedValue = normalizeString(value);
+          // Improved search to handle diacritics and case
+          const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           
-          // Prioritize matches: exact > starts with > contains > word match
-          if (normalizedValue === normalizedSearch) return 1;
-          if (normalizedValue.startsWith(normalizedSearch)) return 0.9;
+          // Check if value starts with or contains the search term
+          if (normalizedValue.startsWith(normalizedSearch)) return 1;
           if (normalizedValue.includes(normalizedSearch)) return 0.75;
+          // Try word by word comparison for complex language names
           if (normalizedValue.split(/\s+/).some(word => word.startsWith(normalizedSearch))) return 0.5;
           return 0;
         }}
