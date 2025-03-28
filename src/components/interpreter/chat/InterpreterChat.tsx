@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -307,7 +306,7 @@ export const InterpreterChat = ({
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       <motion.div 
         className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200 dark:border-gray-700 shadow-sm"
         initial={{ y: -10, opacity: 0 }}
@@ -377,11 +376,10 @@ export const InterpreterChat = ({
       </motion.div>
 
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
+        className="flex-1 overflow-y-auto overflow-x-hidden relative p-2 sm:p-4" 
         ref={messageContainerRef} 
         id="messages-container" 
         data-channel-id={channelId}
-        style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 160px)' } : {}}
         onScroll={handleScroll}
       >
         {isLoading ? (
@@ -421,7 +419,6 @@ export const InterpreterChat = ({
       
       <div className={`
         sticky bottom-0 z-10 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700
-        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md" : ""}
         ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
       `}>
         <ChatInput

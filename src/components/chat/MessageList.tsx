@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -355,7 +356,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   return (
-    <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
+    <div className="space-y-0 bg-white dark:bg-gray-900 min-h-0 flex-shrink flex-grow rounded-md flex flex-col">
       <div className="flex-1">
         {displayMessages.map((message, index) => (
           <div key={message.id}>
