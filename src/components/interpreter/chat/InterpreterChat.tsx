@@ -307,10 +307,10 @@ export const InterpreterChat = ({
 
   const showStatusButtons = isMobile ? (profile && onStatusChange && orientation === "portrait") : (profile && onStatusChange);
   
-  const adjustedMessageListHeight = showStatusButtons 
-    ? isMobile ? "calc(100vh - 360px)" : "calc(100vh - 370px)"
-    : messageListHeight;
-  
+  const messagesContainerHeight = isMobile 
+    ? "calc(100vh - 240px)" // Mobile view (adjusted to be shorter)
+    : "calc(100vh - 260px)"; // Desktop view (adjusted to be shorter)
+
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -369,7 +369,7 @@ export const InterpreterChat = ({
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ height: adjustedMessageListHeight }}
+          style={{ height: messagesContainerHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-gradient-to-br from-white/70 to-palette-soft-blue/30 dark:from-gray-800/70 dark:to-palette-ocean-blue/20 backdrop-blur-md flex items-center justify-center">
