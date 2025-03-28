@@ -1,11 +1,7 @@
+
 import { SupabaseClient } from '@supabase/supabase-js';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_UNREAD_MENTIONS_UPDATED, EVENT_NEW_MESSAGE_RECEIVED, EVENT_CONNECTION_STATUS_CHANGE } from './events';
 import { CustomEventEmitter } from './customEventEmitter';
-
-export const EVENT_INTERPRETER_STATUS_UPDATE = 'interpreter-status-update';
-export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread-mentions-updated';
-export const EVENT_NEW_MESSAGE_RECEIVED = 'new-message-received';
-
-const eventEmitter = new CustomEventEmitter();
 
 interface RealtimeConfig {
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -18,6 +14,7 @@ interface RealtimeConfig {
 class RealtimeManager {
   private supabase: SupabaseClient;
   private channels: any[] = [];
+  private connectionStatus: boolean = true;
 
   constructor(supabaseClient: SupabaseClient) {
     this.supabase = supabaseClient;
@@ -28,6 +25,9 @@ class RealtimeManager {
     this.channels = [];
     this.initInterpreterStatusChannel();
     this.initMessageMentionsChannel();
+    
+    // Emit initial connection status
+    this.updateConnectionStatus(true);
   }
 
   cleanup() {
@@ -36,6 +36,14 @@ class RealtimeManager {
       this.supabase.removeChannel(channel);
     });
     this.channels = [];
+  }
+
+  updateConnectionStatus(isConnected: boolean) {
+    if (this.connectionStatus !== isConnected) {
+      this.connectionStatus = isConnected;
+      console.log(`[RealtimeManager] Connection status changed: ${isConnected ? 'connected' : 'disconnected'}`);
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, isConnected);
+    }
   }
 
   initInterpreterStatusChannel() {
@@ -53,7 +61,10 @@ class RealtimeManager {
         },
         (payload) => {
           console.log('Interpreter status changed to available:', payload);
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+            interpreterId: payload.new?.id,
+            status: payload.new?.status
+          });
         }
       )
       .on(
@@ -66,10 +77,16 @@ class RealtimeManager {
         },
         (payload) => {
           console.log('Interpreter status changed from available:', payload);
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+            interpreterId: payload.new?.id,
+            status: payload.new?.status
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Interpreter status channel subscription status: ${status}`);
+        this.updateConnectionStatus(status === 'SUBSCRIBED');
+      });
 
     this.channels.push(channel);
   }
@@ -91,12 +108,13 @@ class RealtimeManager {
           const mentionedUserId = payload.new?.mentioned_user_id;
           
           if (mentionedUserId) {
-            this.emitEvent(EVENT_UNREAD_MENTIONS_UPDATED, 1);
+            eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, 1);
           }
         }
       )
       .subscribe((status) => {
-        console.log(`Message mentions channel subscription status:`, status);
+        console.log(`Message mentions channel subscription status: ${status}`);
+        this.updateConnectionStatus(status === 'SUBSCRIBED');
       });
 
     this.channels.push(channel);
@@ -124,6 +142,7 @@ class RealtimeManager {
       
       const subscription = channel.subscribe((status) => {
         console.log(`Channel ${channelName} subscription status:`, status);
+        this.updateConnectionStatus(status === 'SUBSCRIBED');
       });
       
       this.channels.push(channel);
@@ -135,6 +154,7 @@ class RealtimeManager {
       };
     } catch (error) {
       console.error(`Error setting up channel ${channelName}:`, error);
+      this.updateConnectionStatus(false);
       return () => {};
     }
   }
@@ -143,7 +163,7 @@ class RealtimeManager {
     console.log(`[RealtimeManager] Emitting event ${eventName} with data:`, data);
     
     if (eventName === EVENT_INTERPRETER_STATUS_UPDATE) {
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, data);
     } else if (eventName === EVENT_UNREAD_MENTIONS_UPDATED) {
       eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
     } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
@@ -161,4 +181,3 @@ class RealtimeManager {
 }
 
 export default RealtimeManager;
-export { eventEmitter };

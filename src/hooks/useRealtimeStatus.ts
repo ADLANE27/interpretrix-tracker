@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
@@ -41,6 +42,7 @@ export const useRealtimeStatus = ({
   // Handle connection status changes
   useEffect(() => {
     const handleConnectionChange = (connected: boolean) => {
+      console.log(`[useRealtimeStatus] Connection status changed: ${connected}`);
       setIsConnected(connected);
       
       if (onConnectionStateChange) {

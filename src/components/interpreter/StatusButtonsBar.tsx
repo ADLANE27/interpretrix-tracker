@@ -26,19 +26,36 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Use the interpreterId passed in props or the userId from the component state
+  const effectiveInterpreterId = interpreterId || userId;
 
   const {
     status: localStatus,
     updateStatus,
     isConnected
   } = useRealtimeStatus({
-    interpreterId: interpreterId || '',
+    interpreterId: effectiveInterpreterId || '',
     initialStatus: currentStatus,
     onStatusChange: (newStatus) => {
       // This handler is called when status is updated via realtime
-      console.log('Status updated via realtime:', newStatus);
+      console.log('[StatusButtonsBar] Status updated via realtime:', newStatus);
     }
   });
+
+  // Set userId from auth if interpreterId is not provided
+  useEffect(() => {
+    if (!interpreterId) {
+      import('@/integrations/supabase/client').then(({ supabase }) => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            setUserId(user.id);
+          }
+        });
+      });
+    }
+  }, [interpreterId]);
 
   const statusConfig = {
     available: {
@@ -72,16 +89,34 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (localStatus === newStatus || isUpdating || !interpreterId) return;
+    console.log(`[StatusButtonsBar] Status change requested: ${newStatus}, current status: ${localStatus}`);
+    
+    if (localStatus === newStatus || isUpdating) {
+      console.log('[StatusButtonsBar] Status is already set or updating in progress');
+      return;
+    }
+
+    if (!effectiveInterpreterId) {
+      console.error('[StatusButtonsBar] No interpreter ID available');
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut. ID d'interprète manquant.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsUpdating(true);
     
     try {
-      setIsUpdating(true);
-      
+      console.log(`[StatusButtonsBar] Updating status to ${newStatus}...`);
       const success = await updateStatus(newStatus);
       
       if (!success) {
         throw new Error('Failed to update status');
       }
+      
+      console.log(`[StatusButtonsBar] Status updated successfully to ${newStatus}`);
       
       if (onStatusChange) {
         await onStatusChange(newStatus);
@@ -92,7 +127,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
       });
     } catch (error) {
-      console.error('Error changing status:', error);
+      console.error('[StatusButtonsBar] Error changing status:', error);
       
       toast({
         title: "Erreur",
@@ -103,6 +138,17 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setIsUpdating(false);
     }
   };
+
+  useEffect(() => {
+    // Debug logging to track props and state
+    console.log('[StatusButtonsBar] Props/State update:', {
+      currentStatus,
+      localStatus,
+      effectiveInterpreterId,
+      isConnected,
+      isUpdating
+    });
+  }, [currentStatus, localStatus, effectiveInterpreterId, isConnected, isUpdating]);
 
   return (
     <div className={cn(
@@ -131,13 +177,13 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
                 ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
               "backdrop-blur-sm",
-              isUpdating || !isConnected ? "opacity-70 cursor-not-allowed" : ""
+              isUpdating || !isConnected || !effectiveInterpreterId ? "opacity-70 cursor-not-allowed" : ""
             )}
             onClick={() => handleStatusChange(statusKey)}
             whileTap={{ scale: 0.95 }}
             animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
-            disabled={isUpdating || !isConnected}
+            disabled={isUpdating || !isConnected || !effectiveInterpreterId}
           >
             <Icon className={cn(
               "flex-shrink-0",
