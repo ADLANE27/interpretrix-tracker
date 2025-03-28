@@ -25,7 +25,7 @@ export const MentionSuggestions = ({
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
-  // Convert standardized languages to suggestions format
+  // Convertir les langues standardisées au format de suggestions
   const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
     name: lang,
     type: 'language'
@@ -33,10 +33,10 @@ export const MentionSuggestions = ({
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   
-  // Filter language suggestions based on search term if provided
+  // Filtrer les suggestions de langue en fonction du terme de recherche si fourni
   const languageSuggestions = searchTerm 
     ? standardLanguageSuggestions.filter(lang => {
-        // Normalize both strings for comparison
+        // Normaliser les deux chaînes pour la comparaison
         const normalizedLang = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
@@ -101,14 +101,14 @@ export const MentionSuggestions = ({
       <Command
         className="rounded-lg"
         filter={(value, search) => {
-          // Improved search to handle diacritics and case
+          // Recherche améliorée pour gérer les diacritiques et la casse
           const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           
-          // Check if value starts with or contains the search term
+          // Vérifier si la valeur commence par ou contient le terme de recherche
           if (normalizedValue.startsWith(normalizedSearch)) return 1;
           if (normalizedValue.includes(normalizedSearch)) return 0.75;
-          // Try word by word comparison for complex language names
+          // Essayer la comparaison mot par mot pour les noms de langues complexes
           if (normalizedValue.split(/\s+/).some(word => word.startsWith(normalizedSearch))) return 0.5;
           return 0;
         }}
