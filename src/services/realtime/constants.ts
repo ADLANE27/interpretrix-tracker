@@ -40,3 +40,9 @@ export const CONNECTION_STATUS_DEBOUNCE_TIME = 500;
 export const EVENT_COOLDOWN = 1000;
 export const STATUS_UPDATE_DEBOUNCE = 200;
 export const DEBUG_MODE = false;
+
+// Connection constants for useSubscriptions
+export const CONNECTION_CONSTANTS = {
+  MAX_RECONNECT_ATTEMPTS: 5,
+  BASE_RECONNECT_DELAY: 1000
+};

@@ -92,8 +92,11 @@ class RealtimeManager {
           const mentionedUserId = payload.new?.mentioned_user_id;
           
           if (mentionedUserId) {
-            // Use an explicitly typeable method to avoid TypeScript errors
-            this.emitEvent(EVENT_UNREAD_MENTIONS_UPDATED, 1);
+            // Emit the event with the user ID and count
+            this.emitEvent(EVENT_UNREAD_MENTIONS_UPDATED, {
+              userId: mentionedUserId,
+              count: 1
+            });
           }
         }
       )
@@ -148,8 +151,7 @@ class RealtimeManager {
     if (eventName === EVENT_INTERPRETER_STATUS_UPDATE) {
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
     } else if (eventName === EVENT_UNREAD_MENTIONS_UPDATED) {
-      // Use a type assertion to resolve the TypeScript error
-      (eventEmitter as any).emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, data);
     } else if (eventName === EVENT_NEW_MESSAGE_RECEIVED) {
       eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, data);
     }
@@ -157,6 +159,7 @@ class RealtimeManager {
 
   on(event: string, listener: (...args: any[]) => void) {
     eventEmitter.on(event, listener);
+    return () => eventEmitter.off(event, listener);
   }
 
   off(event: string, listener: (...args: any[]) => void) {

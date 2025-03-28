@@ -37,7 +37,8 @@ BEGIN
             IF mentioned_user_id IS NOT NULL THEN
                 INSERT INTO message_mentions (message_id, channel_id, mentioned_user_id, status, created_at)
                 VALUES (NEW.id, NEW.channel_id, mentioned_user_id, 'unread', NOW())
-                ON CONFLICT DO NOTHING;
+                ON CONFLICT (message_id, mentioned_user_id) 
+                DO NOTHING;
             END IF;
         EXCEPTION
             WHEN OTHERS THEN
@@ -45,11 +46,17 @@ BEGIN
         END;
     END LOOP;
 
-    -- Process language mentions (pattern improved to match language names more accurately)
+    -- Process language mentions (@Language) - improved pattern to match single word language names
     FOR language_name IN 
         SELECT trim((regexp_matches(NEW.content, '@([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)', 'g'))[1])
     LOOP
         BEGIN
+            -- Skip if this is a user mention (has space in the name)
+            -- Language mentions are typically single words like @French, @English, etc.
+            IF position(' ' IN language_name) > 0 THEN
+                CONTINUE; -- Skip to next iteration for user mentions
+            END IF;
+            
             -- Find all interpreters who work with this target language
             FOR interpreter_record IN
                 SELECT DISTINCT ip.id
@@ -60,7 +67,7 @@ BEGIN
                     SELECT 1
                     FROM unnest(ip.languages) as lang
                     WHERE 
-                        -- Improved matching for language names
+                        -- Match language name in source or target of language pair
                         LOWER(TRIM(split_part(lang, '→', 2))) = LOWER(TRIM(language_name))
                         OR LOWER(TRIM(split_part(lang, '→', 1))) = LOWER(TRIM(language_name))
                 )
@@ -69,7 +76,8 @@ BEGIN
                 IF interpreter_record != NEW.sender_id THEN
                     INSERT INTO message_mentions (message_id, channel_id, mentioned_user_id, status, created_at)
                     VALUES (NEW.id, NEW.channel_id, interpreter_record, 'unread', NOW())
-                    ON CONFLICT DO NOTHING;
+                    ON CONFLICT (message_id, mentioned_user_id) 
+                    DO NOTHING;
                 END IF;
             END LOOP;
         EXCEPTION
@@ -81,3 +89,19 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+-- Make sure there is a unique constraint on message_mentions to prevent duplicates
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'message_mentions_message_mentioned_user_unique'
+    ) THEN
+        ALTER TABLE public.message_mentions 
+        ADD CONSTRAINT message_mentions_message_mentioned_user_unique 
+        UNIQUE (message_id, mentioned_user_id);
+    END IF;
+END
+$$;
+

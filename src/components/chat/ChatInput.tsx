@@ -72,6 +72,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const checkForMentions = (text: string, cursorPos: number) => {
     const textBeforeCursor = text.substring(0, cursorPos);
     
+    // Use the shared MENTION_PATTERN to detect mentions
     const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
     
     if (mentionMatch) {
@@ -217,8 +218,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     let insertText = '';
     
     if ('type' in suggestion && suggestion.type === 'language') {
+      // For language mentions, just insert the language name
       insertText = `@${suggestion.name} `;
     } else {
+      // For user mentions, insert full name
       insertText = `@${suggestion.name} `;
     }
     

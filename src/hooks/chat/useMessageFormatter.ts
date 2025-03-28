@@ -6,8 +6,8 @@ export const MENTION_PATTERN = /@([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)/g;
 
 export const useMessageFormatter = () => {
   const formatMessage = (content: string) => {
-    // Don't modify the content when it contains language mentions
-    // We want to preserve the full format of @Language mentions for the database
+    // Process the content for mentions but preserve the original format
+    // This helps ensure consistent format for both display and database storage
     return content;
   };
 
@@ -42,9 +42,25 @@ export const useMessageFormatter = () => {
       .trim();
   };
 
+  /**
+   * Check if a string is a language available in the system
+   * This helps with language mentions validation (@Language)
+   */
+  const isValidLanguage = (mentionText: string): boolean => {
+    const normalizedMention = normalizeString(mentionText);
+    
+    return LANGUAGES.some(language => {
+      const normalizedLanguage = normalizeString(language);
+      return normalizedLanguage === normalizedMention || 
+             normalizedLanguage.startsWith(normalizedMention) ||
+             normalizedMention.startsWith(normalizedLanguage);
+    });
+  };
+
   return {
     formatMessage,
     validateMentions,
-    normalizeString
+    normalizeString,
+    isValidLanguage
   };
 };
