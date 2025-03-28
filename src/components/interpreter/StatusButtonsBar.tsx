@@ -60,7 +60,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const statusConfig = {
     available: {
       color: "from-green-400 to-green-600",
-      gradientColor: "bg-gradient-to-r from-green-400 to-green-600",
       shadowColor: "shadow-green-500/20",
       label: "Disponible",
       mobileLabel: "Dispo",
@@ -68,7 +67,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     },
     busy: {
       color: "from-violet-400 to-violet-600",
-      gradientColor: "bg-gradient-to-r from-violet-400 to-violet-600",
       shadowColor: "shadow-violet-500/20",
       label: "En appel",
       mobileLabel: "Appel",
@@ -76,7 +74,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     },
     pause: {
       color: "from-orange-400 to-orange-600",
-      gradientColor: "bg-gradient-to-r from-orange-400 to-orange-600",
       shadowColor: "shadow-orange-500/20",
       label: "En pause",
       mobileLabel: "Pause",
@@ -84,41 +81,57 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     },
     unavailable: {
       color: "from-red-400 to-red-600",
-      gradientColor: "bg-gradient-to-r from-red-400 to-red-600",
       shadowColor: "shadow-red-500/20",
       label: "Indisponible",
       mobileLabel: "Indispo",
       icon: X
     }
   };
-  
-  // Add the missing handleStatusChange function
-  const handleStatusChange = async (statusKey: Status) => {
-    if (isUpdating || !isConnected || !effectiveInterpreterId) return;
+
+  const handleStatusChange = async (newStatus: Status) => {
+    console.log(`[StatusButtonsBar] Status change requested: ${newStatus}, current status: ${localStatus}`);
     
-    try {
-      setIsUpdating(true);
-      
-      if (statusKey !== localStatus) {
-        // Update status via our real-time hook
-        await updateStatus(statusKey);
-        
-        // Also call the external handler if provided
-        if (onStatusChange) {
-          await onStatusChange(statusKey);
-        }
-        
-        toast({
-          title: "Statut mis à jour",
-          description: `Votre statut a été changé en "${statusConfig[statusKey].label}"`,
-          variant: "default",
-        });
-      }
-    } catch (error) {
-      console.error('[StatusButtonsBar] Error updating status:', error);
+    if (localStatus === newStatus || isUpdating) {
+      console.log('[StatusButtonsBar] Status is already set or updating in progress');
+      return;
+    }
+
+    if (!effectiveInterpreterId) {
+      console.error('[StatusButtonsBar] No interpreter ID available');
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
+        description: "Impossible de mettre à jour votre statut. ID d'interprète manquant.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsUpdating(true);
+    
+    try {
+      console.log(`[StatusButtonsBar] Updating status to ${newStatus}...`);
+      const success = await updateStatus(newStatus);
+      
+      if (!success) {
+        throw new Error('Failed to update status');
+      }
+      
+      console.log(`[StatusButtonsBar] Status updated successfully to ${newStatus}`);
+      
+      if (onStatusChange) {
+        await onStatusChange(newStatus);
+      }
+      
+      toast({
+        title: "Statut mis à jour",
+        description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
+      });
+    } catch (error) {
+      console.error('[StatusButtonsBar] Error changing status:', error);
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
@@ -126,11 +139,21 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     }
   };
 
+  useEffect(() => {
+    // Debug logging to track props and state
+    console.log('[StatusButtonsBar] Props/State update:', {
+      currentStatus,
+      localStatus,
+      effectiveInterpreterId,
+      isConnected,
+      isUpdating
+    });
+  }, [currentStatus, localStatus, effectiveInterpreterId, isConnected, isUpdating]);
+
   return (
     <div className={cn(
-      "flex items-center gap-2 mx-auto w-full max-w-screen-sm overflow-x-auto hide-scrollbar py-1 px-4",
-      "bg-gradient-to-r from-palette-soft-purple/20 via-palette-soft-blue/20 to-palette-soft-purple/20",
-      "rounded-b-xl backdrop-blur-sm"
+      "flex items-center gap-2 mx-auto w-full max-w-screen-sm overflow-x-auto hide-scrollbar py-1",
+      variant === 'compact' ? 'px-1' : 'px-4'
     )}>
       {!isConnected && (
         <div className="w-full text-center py-1 px-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs">
@@ -147,9 +170,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
           <motion.button
             key={statusKey}
             className={cn(
-              "flex items-center gap-1.5 rounded-full transition-all duration-200 py-2 flex-1 justify-center px-3 min-w-20",
+              "flex items-center gap-1.5 rounded-full transition-all duration-200",
+              "py-2 flex-1 justify-center",
+              variant === 'compact' ? "px-2 min-w-12" : "px-3 min-w-20",
               isActive 
-                ? `${config.gradientColor} text-white ${config.shadowColor} shadow-lg` 
+                ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
               "backdrop-blur-sm",
               isUpdating || !isConnected || !effectiveInterpreterId ? "opacity-70 cursor-not-allowed" : ""

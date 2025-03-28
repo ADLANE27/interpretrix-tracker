@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { HowToUseGuide } from "./HowToUseGuide";
+import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -187,11 +188,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   };
 
   return (
-    <div className={cn(
-      "h-screen w-64 flex flex-col p-4 dark:bg-card",
-      "bg-gradient-to-br from-palette-soft-purple/30 via-palette-soft-blue/30 to-palette-soft-purple/20",
-      "border-r border-white/10 dark:border-gray-700/20 backdrop-blur-md shadow-lg"
-    )}>
+    <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
       <div className="flex flex-col items-center justify-center py-6 space-y-4">
         <div className="relative flex items-center gap-2">
           <MentionsPopover
@@ -260,11 +257,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       </div>
 
       <nav className="flex-1 my-2">
-        <div className={cn(
-          "space-y-2 rounded-xl p-4",
-          "bg-white/40 dark:bg-gray-900/40 backdrop-blur-sm",
-          "border border-white/20 dark:border-gray-700/20 shadow-sm"
-        )}>
+        <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
