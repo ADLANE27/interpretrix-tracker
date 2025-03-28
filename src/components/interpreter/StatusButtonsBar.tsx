@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -88,6 +89,40 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       label: "Indisponible",
       mobileLabel: "Indispo",
       icon: X
+    }
+  };
+  
+  // Add the missing handleStatusChange function
+  const handleStatusChange = async (statusKey: Status) => {
+    if (isUpdating || !isConnected || !effectiveInterpreterId) return;
+    
+    try {
+      setIsUpdating(true);
+      
+      if (statusKey !== localStatus) {
+        // Update status via our real-time hook
+        await updateStatus(statusKey);
+        
+        // Also call the external handler if provided
+        if (onStatusChange) {
+          await onStatusChange(statusKey);
+        }
+        
+        toast({
+          title: "Statut mis à jour",
+          description: `Votre statut a été changé en "${statusConfig[statusKey].label}"`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error('[StatusButtonsBar] Error updating status:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
