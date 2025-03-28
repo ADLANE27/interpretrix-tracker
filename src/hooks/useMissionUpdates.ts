@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE, onConnectionStatusChange } from '@/lib/events';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -18,49 +18,54 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = isProduction() ? 15 : 5;
-  const stableOnUpdate = useCallback(onUpdate, [onUpdate]);
   const mountedRef = useRef(true);
   
-  // Setup visibility change event listeners
+  // Stabilize the callback to prevent effect re-triggers
+  const stableOnUpdate = useCallback(onUpdate, [onUpdate]);
+  
+  // Memoize handler functions to maintain stable references across renders
+  const handleVisibilityChange = useCallback(() => {
+    if (!mountedRef.current) return;
+    
+    if (document.visibilityState === 'visible') {
+      console.log('[useMissionUpdates] App became visible, triggering update');
+      stableOnUpdate();
+    }
+  }, [stableOnUpdate]);
+
+  const handleOnline = useCallback(() => {
+    if (!mountedRef.current) return;
+    
+    console.log('[useMissionUpdates] Network connection restored, triggering update');
+    stableOnUpdate();
+    
+    // Also try to resubscribe to the interpreter status channel
+    if (interpreterStatusChannelRef.current && interpreterStatusChannelRef.current.state !== 'joined') {
+      console.log('[useMissionUpdates] Resubscribing to interpreter status channel');
+      interpreterStatusChannelRef.current.subscribe();
+    }
+  }, [stableOnUpdate]);
+
+  // Create a stable status update handler
+  const handleStatusUpdate = useCallback(() => {
+    if (!mountedRef.current) return;
+    
+    console.log('[useMissionUpdates] Received manual status update event');
+    stableOnUpdate();
+  }, [stableOnUpdate]);
+
+  // Setup proper cleanup and event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
     
-    // Create stable callback functions that won't change on rerenders
-    const handleVisibilityChange = useCallback(() => {
-      if (!mountedRef.current) return;
-      
-      if (document.visibilityState === 'visible') {
-        console.log('[useMissionUpdates] App became visible, triggering update');
-        stableOnUpdate();
-      }
-    }, [stableOnUpdate]);
-
-    const handleOnline = useCallback(() => {
-      if (!mountedRef.current) return;
-      
-      console.log('[useMissionUpdates] Network connection restored, triggering update');
-      stableOnUpdate();
-      
-      // Also try to resubscribe to the interpreter status channel
-      if (interpreterStatusChannelRef.current && interpreterStatusChannelRef.current.state !== 'joined') {
-        console.log('[useMissionUpdates] Resubscribing to interpreter status channel');
-        interpreterStatusChannelRef.current.subscribe();
-      }
-    }, [stableOnUpdate]);
-
-    // Create a stable status update handler
-    const handleStatusUpdate = useCallback(() => {
-      if (!mountedRef.current) return;
-      
-      console.log('[useMissionUpdates] Received manual status update event');
-      stableOnUpdate();
-    }, [stableOnUpdate]);
+    mountedRef.current = true;
     
     window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Listen for interpreter status update events - using a named handler for proper cleanup
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, 'mission-updates-status-handler');
+    const statusHandlerKey = `mission-updates-status-handler-${Math.random().toString(36).substring(2, 9)}`;
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, statusHandlerKey);
 
     // Set up a direct realtime subscription for critical interpreter status changes
     const setupStatusChannel = () => {
@@ -123,13 +128,26 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     // Initial setup
     setupStatusChannel();
 
+    // Use a stable connection status change handler 
+    const connectionCleanup = onConnectionStatusChange((connected) => {
+      if (!mountedRef.current) return;
+      
+      if (connected) {
+        console.log('[useMissionUpdates] Connection restored, refreshing data');
+        stableOnUpdate();
+      }
+    }, 'mission-updates-connection-handler');
+
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
       mountedRef.current = false;
       
       window.removeEventListener("online", handleOnline);
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, statusHandlerKey);
+      
+      // Use the helper cleanup function for connection status
+      connectionCleanup();
       
       if (interpreterStatusChannelRef.current) {
         supabase.removeChannel(interpreterStatusChannelRef.current);
@@ -141,7 +159,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         retryTimeoutRef.current = null;
       }
     };
-  }, [stableOnUpdate]);
+  }, []); // Empty dependency array since we use stable callbacks - prevents recreation of the effect
 
   // Common subscription options
   const subscriptionOptions = {

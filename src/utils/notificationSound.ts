@@ -1,10 +1,12 @@
 
+// Audio context and buffer references
 let audioContext: AudioContext | null = null;
 let audioBuffer: AudioBuffer | null = null;
 let initializationPromise: Promise<void> | null = null;
 let userInteracted = false;
 let interactionListenerAdded = false;
 
+// Create audio context with fallbacks
 const createAudioContext = () => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -55,6 +57,7 @@ const setupInteractionListener = () => {
 // Call this early in your app initialization
 setupInteractionListener();
 
+// Initialize notification sound assets
 export const initializeNotificationSound = async () => {
   // Return existing promise if there's one in progress
   if (initializationPromise) return initializationPromise;
@@ -82,6 +85,7 @@ export const initializeNotificationSound = async () => {
   return initializationPromise;
 };
 
+// Play notification sound with proper checks
 export const playNotificationSound = async () => {
   try {
     // Check for user interaction first

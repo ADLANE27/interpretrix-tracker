@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -19,6 +19,14 @@ const Admin = () => {
     handleForceReconnect 
   } = useConnectionMonitor();
 
+  // Create a stable callback for mission updates to prevent re-renders
+  const handleMissionUpdate = useCallback(() => {
+    // Reset connection error state on successful updates
+    if (connectionError) {
+      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
+    }
+  }, [connectionError]);
+
   // Initialize realtime service once on admin page load
   useEffect(() => {
     console.log('[Admin] Initializing realtime service');
@@ -26,13 +34,8 @@ const Admin = () => {
     return cleanup;
   }, []);
 
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
-  useMissionUpdates(() => {
-    // Reset connection error state on successful updates
-    if (connectionError) {
-      eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
-    }
-  });
+  // Add the useMissionUpdates hook with our stable callback
+  useMissionUpdates(handleMissionUpdate);
 
   // Authentication check
   useEffect(() => {

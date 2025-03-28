@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE, onConnectionStatusChange } from '@/lib/events';
 import { Profile } from '@/types/profile';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,6 +12,7 @@ interface UseRealtimeStatusOptions {
 }
 
 const globalStatusCache = new Map<string, {status: Profile['status'], timestamp: number}>();
+const activeFetches = new Set<string>();
 
 /**
  * A hook to subscribe to and update interpreter status changes
@@ -31,6 +32,7 @@ export const useRealtimeStatus = ({
   const connectionStateLoggedRef = useRef(false);
   const instanceIdRef = useRef<string>(`instance-${Math.random().toString(36).substring(2, 9)}`);
   const lastStatusRefreshRef = useRef<number>(0);
+  const hasSetupStatusRef = useRef<boolean>(false);
   
   useEffect(() => {
     statusRef.current = status;
@@ -42,12 +44,10 @@ export const useRealtimeStatus = ({
   }, []);
   
   useEffect(() => {
-    let lastKnownState = true;
+    if (!interpreterId) return;
     
     const handleConnectionChange = (connected: boolean) => {
-      if (connected !== lastKnownState) {
-        lastKnownState = connected;
-        
+      if (connected !== isConnected) {
         if (!connectionStateLoggedRef.current || connected !== isConnected) {
           console.log(`[useRealtimeStatus] Connection status changed: ${connected}`);
           connectionStateLoggedRef.current = true;
@@ -74,14 +74,12 @@ export const useRealtimeStatus = ({
       }
     };
     
-    const handlerKey = interpreterId ? `connection-${interpreterId}-${instanceIdRef.current}` : `connection-default-${instanceIdRef.current}`;
+    const handlerKey = `connection-${interpreterId}-${instanceIdRef.current}`;
     
-    eventEmitter.on(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
+    const cleanupConnection = onConnectionStatusChange(handleConnectionChange, handlerKey);
     
-    return () => {
-      eventEmitter.off(EVENT_CONNECTION_STATUS_CHANGE, handleConnectionChange, handlerKey);
-    };
-  }, [onConnectionStateChange, interpreterId, isConnected]);
+    return cleanupConnection;
+  }, [interpreterId, isConnected, onConnectionStateChange]);
   
   useEffect(() => {
     if (!interpreterId) return;
@@ -106,8 +104,9 @@ export const useRealtimeStatus = ({
     const handlerKey = `status-${interpreterId}-${instanceIdRef.current}`;
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate, handlerKey);
     
-    if (isInitialLoadRef.current) {
+    if (isInitialLoadRef.current && !hasSetupStatusRef.current) {
       isInitialLoadRef.current = false;
+      hasSetupStatusRef.current = true;
       
       const cachedData = globalStatusCache.get(interpreterId);
       const now = Date.now();
@@ -122,13 +121,17 @@ export const useRealtimeStatus = ({
             onStatusChange(cachedData.status);
           }
         }
-      } else {
+      } else if (!activeFetches.has(interpreterId)) {
+        activeFetches.add(interpreterId);
+        
         supabase
           .from('interpreter_profiles')
           .select('status')
           .eq('id', interpreterId)
           .single()
           .then(({ data, error }) => {
+            activeFetches.delete(interpreterId);
+            
             if (!error && data) {
               const fetchedStatus = data.status as Profile['status'];
               console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
