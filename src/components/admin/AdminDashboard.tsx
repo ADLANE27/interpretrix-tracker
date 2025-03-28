@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,10 +125,6 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
         </div>
-
-        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 backdrop-blur-sm bg-slate-50">
-          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-        </footer>
       </Tabs>
     </div>
   );
