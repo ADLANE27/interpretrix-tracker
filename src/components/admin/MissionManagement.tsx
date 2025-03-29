@@ -14,9 +14,11 @@ import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 import { parseISO, formatISO } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
-import { Filter } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { Mission } from "@/types/mission";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { EmploymentStatus, getEmploymentStatusLabel } from "@/utils/employmentStatus";
+import InterpreterCard from "@/components/InterpreterCard";
 
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
@@ -27,8 +29,10 @@ interface Interpreter {
   languages: string[];
   status: string;
   profile_picture_url: string | null;
-  tarif_15min: number;
+  tarif_15min: number | null;
+  tarif_5min: number | null;
   email: string;
+  employment_status: EmploymentStatus;
 }
 
 interface Creator {
@@ -49,6 +53,7 @@ export const MissionManagement = () => {
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
   const [scheduledStartTime, setScheduledStartTime] = useState("");
   const [scheduledEndTime, setScheduledEndTime] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all');
@@ -94,10 +99,10 @@ export const MissionManagement = () => {
   };
 
   const handleSelectAllInterpreters = () => {
-    if (selectedInterpreters.length === availableInterpreters.length) {
+    if (selectedInterpreters.length === filteredInterpreters.length) {
       setSelectedInterpreters([]);
     } else {
-      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+      setSelectedInterpreters(filteredInterpreters.map(interpreter => interpreter.id));
     }
   };
 
@@ -205,7 +210,9 @@ export const MissionManagement = () => {
           profile_picture_url,
           languages,
           tarif_15min,
-          email
+          tarif_5min,
+          email,
+          employment_status
         `);
 
       if (error) {
@@ -312,10 +319,16 @@ export const MissionManagement = () => {
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
         )
-        .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0));
+        .sort((a, b) => {
+          const lastNameComparison = a.last_name.localeCompare(b.last_name);
+          if (lastNameComparison === 0) {
+            return a.first_name.localeCompare(b.first_name);
+          }
+          return lastNameComparison;
+        });
 
       console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters.map(i => ({
-        name: `${i.first_name} ${i.last_name}`,
+        name: `${i.last_name} ${i.first_name}`,
         status: i.status,
         isSelected: selectedInterpreters.includes(i.id)
       })));
@@ -338,6 +351,13 @@ export const MissionManagement = () => {
       findAvailableInterpreters(sourceLanguage, targetLanguage);
     }
   }, [sourceLanguage, targetLanguage]);
+
+  const filteredInterpreters = availableInterpreters.filter(interpreter => {
+    if (!searchQuery) return true;
+    
+    const fullName = `${interpreter.last_name} ${interpreter.first_name}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase());
+  });
 
   const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
@@ -826,26 +846,37 @@ export const MissionManagement = () => {
 
           {availableInterpreters.length > 0 && (
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
                 <Label>
                   {missionType === 'immediate' 
-                    ? `Interprètes disponibles (${availableInterpreters.length})`
-                    : `Interprètes (${availableInterpreters.length})`
+                    ? `Interprètes disponibles (${filteredInterpreters.length})`
+                    : `Interprètes (${filteredInterpreters.length})`
                   }
                 </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSelectAllInterpreters}
-                  className="text-sm"
-                >
-                  {selectedInterpreters.length === availableInterpreters.length
-                    ? "Désélectionner tout"
-                    : "Sélectionner tout"}
-                </Button>
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                  <div className="relative w-full md:w-auto">
+                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher un interprète..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 w-full md:w-[200px]"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSelectAllInterpreters}
+                    className="text-sm"
+                  >
+                    {selectedInterpreters.length === filteredInterpreters.length
+                      ? "Désélectionner tout"
+                      : "Sélectionner tout"}
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableInterpreters.map((interpreter) => (
+                {filteredInterpreters.map((interpreter) => (
                   <Card 
                     key={interpreter.id} 
                     className={`p-4 flex items-center space-x-4 hover:bg-gray-50 ${
@@ -863,11 +894,11 @@ export const MissionManagement = () => {
                         {interpreter.first_name[0]}{interpreter.last_name[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-grow">
                       <p className="font-medium">
-                        {interpreter.first_name} {interpreter.last_name}
+                        {interpreter.last_name} {interpreter.first_name}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge 
                           variant="secondary" 
                           className={
@@ -885,6 +916,21 @@ export const MissionManagement = () => {
                             : 'Indisponible'
                           }
                         </Badge>
+                        
+                        <Badge variant="outline" className="text-xs bg-gray-50">
+                          {getEmploymentStatusLabel(interpreter.employment_status)}
+                        </Badge>
+                        
+                        {interpreter.tarif_5min !== null && (
+                          <Badge variant="outline" className="text-xs bg-gray-50">
+                            5min: {interpreter.tarif_5min}€
+                          </Badge>
+                        )}
+                        {interpreter.tarif_15min !== null && (
+                          <Badge variant="outline" className="text-xs bg-gray-50">
+                            15min: {interpreter.tarif_15min}€
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </Card>
