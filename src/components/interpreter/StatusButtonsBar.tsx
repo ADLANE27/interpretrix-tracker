@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useIsMobile, useIsIOS } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types/profile';
@@ -24,7 +23,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   interpreterId
 }) => {
   const isMobile = useIsMobile();
-  const isIOS = useIsIOS();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -168,8 +166,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
             key={statusKey}
             className={cn(
               "flex items-center gap-1.5 rounded-full transition-all duration-200",
-              "py-2.5 flex-1 justify-center",
-              variant === 'compact' ? "px-2 min-w-14" : "px-3 min-w-20",
+              "py-2 flex-1 justify-center",
+              variant === 'compact' ? "px-2 min-w-12" : "px-3 min-w-20",
               isActive 
                 ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
@@ -181,15 +179,14 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
             animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
             disabled={isUpdating || !isConnected || !effectiveInterpreterId}
-            style={{ touchAction: 'manipulation' }}
           >
             <Icon className={cn(
               "flex-shrink-0",
-              variant === 'compact' || isMobile ? "h-4 w-4" : "h-4 w-4"
+              variant === 'compact' || isMobile ? "h-3.5 w-3.5" : "h-4 w-4"
             )} />
             <span className={cn(
               "font-medium truncate",
-              variant === 'compact' || isMobile ? "text-sm" : "text-sm"
+              variant === 'compact' || isMobile ? "text-xs" : "text-sm"
             )}>
               {(variant === 'compact' || isMobile) ? config.mobileLabel : config.label}
             </span>

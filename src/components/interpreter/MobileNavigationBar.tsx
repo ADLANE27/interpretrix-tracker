@@ -3,7 +3,7 @@ import React from 'react';
 import { Menu, MessageCircle, User, Home } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
-import { useIsMobile, useIsIOS } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 
@@ -22,8 +22,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
   onMenuClick
 }) => {
   const isMobile = useIsMobile();
-  const isIOS = useIsIOS();
-  const { totalUnreadCount } = useUnreadMentions();
+  const { totalUnreadCount } = useUnreadMentions(); // Use totalUnreadCount instead of totalUnreadMentionsCount
   
   if (!isMobile) return null;
   
@@ -52,10 +51,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
 
   return (
     <motion.div 
-      className={cn(
-        "fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]",
-        isIOS ? "pb-[env(safe-area-inset-bottom,0px)]" : "safe-area-bottom"
-      )}
+      className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 safe-area-bottom z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3, type: "spring" }}
@@ -63,15 +59,14 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
       <div className="flex items-center justify-around px-2 py-2">
         <button
           className={cn(
-            "flex flex-col items-center justify-center py-2 px-3 relative",
+            "flex flex-col items-center justify-center py-1 px-3 relative",
             "transition-all duration-200 rounded-lg",
             "focus:outline-none active:scale-95",
             "text-gray-500 dark:text-gray-400"
           )}
           onClick={onMenuClick}
-          style={{ touchAction: 'manipulation' }}
         >
-          <Menu className="w-6 h-6 mb-1" />
+          <Menu className="w-5 h-5 mb-1" />
           <span className="text-xs font-medium">
             Menu
           </span>
@@ -85,7 +80,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
             <button
               key={tab.id}
               className={cn(
-                "flex flex-col items-center justify-center py-2 px-3 relative",
+                "flex flex-col items-center justify-center py-1 px-3 relative",
                 "transition-all duration-200 rounded-lg",
                 "focus:outline-none active:scale-95",
                 isActive 
@@ -93,11 +88,10 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
                   : "text-gray-500 dark:text-gray-400"
               )}
               onClick={() => onTabChange(tab.id)}
-              style={{ touchAction: 'manipulation' }}
             >
               <div className="relative">
                 <Icon className={cn(
-                  "w-6 h-6 mb-1",
+                  "w-5 h-5 mb-1",
                   isActive && "text-primary"
                 )} />
                 

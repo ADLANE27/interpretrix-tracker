@@ -10,11 +10,10 @@ import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { DashboardHeader } from "./interpreter/dashboard/DashboardHeader";
 import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
 import { Profile } from "@/types/profile";
-import { useIsMobile, useIsIOS } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 import { MobileNavigationBar } from "./interpreter/MobileNavigationBar";
-import { useWakeLock } from "@/hooks/supabase-connection/useWakeLock";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -50,35 +49,12 @@ export const InterpreterDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
-  const isIOS = useIsIOS();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { requestWakeLock } = useWakeLock();
   
   useGlobalNotification();
   
   useSupabaseConnection();
-
-  useEffect(() => {
-    if (isIOS) {
-      document.documentElement.style.setProperty('--safe-area-inset-top', 'env(safe-area-inset-top, 0px)');
-      document.documentElement.style.setProperty('--safe-area-inset-bottom', 'env(safe-area-inset-bottom, 0px)');
-      document.documentElement.style.setProperty('--safe-area-inset-left', 'env(safe-area-inset-left, 0px)');
-      document.documentElement.style.setProperty('--safe-area-inset-right', 'env(safe-area-inset-right, 0px)');
-    }
-
-    const preventBounce = (e: TouchEvent) => {
-      if (document.body.scrollHeight <= window.innerHeight) {
-        e.preventDefault();
-      }
-    };
-
-    document.addEventListener('touchmove', preventBounce, { passive: false });
-
-    return () => {
-      document.removeEventListener('touchmove', preventBounce);
-    };
-  }, [isIOS]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -86,27 +62,17 @@ export const InterpreterDashboard = () => {
       
       const vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
-      
-      if (isMobile) {
-        requestWakeLock();
-      }
     };
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && isMobile) {
-        requestWakeLock();
-      }
-    });
-    
     handleResize();
 
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
-  }, [isMobile, requestWakeLock]);
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -319,7 +285,7 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className={`flex flex-col md:flex-row h-full min-h-screen w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation ${isIOS ? 'ios-device' : ''}`}>
+    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation">
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
           isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'

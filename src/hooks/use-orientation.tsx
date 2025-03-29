@@ -6,13 +6,10 @@ type Orientation = "portrait" | "landscape";
 export function useOrientation() {
   const [orientation, setOrientation] = useState<Orientation>(() => {
     // Initial check
-    if (typeof window === 'undefined') return "portrait";
     return window.innerHeight > window.innerWidth ? "portrait" : "landscape";
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const updateOrientation = () => {
       const newOrientation = window.innerHeight > window.innerWidth ? "portrait" : "landscape";
       if (newOrientation !== orientation) {
@@ -29,9 +26,6 @@ export function useOrientation() {
       setTimeout(updateOrientation, 100);
     };
     window.addEventListener("orientationchange", handleOrientationChange);
-
-    // Initial check
-    updateOrientation();
 
     // Clean up
     return () => {
