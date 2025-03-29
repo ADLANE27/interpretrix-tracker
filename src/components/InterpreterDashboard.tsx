@@ -285,7 +285,7 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation">
+    <div className="flex flex-col md:flex-row h-[100vh] w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation">
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
           isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -296,8 +296,7 @@ export const InterpreterDashboard = () => {
       <div 
         className={`fixed md:relative w-[270px] z-50 transition-transform duration-200 ease-out h-[100vh] ${
           isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
-        } md:translate-x-0 overflow-hidden`}
-        style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+        } md:translate-x-0`}
       >
         <Sidebar
           activeTab={activeTab}
@@ -310,7 +309,7 @@ export const InterpreterDashboard = () => {
         />
       </div>
       
-      <main className="flex-1 flex flex-col h-full w-full overflow-hidden">
+      <main className="flex-1 flex flex-col h-full w-full">
         <DashboardHeader 
           profile={profile}
           onStatusChange={async (newStatus) => {
@@ -322,7 +321,7 @@ export const InterpreterDashboard = () => {
           isMobile={isMobile}
         />
 
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 relative">
           <DashboardContent 
             activeTab={activeTab}
             profile={profile}
