@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,12 +17,11 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
   const [commentary, setCommentary] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [availableInterpreters, setAvailableInterpreters] = useState([]);
-  const [selectedInterpreter, setSelectedInterpreter] = useState(null);
+  const [availableInterpreters, setAvailableInterpreters] = useState<any[]>([]);
+  const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  // Add these new states
   const [interpreterSearch, setInterpreterSearch] = useState("");
   const [filteredInterpreters, setFilteredInterpreters] = useState<any[]>([]);
   
@@ -55,7 +53,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
         return;
       }
       
-      // After fetching interpreters, sort them alphabetically
       if (interpreters && !error) {
         const sortedInterpreters = [...interpreters].sort((a, b) => {
           const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -76,7 +73,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
     }
   };
   
-  // Add useEffect to filter interpreters based on search
   useEffect(() => {
     if (availableInterpreters.length > 0) {
       if (interpreterSearch.trim() === "") {
@@ -111,7 +107,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Calculate estimated duration in minutes
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
       const durationInMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
@@ -120,7 +115,7 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
         {
           source_language: sourceLanguage,
           target_language: targetLanguage,
-          commentary, // This will be ignored by Supabase if commentary is not a valid column
+          commentary,
           scheduled_start_time: startTime,
           scheduled_end_time: endTime,
           assigned_interpreter_id: selectedInterpreter,
@@ -146,7 +141,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
         description: "Mission created successfully!",
       });
 
-      // Reset form fields
       setSourceLanguage("");
       setTargetLanguage("");
       setCommentary("");
@@ -154,7 +148,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
       setEndTime("");
       setSelectedInterpreter(null);
 
-      // Notify parent component about the new mission
       if (onMissionCreated) {
         onMissionCreated();
       }
@@ -240,7 +233,6 @@ export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void
           />
         </div>
         
-        {/* Update interpreter selection section */}
         {availableInterpreters.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">

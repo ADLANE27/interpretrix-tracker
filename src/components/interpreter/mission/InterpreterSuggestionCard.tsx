@@ -19,12 +19,14 @@ interface InterpreterSuggestionCardProps {
   };
   isSelected: boolean;
   onClick: () => void;
+  children?: React.ReactNode;
 }
 
 export const InterpreterSuggestionCard: React.FC<InterpreterSuggestionCardProps> = ({
   interpreter,
   isSelected,
   onClick,
+  children,
 }) => {
   return (
     <Card
@@ -33,6 +35,7 @@ export const InterpreterSuggestionCard: React.FC<InterpreterSuggestionCardProps>
       }`}
       onClick={onClick}
     >
+      {children}
       <Avatar className="h-10 w-10">
         <AvatarImage src={interpreter.profile_picture_url || undefined} />
         <AvatarFallback>
