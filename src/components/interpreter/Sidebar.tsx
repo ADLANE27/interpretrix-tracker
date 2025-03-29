@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -189,7 +190,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   };
 
   return (
-    <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
+    <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card overflow-hidden">
       <div className="flex flex-col items-center justify-center py-6 space-y-4">
         <div className="relative flex items-center gap-2">
           <MentionsPopover
@@ -259,7 +260,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
 
       <Separator className="my-4 w-full" />
 
-      <nav className="flex-1 my-2">
+      <nav className="flex-1 my-2 overflow-y-auto scrollbar-none">
         <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
