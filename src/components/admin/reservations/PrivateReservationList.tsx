@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,13 +54,13 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply name filter with correct syntax
+      // Apply name filter with correct filter syntax for PostgreSQL
       if (nameFilter && nameFilter.trim() !== '') {
         const searchTerm = nameFilter.trim().toLowerCase();
         console.log('[PrivateReservationList] Applying name filter with term:', searchTerm);
         
-        // Use proper filter syntax for querying related tables
-        query = query.or(`and(interpreter_profiles.first_name.ilike.%${searchTerm}%),and(interpreter_profiles.last_name.ilike.%${searchTerm}%)`);
+        // Use correct filter() method for related tables
+        query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
       }
 
       if (sourceLanguageFilter !== 'all') {
