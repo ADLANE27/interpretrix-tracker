@@ -228,7 +228,7 @@ export const InterpreterChat = ({
         uniqueMembers.set(msg.sender.id, {
           id: msg.sender.id,
           name: msg.sender.name,
-          avatarUrl: msg.sender.avatarUrl
+          avatar_url: msg.sender.avatar_url
         });
       }
     });

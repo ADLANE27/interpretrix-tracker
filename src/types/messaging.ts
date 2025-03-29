@@ -38,6 +38,7 @@ export interface Attachment {
   name: string;
   type: string;
   size: number;
+  filename?: string; // Added for backward compatibility
 }
 
 export interface MessageReaction extends Array<string> {

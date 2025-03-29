@@ -14,6 +14,7 @@ export interface ChatInputProps {
   selectedFiles?: File[];
   attachments?: File[];
   removeSelectedFile?: (index: number) => void;
+  handleRemoveAttachment?: (index: number) => void; // Added this missing prop
   isUploading?: boolean;
   additionActions?: React.ReactNode;
   replyTo?: {
@@ -37,6 +38,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = "Écrivez votre message...",
   selectedFiles,
   removeSelectedFile,
+  handleRemoveAttachment, // Added this missing prop
   isUploading,
   additionActions,
   replyTo,

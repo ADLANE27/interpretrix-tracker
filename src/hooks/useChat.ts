@@ -140,9 +140,10 @@ export const useChat = (channelId: string) => {
               if (typeof att === 'object' && att !== null) {
                 const attachment = {
                   url: String(att['url'] || ''),
-                  filename: String(att['filename'] || ''),
+                  name: String(att['name'] || ''),
                   type: String(att['type'] || ''),
-                  size: Number(att['size'] || 0)
+                  size: Number(att['size'] || 0),
+                  id: String(att['id'] || `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`)
                 };
                 if (isAttachment(attachment)) {
                   parsedAttachments.push(attachment);
