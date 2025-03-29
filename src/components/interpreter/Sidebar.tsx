@@ -259,7 +259,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
 
       <Separator className="my-4 w-full" />
 
-      <nav className="flex-1 my-2 overflow-y-auto scrollbar-none">
+      <nav className="flex-1 my-2">
         <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
