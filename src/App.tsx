@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
 import InterpreterLogin from './pages/InterpreterLogin';
 import AdminLogin from './pages/AdminLogin';
@@ -8,12 +8,8 @@ import Admin from './pages/Admin';
 import Index from './pages/Index';
 import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
-import { Footer } from './components/Footer';
 
 function App() {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
-
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -36,7 +32,6 @@ function App() {
           <Route path="*" element={<Index />} />
         </Routes>
       </div>
-      {!isAdminRoute && <Footer />}
       <Toaster />
     </div>
   );
