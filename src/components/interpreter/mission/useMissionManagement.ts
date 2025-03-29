@@ -1,11 +1,11 @@
 
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Mission } from "@/types/mission";
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Mission } from '@/types/mission';
 
-export const useMissionManagement = (onUpdate: () => void) => {
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+export const useMissionManagement = (onMissionsUpdate: () => void) => {
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
@@ -57,7 +57,7 @@ export const useMissionManagement = (onUpdate: () => void) => {
         console.log('[useMissionManagement] Mission declined successfully');
       }
 
-      onUpdate();
+      onMissionsUpdate();
     } catch (error: any) {
       console.error('[useMissionManagement] Error updating mission:', error);
       toast({
@@ -70,18 +70,8 @@ export const useMissionManagement = (onUpdate: () => void) => {
     }
   };
 
-  // Function to sort interpreters alphabetically by name
-  const sortInterpretersAlphabetically = (interpreters: any[]) => {
-    return [...interpreters].sort((a, b) => {
-      const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-      const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  };
-
   return {
     isProcessing,
-    handleMissionResponse,
-    sortInterpretersAlphabetically
+    handleMissionResponse
   };
 };
