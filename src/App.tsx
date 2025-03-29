@@ -8,6 +8,7 @@ import Admin from './pages/Admin';
 import Index from './pages/Index';
 import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
+import { Footer } from './components/Footer';
 
 function App() {
   const location = useLocation();
