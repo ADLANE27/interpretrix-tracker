@@ -1,17 +1,10 @@
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { PrivateReservation, CompanyType } from "@/types/privateReservation";
+import { useState } from "react";
+import { PrivateReservation } from "@/types/privateReservation";
 import { ReservationEditDialog } from "./ReservationEditDialog";
-import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
-import { Clock, Languages, User, Building } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ReservationListContent } from "./private-list/ReservationListContent";
+import { useReservations } from "./private-list/useReservations";
 import { useMissionUpdates } from "@/hooks/useMissionUpdates";
-import { COMPANY_TYPES } from "@/lib/constants";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface PrivateReservationListProps {
   nameFilter: string;
@@ -30,109 +23,21 @@ export const PrivateReservationList = ({
   endDateFilter,
   companyFilter
 }: PrivateReservationListProps) => {
-  const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-
-  const fetchReservations = async () => {
-    try {
-      setIsLoading(true);
-      console.log('[PrivateReservationList] Fetching reservations with filters:', {
-        nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter, companyFilter
-      });
-      
-      let query = supabase
-        .from('private_reservations')
-        .select(`
-          *,
-          interpreter_profiles (
-            first_name,
-            last_name,
-            profile_picture_url
-          )
-        `)
-        .order('start_time', { ascending: true });
-
-      // Apply name filter with correct filter syntax for PostgreSQL
-      if (nameFilter && nameFilter.trim() !== '') {
-        const searchTerm = nameFilter.trim().toLowerCase();
-        console.log('[PrivateReservationList] Applying name filter with term:', searchTerm);
-        
-        // Use correct filter() method for related tables
-        query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
-      }
-
-      if (sourceLanguageFilter !== 'all') {
-        query = query.eq('source_language', sourceLanguageFilter);
-      }
-
-      if (targetLanguageFilter !== 'all') {
-        query = query.eq('target_language', targetLanguageFilter);
-      }
-
-      if (companyFilter !== 'all') {
-        query = query.eq('company', companyFilter as CompanyType);
-      }
-
-      if (startDateFilter) {
-        query = query.gte('start_time', `${startDateFilter}T00:00:00`);
-      }
-
-      if (endDateFilter) {
-        query = query.lte('start_time', `${endDateFilter}T23:59:59`);
-      }
-
-      console.log('[PrivateReservationList] Executing query...');
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('[PrivateReservationList] Error:', error);
-        throw error;
-      }
-      
-      console.log('[PrivateReservationList] Query successful, found', data?.length || 0, 'reservations');
-      setReservations(data || []);
-    } catch (error) {
-      console.error('[PrivateReservationList] Error:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les réservations",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteReservation = async (reservationId: string) => {
-    try {
-      const { error } = await supabase
-        .from('private_reservations')
-        .delete()
-        .eq('id', reservationId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "La réservation a été supprimée",
-      });
-      
-      fetchReservations();
-    } catch (error) {
-      console.error('[PrivateReservationList] Delete Error:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la réservation",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchReservations();
-  }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter, companyFilter]);
+  
+  const { 
+    reservations, 
+    isLoading, 
+    fetchReservations, 
+    handleDeleteReservation 
+  } = useReservations({
+    nameFilter,
+    sourceLanguageFilter,
+    targetLanguageFilter,
+    startDateFilter,
+    endDateFilter,
+    companyFilter
+  });
 
   useMissionUpdates(() => {
     console.log('[PrivateReservationList] Received update, refreshing reservations');
@@ -150,74 +55,12 @@ export const PrivateReservationList = ({
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Réservations privées</h2>
 
-      {isLoading ? (
-        <div className="text-center py-4">
-          <LoadingSpinner size="md" text="Chargement des réservations..." />
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {reservations.length === 0 ? (
-            <p className="text-muted-foreground">Aucune réservation privée</p>
-          ) : (
-            reservations.map((reservation) => (
-              <Card key={reservation.id} className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-blue-500" />
-                        <span className="font-medium">
-                          {formatDateTimeDisplay(reservation.start_time)}
-                        </span>
-                        <Badge variant="outline">
-                          {reservation.duration_minutes} min
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-green-500" />
-                        <span>
-                          {reservation.source_language} → {reservation.target_language}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-purple-500" />
-                        <span>
-                          {reservation.interpreter_profiles?.first_name}{' '}
-                          {reservation.interpreter_profiles?.last_name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-amber-500" />
-                        <Badge variant={reservation.company === COMPANY_TYPES.AFTCOM ? "secondary" : "default"}>
-                          {reservation.company}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedReservation(reservation)}
-                      >
-                        Modifier
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleDeleteReservation(reservation.id)}
-                      >
-                        Supprimer
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
+      <ReservationListContent
+        reservations={reservations}
+        isLoading={isLoading}
+        onEdit={setSelectedReservation}
+        onDelete={handleDeleteReservation}
+      />
 
       {selectedReservation && (
         <ReservationEditDialog
