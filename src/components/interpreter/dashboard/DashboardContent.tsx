@@ -53,7 +53,7 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-56px)] overflow-hidden bg-gradient-to-br from-white via-palette-soft-blue/20 to-palette-soft-purple/30 dark:from-gray-900 dark:via-palette-ocean-blue/10 dark:to-palette-vivid-purple/10">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gradient-to-br from-white via-palette-soft-blue/20 to-palette-soft-purple/30 dark:from-gray-900 dark:via-palette-ocean-blue/10 dark:to-palette-vivid-purple/10">
       <div className="container mx-auto p-0 flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
