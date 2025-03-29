@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -54,14 +53,13 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply name filter with fixed approach
+      // Apply name filter with correct syntax
       if (nameFilter && nameFilter.trim() !== '') {
         const searchTerm = nameFilter.trim().toLowerCase();
         console.log('[PrivateReservationList] Applying name filter with term:', searchTerm);
         
-        // Using separate filter() calls instead of or() for related entities
-        query = query.filter('interpreter_profiles.first_name', 'ilike', `%${searchTerm}%`)
-          .or(`interpreter_profiles.last_name.ilike.%${searchTerm}%`);
+        // Use proper filter syntax for querying related tables
+        query = query.or(`and(interpreter_profiles.first_name.ilike.%${searchTerm}%),and(interpreter_profiles.last_name.ilike.%${searchTerm}%)`);
       }
 
       if (sourceLanguageFilter !== 'all') {
