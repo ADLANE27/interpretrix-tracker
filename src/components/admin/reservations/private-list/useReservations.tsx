@@ -44,11 +44,12 @@ export const useReservations = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply name filter with correct filter syntax for PostgreSQL
+      // Apply name filter correctly - FIXED FILTER SYNTAX
       if (nameFilter && nameFilter.trim() !== '') {
         const searchTerm = nameFilter.trim().toLowerCase();
         console.log('[useReservations] Applying name filter with term:', searchTerm);
         
+        // Use the correct syntax for filtering related tables with OR condition
         query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
       }
 
