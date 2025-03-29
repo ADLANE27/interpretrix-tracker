@@ -29,9 +29,9 @@ export const WelcomeContent = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Hero Section with Centered Content */}
-      <div className="flex-1 flex items-center justify-center relative overflow-hidden pb-16">
+      <div className="flex-1 flex items-center justify-center relative">
         {/* Background with subtle animation */}
         <motion.div 
           className="absolute inset-0 -z-10 opacity-20"
@@ -44,7 +44,7 @@ export const WelcomeContent = () => {
         
         {/* Main content container - reduced vertical spacing */}
         <motion.div 
-          className="w-full max-w-6xl mx-auto px-6 py-4 text-center"
+          className="w-full max-w-6xl mx-auto px-6 text-center"
           variants={container}
           initial="hidden"
           animate="visible"
@@ -79,7 +79,7 @@ export const WelcomeContent = () => {
           {/* Buttons - reduced spacing */}
           <motion.div 
             variants={item}
-            className="flex flex-col sm:flex-row justify-center gap-4 mb-6"
+            className="flex flex-col sm:flex-row justify-center gap-4"
           >
             <Button 
               asChild 
@@ -124,16 +124,6 @@ export const WelcomeContent = () => {
           />
         </motion.div>
       </div>
-      
-      {/* Footer - reduced padding */}
-      <motion.footer 
-        className="py-4 text-center text-slate-500 text-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-      >
-        <p>Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
-      </motion.footer>
     </div>
   );
 };
