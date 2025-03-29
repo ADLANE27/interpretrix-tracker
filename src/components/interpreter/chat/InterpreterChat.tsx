@@ -305,7 +305,7 @@ export const InterpreterChat = ({
 
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
-  const adjustedMessageListHeight = "calc(100vh - 240px - env(safe-area-inset-top) - env(safe-area-inset-bottom))";
+  const adjustedMessageListHeight = "calc(100vh - 240px)";
   
   return (
     <div className="flex flex-col h-full">
@@ -415,8 +415,8 @@ export const InterpreterChat = ({
           inputRef={inputRef}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
-          style={isMobile ? { maxHeight: '120px', overflow: 'auto', paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
-          className="bg-transparent pb-safe"
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+          className="bg-transparent"
         />
       </div>
     </div>

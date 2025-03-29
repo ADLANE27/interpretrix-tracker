@@ -22,7 +22,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
   onMenuClick
 }) => {
   const isMobile = useIsMobile();
-  const { totalUnreadCount } = useUnreadMentions();
+  const { totalUnreadCount } = useUnreadMentions(); // Use totalUnreadCount instead of totalUnreadMentionsCount
   
   if (!isMobile) return null;
   
@@ -51,7 +51,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
 
   return (
     <motion.div 
-      className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 pb-safe z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
+      className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 safe-area-bottom z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
       initial={{ y: 100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.3, type: "spring" }}
