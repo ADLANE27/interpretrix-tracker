@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -6,7 +6,10 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -150,7 +153,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               currentStatus={localStatus}
               displayFormat="badge"
               onStatusChange={handleStatusChange}
-              className="text-[14px] px-2.5 py-1.5 min-w-[100px] flex justify-center"
+              className="text-[14px] px-2.5 py-1.5"
             />
             <span className="text-xl font-medium text-gradient-primary truncate">
               {interpreter.name}
@@ -179,14 +182,14 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               </div>
             </div>
 
-            <Badge variant="outline" className="text-[14px] text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 min-w-[100px] flex justify-center rounded-full shadow-sm">
+            <div className="text-[14px] text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 rounded-full shadow-sm">
               {employmentStatusLabels[interpreter.employment_status]}
-            </Badge>
+            </div>
 
-            <Badge variant="outline" className={`px-2 py-0.5 rounded-full text-[14px] min-w-[100px] flex items-center justify-center gap-1 ${workLocationConfig[workLocation].color}`}>
+            <div className={`px-2 py-0.5 rounded-full text-[14px] flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
               <LocationIcon className="h-4 w-4" />
               <span>{workLocationLabels[workLocation]}</span>
-            </Badge>
+            </div>
 
             {interpreter.next_mission_start && (
               <UpcomingMissionBadge
@@ -229,5 +232,3 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     </Card>
   );
 };
-
-export default memo(InterpreterListItem);
