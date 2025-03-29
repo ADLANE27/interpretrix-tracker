@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Building, Headset, ChevronRight } from "lucide-react";
@@ -34,9 +35,9 @@ export const WelcomeContent = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="h-screen flex flex-col relative overflow-hidden">
       {/* Background animation layer */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Large floating circles */}
         <div className="absolute inset-0">
           {[...Array(6)].map((_, index) => (
@@ -147,7 +148,7 @@ export const WelcomeContent = () => {
         </motion.div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center relative overflow-hidden pb-16">
+      <div className="flex-1 flex items-center justify-center relative">
         <motion.div 
           className="absolute inset-0 -z-10"
           initial={{ opacity: 0 }}
@@ -163,15 +164,6 @@ export const WelcomeContent = () => {
           initial="hidden"
           animate="visible"
         >
-          <motion.div 
-            className="mb-8 md:mb-12"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            {/* Remove the logo from this section */}
-          </motion.div>
-          
           <motion.div 
             variants={item}
             className="mb-8 md:mb-12 max-w-3xl mx-auto backdrop-blur-sm py-6 px-4 rounded-2xl"
@@ -193,7 +185,7 @@ export const WelcomeContent = () => {
           
           <motion.div 
             variants={item}
-            className="flex flex-col sm:flex-row justify-center gap-4 mb-6"
+            className="flex flex-col sm:flex-row justify-center gap-4"
           >
             <Button 
               asChild 
@@ -223,15 +215,6 @@ export const WelcomeContent = () => {
           </motion.div>
         </motion.div>
       </div>
-      
-      <motion.footer 
-        className="py-4 text-center text-slate-500 text-sm backdrop-blur-sm bg-white/40"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-      >
-        <p>Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
-      </motion.footer>
     </div>
   );
 };
