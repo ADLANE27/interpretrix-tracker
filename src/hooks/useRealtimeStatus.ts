@@ -30,7 +30,6 @@ export const useRealtimeStatus = ({
   const onStatusChangeRef = useRef(onStatusChange);
   const onConnectionStateChangeRef = useRef(onConnectionStateChange);
   const lastEventIdRef = useRef<string | null>(null);
-  const directSubscriptionRef = useRef<() => void | null>(null);
   
   // Update refs when props change
   useEffect(() => {
@@ -134,50 +133,7 @@ export const useRealtimeStatus = ({
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
     // Subscribe to real-time database updates
-    const realtimeCleanup = realtimeService.subscribeToInterpreterStatus(interpreterId);
-    
-    // Create a direct Supabase subscription as a fallback/redundancy
-    if (!directSubscriptionRef.current) {
-      const channel = supabase.channel(`direct-interpreter-status-${interpreterId}`)
-        .on('postgres_changes', 
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${interpreterId}`
-        }, 
-        (payload) => {
-          if (payload.new && payload.old && payload.new.status !== payload.old.status) {
-            console.log(`[useRealtimeStatus] Direct subscription detected status change for ${interpreterId}: ${payload.new.status}`);
-            const newStatus = payload.new.status as Profile['status'];
-            
-            if (newStatus !== statusRef.current) {
-              setStatus(newStatus);
-              statusRef.current = newStatus;
-              setLastUpdateTime(new Date());
-              
-              if (onStatusChangeRef.current) {
-                onStatusChangeRef.current(newStatus);
-              }
-              
-              // Also emit the event to ensure all components stay in sync
-              eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-                interpreterId,
-                status: newStatus,
-                timestamp: Date.now(),
-                uuid: `direct-${Date.now()}`
-              });
-            }
-          }
-        })
-        .subscribe((status) => {
-          console.log(`[useRealtimeStatus] Direct subscription status for ${interpreterId}: ${status}`);
-        });
-      
-      directSubscriptionRef.current = () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    const cleanup = realtimeService.subscribeToInterpreterStatus(interpreterId);
     
     // Initial fetch of status
     if (isInitialLoadRef.current) {
@@ -211,12 +167,7 @@ export const useRealtimeStatus = ({
     return () => {
       console.log(`[useRealtimeStatus] Cleaning up status listener for ${interpreterId}`);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      realtimeCleanup();
-      
-      if (directSubscriptionRef.current) {
-        directSubscriptionRef.current();
-        directSubscriptionRef.current = null;
-      }
+      cleanup();
     };
   }, [interpreterId, handleStatusUpdate]);
   
@@ -251,14 +202,6 @@ export const useRealtimeStatus = ({
         console.error('[useRealtimeStatus] Error updating status:', error);
         return false;
       }
-      
-      // Immediately after successful update, emit another event to ensure UI consistency
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-        interpreterId,
-        status: newStatus,
-        timestamp: Date.now(),
-        uuid: `update-confirmation-${Date.now()}`
-      });
       
       return true;
     } catch (error) {

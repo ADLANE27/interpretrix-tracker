@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -23,8 +24,7 @@ interface ChatInputProps {
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
   style?: React.CSSProperties;
-  className?: string;
-  additionActions?: React.ReactNode;
+  className?: string; // Added className prop
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -39,7 +39,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   setReplyTo,
   style,
   className,
-  additionActions,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -155,8 +154,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             />
           </div>
           <div className="flex items-center p-1.5 pr-2">
-            {additionActions}
-            
             <Button
               variant="ghost"
               size="icon"

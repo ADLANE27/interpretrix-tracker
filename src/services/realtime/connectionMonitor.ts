@@ -1,117 +1,211 @@
 
+import { subscriptionRegistry } from './registry/subscriptionRegistry';
+import { CONNECTION_CONSTANTS } from '../../hooks/supabase-connection/constants';
+
+type RetryCallback = (key: string) => void;
+type ConnectionCallback = (connected: boolean) => void;
+
 /**
- * A class to monitor the connection status of Supabase realtime channels
+ * Monitors connection status and handles reconnection
  */
 export class ConnectionMonitor {
-  private channelStatuses: Map<string, boolean> = new Map();
-  private retryCallbacks: Map<string, () => void> = new Map();
-  private isHealthy: boolean = true;
-  private connectionStatusCallback: (isHealthy: boolean) => void;
-  private monitoringInterval: NodeJS.Timeout | null = null;
-  private monitoringStartTime: number = 0;
+  private retryCallback: RetryCallback;
+  private connectionCallback: ConnectionCallback;
+  private checkInterval: NodeJS.Timeout | null = null;
+  private isActive: boolean = false;
+  private lastConnectionStatus: boolean = true;
+  private retryTimers: Map<string, NodeJS.Timeout> = new Map();
+  private lastSuccessfulConnection: number = Date.now();
+  private consecutiveFailures: number = 0;
 
-  constructor(
-    retryCallback: (key: string) => void,
-    connectionStatusCallback: (isHealthy: boolean) => void
-  ) {
-    this.connectionStatusCallback = connectionStatusCallback;
-    
-    // Set up a shared retry callback that will be reused for all channels
-    const createRetryCallback = (key: string) => {
-      return () => {
-        console.log(`[ConnectionMonitor] Triggering retry for ${key}`);
-        retryCallback(key);
-      };
-    };
-    
-    // Store the callback factory for later use
-    this.createRetryCallback = createRetryCallback;
+  constructor(retryCallback: RetryCallback, connectionCallback: ConnectionCallback) {
+    this.retryCallback = retryCallback;
+    this.connectionCallback = connectionCallback;
   }
 
-  private createRetryCallback: (key: string) => () => void;
-
+  /**
+   * Start monitoring connection status
+   */
   public start(): void {
-    if (this.monitoringInterval) {
-      console.log('[ConnectionMonitor] Already started');
+    if (this.isActive) {
       return;
     }
-    
+
     console.log('[ConnectionMonitor] Starting connection monitoring');
-    this.monitoringStartTime = Date.now();
-    
-    this.monitoringInterval = setInterval(() => {
-      this.checkConnection();
-    }, 10000); // Check every 10 seconds
+    this.isActive = true;
+    this.lastSuccessfulConnection = Date.now();
+    this.consecutiveFailures = 0;
+
+    // Initial connection check
+    this.checkConnectionStatus();
+
+    // Set up periodic check
+    this.checkInterval = setInterval(() => {
+      this.checkConnectionStatus();
+    }, CONNECTION_CONSTANTS.HEARTBEAT_INTERVAL);
   }
 
+  /**
+   * Stop monitoring connection status
+   */
   public stop(): void {
-    console.log('[ConnectionMonitor] Stopping connection monitoring');
-    
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
-    }
-    
-    this.channelStatuses.clear();
-    this.retryCallbacks.clear();
-  }
-
-  public isConnectionHealthy(): boolean {
-    return this.isHealthy;
-  }
-
-  public updateChannelStatus(key: string, isConnected: boolean): void {
-    const previousStatus = this.channelStatuses.get(key);
-    console.log(`[ConnectionMonitor] Channel ${key} status update: ${isConnected}`);
-    
-    this.channelStatuses.set(key, isConnected);
-    
-    // If the status changed from connected to disconnected, maybe trigger a retry
-    if (previousStatus === true && isConnected === false) {
-      console.log(`[ConnectionMonitor] Channel ${key} disconnected`);
-      
-      // Create a retry callback if it doesn't exist
-      if (!this.retryCallbacks.has(key)) {
-        this.retryCallbacks.set(key, this.createRetryCallback(key));
-      }
-    }
-    
-    // Recalculate overall health
-    this.checkConnection();
-  }
-
-  private checkConnection(): void {
-    // If we have no channels yet, consider the connection healthy
-    if (this.channelStatuses.size === 0) {
-      if (!this.isHealthy) {
-        console.log('[ConnectionMonitor] No channels to monitor, assuming connection is healthy');
-        this.isHealthy = true;
-        this.connectionStatusCallback(true);
-      }
+    if (!this.isActive) {
       return;
     }
+
+    console.log('[ConnectionMonitor] Stopping connection monitoring');
+    this.isActive = false;
+
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+
+    // Clear all retry timers
+    this.retryTimers.forEach((timer) => clearTimeout(timer));
+    this.retryTimers.clear();
+  }
+
+  /**
+   * Check if monitor is connected
+   */
+  public isConnected(): boolean {
+    const statuses = subscriptionRegistry.getAllStatuses();
+    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
     
-    // Check if any channel is still connected
-    let anyConnected = false;
-    for (const [key, isConnected] of this.channelStatuses.entries()) {
-      if (isConnected) {
-        anyConnected = true;
-        break;
+    if (activeSubscriptions.length === 0) {
+      // No active subscriptions, consider it connected
+      return true;
+    }
+
+    // Check if any subscriptions are disconnected
+    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
+    return disconnectedSubscriptions.length === 0;
+  }
+
+  /**
+   * Attempt to reconnect all subscriptions
+   */
+  public reconnectAll(): void {
+    console.log('[ConnectionMonitor] Attempting to reconnect all subscriptions');
+    
+    const statuses = subscriptionRegistry.getAllStatuses();
+    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    
+    if (activeSubscriptions.length === 0) {
+      // No active subscriptions to reconnect
+      return;
+    }
+
+    // Attempt to reconnect all subscriptions
+    activeSubscriptions.forEach(key => {
+      // Reset max retries flag
+      if (statuses[key].maxRetriesReached) {
+        statuses[key].maxRetriesReached = false;
+        statuses[key].retryCount = 0;
       }
+
+      // Stagger reconnections to avoid thundering herd
+      const delay = Math.random() * 3000;
+      setTimeout(() => {
+        if (this.isActive) {
+          console.log(`[ConnectionMonitor] Reconnecting subscription: ${key}`);
+          this.retryCallback(key);
+        }
+      }, delay);
+    });
+  }
+
+  /**
+   * Check connection status of all subscriptions
+   */
+  private checkConnectionStatus(): void {
+    if (!this.isActive) return;
+    
+    const statuses = subscriptionRegistry.getAllStatuses();
+    const activeSubscriptions = Object.keys(statuses).filter(key => statuses[key].isActive);
+    
+    if (activeSubscriptions.length === 0) {
+      // No active subscriptions to check
+      return;
+    }
+
+    // Check if any subscriptions are disconnected
+    const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
+    const maxRetriesReachedSubscriptions = activeSubscriptions.filter(
+      key => statuses[key].maxRetriesReached === true
+    );
+    
+    // If any subscription has reached max retries, we should try to recover it
+    if (maxRetriesReachedSubscriptions.length > 0) {
+      console.log(`[ConnectionMonitor] ${maxRetriesReachedSubscriptions.length} subscriptions have reached max retries`);
+      
+      // Reset max retries flag and try again for these subscriptions
+      maxRetriesReachedSubscriptions.forEach(key => {
+        if (statuses[key].maxRetriesReached) {
+          statuses[key].maxRetriesReached = false;
+          statuses[key].retryCount = 0;
+          
+          // Add some delay to avoid thundering herd
+          const delay = Math.random() * 2000;
+          setTimeout(() => {
+            if (this.isActive) {
+              console.log(`[ConnectionMonitor] Attempting recovery for subscription: ${key}`);
+              this.retryCallback(key);
+            }
+          }, delay);
+        }
+      });
     }
     
-    // Update the health status if it changed
-    if (this.isHealthy !== anyConnected) {
-      console.log(`[ConnectionMonitor] Connection health changed: ${anyConnected}`);
-      this.isHealthy = anyConnected;
-      this.connectionStatusCallback(anyConnected);
+    const isAnyDisconnected = disconnectedSubscriptions.length > 0;
+    
+    // If status changed, notify via callback
+    if (this.lastConnectionStatus !== !isAnyDisconnected) {
+      this.lastConnectionStatus = !isAnyDisconnected;
       
-      // If connection was restored, clear retry timeouts
-      if (anyConnected) {
-        for (const key of this.retryCallbacks.keys()) {
-          console.log(`[ConnectionMonitor] Connection restored, clearing retry for ${key}`);
-        }
+      if (!isAnyDisconnected) {
+        // Reset failure count on successful connection
+        this.consecutiveFailures = 0;
+        this.lastSuccessfulConnection = Date.now();
+        console.log('[ConnectionMonitor] Connection status changed: connected');
+      } else {
+        this.consecutiveFailures++;
+        console.log(`[ConnectionMonitor] Connection status changed: disconnected (failures: ${this.consecutiveFailures})`);
       }
+      
+      this.connectionCallback(!isAnyDisconnected);
+    }
+
+    // Handle disconnected subscriptions with exponential backoff
+    const currentTime = Date.now();
+    const timeSinceLastSuccess = currentTime - this.lastSuccessfulConnection;
+    
+    // If we've been trying to reconnect for too long, attempt a full recovery
+    if (isAnyDisconnected && timeSinceLastSuccess > CONNECTION_CONSTANTS.HEARTBEAT_TIMEOUT * 2) {
+      console.log('[ConnectionMonitor] Extended disconnect detected, attempting full recovery');
+      
+      disconnectedSubscriptions.forEach((key) => {
+        // Clear any existing retry timer
+        if (this.retryTimers.has(key)) {
+          clearTimeout(this.retryTimers.get(key));
+        }
+        
+        // Setup staggered reconnection
+        const delay = Math.random() * 3000; // Random delay up to 3 seconds to avoid thundering herd
+        const timer = setTimeout(() => {
+          if (this.isActive) {
+            console.log(`[ConnectionMonitor] Attempting recovery for subscription: ${key}`);
+            this.retryCallback(key);
+            this.retryTimers.delete(key);
+          }
+        }, delay);
+        
+        this.retryTimers.set(key, timer);
+      });
+      
+      // Reset the last successful connection time to avoid repeated recovery attempts
+      this.lastSuccessfulConnection = currentTime;
     }
   }
 }

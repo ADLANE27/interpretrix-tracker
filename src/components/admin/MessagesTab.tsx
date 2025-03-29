@@ -4,12 +4,18 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { format, isToday, isYesterday } from "date-fns";
+import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Trash2, UserPlus, ChevronLeft, Pencil, Wifi, WifiOff } from 'lucide-react';
+import { PlusCircle, Settings, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTimestampFormat } from "@/hooks/useTimestampFormat";
+import { useChat } from "@/hooks/useChat"; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import EnhancedChat from "@/components/chat/EnhancedChat";
-import { useConnectionState } from "@/contexts/ConnectionStateContext";
+import Chat from "@/components/chat/Chat";
 
 interface Channel {
   id: string;
@@ -34,6 +39,7 @@ interface Channel {
 }
 
 export const MessagesTab = () => {
+  const { formatMessageTime } = useTimestampFormat();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -47,7 +53,6 @@ export const MessagesTab = () => {
   const isMobile = useIsMobile();
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { connectionState, retryConnection } = useConnectionState();
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -219,18 +224,7 @@ export const MessagesTab = () => {
           <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
-              <div className="flex gap-2 items-center">
-                {!connectionState.isConnected && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={retryConnection}
-                    className="h-8 text-amber-600 border-amber-300 hover:bg-amber-100"
-                  >
-                    <WifiOff className="h-4 w-4 mr-1" />
-                    Reconnexion
-                  </Button>
-                )}
+              <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -333,11 +327,18 @@ export const MessagesTab = () => {
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <div className="flex-1 flex flex-col h-full overflow-hidden">
-              <EnhancedChat 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChannelList(true)}
+                className="h-9 w-9 p-0 absolute top-4 left-4 z-10 md:hidden"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
                 messageListHeight="calc(100vh - 180px)"
-                onBackClick={isMobile ? () => setShowChannelList(true) : undefined}
               />
             </div>
           ) : (

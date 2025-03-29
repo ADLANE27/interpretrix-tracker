@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback } from "react";
+import React, { memo } from "react";
 import InterpreterCard from "@/components/InterpreterCard";
 import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterListItem";
 import { Profile } from "@/types/profile";
@@ -18,8 +18,6 @@ interface Interpreter {
   birth_country: string | null;
   next_mission_start: string | null;
   next_mission_duration: number | null;
-  next_mission_source_language?: string | null;
-  next_mission_target_language?: string | null;
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
@@ -34,6 +32,8 @@ interface Interpreter {
     end_afternoon?: string;
   } | null;
   work_location?: WorkLocation | null;
+  next_mission_source_language?: string | null;
+  next_mission_target_language?: string | null;
 }
 
 interface InterpretersListProps {
@@ -42,30 +42,21 @@ interface InterpretersListProps {
   viewMode?: "grid" | "list";
 }
 
-// Create individual memo components to prevent unnecessary re-renders
-const MemoizedInterpreterListItem = memo(InterpreterListItem, 
-  (prevProps, nextProps) => prevProps.interpreter.status === nextProps.interpreter.status);
-
-const MemoizedInterpreterCard = memo(InterpreterCard, 
-  (prevProps, nextProps) => prevProps.interpreter.status === nextProps.interpreter.status);
+// Memoize the individual list item to prevent unnecessary re-renders
+const MemoizedInterpreterListItem = memo(InterpreterListItem);
+const MemoizedInterpreterCard = memo(InterpreterCard);
 
 export const InterpretersList: React.FC<InterpretersListProps> = ({
   interpreters,
   onStatusChange,
   viewMode = "grid"
 }) => {
-  // Create a memoized status change handler to improve performance
-  const handleStatusChange = useCallback((interpreterId: string, newStatus: Profile['status']) => {
-    console.log(`[InterpretersList] Status change triggered for ${interpreterId}: ${newStatus}`);
-    onStatusChange(interpreterId, newStatus);
-  }, [onStatusChange]);
-
   if (viewMode === "list") {
     return (
       <div className="space-y-2">
         {interpreters.map(interpreter => (
           <MemoizedInterpreterListItem 
-            key={`list-${interpreter.id}-${interpreter.status}`}
+            key={`${interpreter.id}-${interpreter.status}`}
             interpreter={{
               id: interpreter.id,
               name: `${interpreter.first_name} ${interpreter.last_name}`,
@@ -82,7 +73,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
               work_hours: interpreter.work_hours,
               work_location: interpreter.work_location as WorkLocation
             }}
-            onStatusChange={handleStatusChange}
+            onStatusChange={onStatusChange}
           />
         ))}
       </div>
@@ -92,7 +83,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {interpreters.map(interpreter => (
-        <div key={`grid-${interpreter.id}-${interpreter.status}`} className="h-auto">
+        <div key={`${interpreter.id}-${interpreter.status}`} className="h-auto">
           <MemoizedInterpreterCard 
             interpreter={{
               id: interpreter.id,
@@ -114,7 +105,7 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
               work_hours: interpreter.work_hours,
               work_location: interpreter.work_location as WorkLocation
             }} 
-            onStatusChange={handleStatusChange}
+            onStatusChange={onStatusChange}
           />
         </div>
       ))}
