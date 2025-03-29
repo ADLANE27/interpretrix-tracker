@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +29,6 @@ const MissionManagement = () => {
   const [isStartTimeValid, setIsStartTimeValid] = useState(true);
   const [isEndTimeValid, setIsEndTimeValid] = useState(true);
 
-  // Add a new state for interpreter search
   const [interpreterSearch, setInterpreterSearch] = useState("");
   const [filteredInterpreters, setFilteredInterpreters] = useState<any[]>([]);
 
@@ -88,16 +86,15 @@ const MissionManagement = () => {
         commentary,
         created_by: user.id,
         is_urgent: isUrgent,
-        estimated_duration: 0 // Default value that will be updated below
+        estimated_duration: 0
       };
 
       if (missionType === "immediate") {
-        // For immediate missions, add a default estimated duration
         missionData = {
           ...missionData,
           status: "awaiting_acceptance",
           notified_interpreters: [selectedInterpreter],
-          estimated_duration: 30 // Default 30 minutes for immediate missions
+          estimated_duration: 30
         };
       } else if (missionType === "scheduled") {
         const isAvailable = await isInterpreterAvailableForScheduledMission(
@@ -116,7 +113,6 @@ const MissionManagement = () => {
           return;
         }
 
-        // Calculate estimated duration in minutes
         const startDate = new Date(startTime);
         const endDate = new Date(endTime);
         const durationInMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
@@ -162,7 +158,6 @@ const MissionManagement = () => {
     }
   };
 
-  // Update this function to sort interpreters alphabetically
   const findInterpreters = async (sourceLang: string, targetLang: string) => {
     if (!sourceLang || !targetLang) return;
 
@@ -196,7 +191,6 @@ const MissionManagement = () => {
         });
       }) || [];
 
-      // After fetching interpreters, sort them alphabetically
       if (interpreters && !error) {
         const sortedInterpreters = [...filteredInterpreters].sort((a, b) => {
           const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -219,7 +213,6 @@ const MissionManagement = () => {
     }
   };
 
-  // Add a useEffect to filter interpreters based on search
   useEffect(() => {
     if (availableInterpreters.length > 0) {
       if (interpreterSearch.trim() === "") {

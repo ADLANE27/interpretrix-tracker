@@ -70,7 +70,7 @@ export const useMissionManagement = (onUpdate: () => void) => {
     }
   };
 
-  // Add this function to sort interpreters alphabetically
+  // Function to sort interpreters alphabetically by name
   const sortInterpretersAlphabetically = (interpreters: any[]) => {
     return [...interpreters].sort((a, b) => {
       const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
