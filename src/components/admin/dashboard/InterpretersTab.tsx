@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
@@ -43,6 +42,7 @@ interface Interpreter {
   work_hours?: WorkHours | null;
   connection_status?: Profile['status'];
   work_location?: WorkLocation | null;
+  landline_phone?: string | null;
 }
 
 export const InterpretersTab: React.FC = () => {
@@ -58,9 +58,12 @@ export const InterpretersTab: React.FC = () => {
   const [todayMissionsCount, setTodayMissionsCount] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isConnected, setIsConnected] = useState(true);
+  const [forceUpdate, setForceUpdate] = useState(0);
   const { toast } = useToast();
   
-  // Listen for connection status changes
+  const interpretersMapRef = useRef<Map<string, Profile['status']>>(new Map());
+  const directChannelRef = useRef<any>(null);
+  
   useEffect(() => {
     const handleConnectionStatusChange = (connected: boolean) => {
       setIsConnected(connected);
@@ -76,7 +79,6 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
-  // Direct subscription to interpreter status updates
   useEffect(() => {
     console.log('[InterpretersTab] Setting up direct interpreter status update listener');
     
@@ -88,6 +90,8 @@ export const InterpretersTab: React.FC = () => {
     }) => {
       console.log(`[InterpretersTab] Received status update for interpreter ${data.interpreterId}: ${data.status}`);
       
+      interpretersMapRef.current.set(data.interpreterId, data.status);
+      
       setInterpreters(current => 
         current.map(interpreter => 
           interpreter.id === data.interpreterId 
@@ -95,6 +99,8 @@ export const InterpretersTab: React.FC = () => {
             : interpreter
         )
       );
+      
+      setForceUpdate(prev => prev + 1);
     };
     
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleInterpreterStatusUpdate);
@@ -104,7 +110,52 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
-  // Subscribe to reservation changes using the centralized hook
+  useEffect(() => {
+    const channel = supabase.channel('admin-interpreter-profiles-status')
+      .on('postgres_changes', 
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles'
+      }, 
+      (payload) => {
+        if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+          const interpreterId = payload.new.id;
+          const newStatus = payload.new.status as Profile['status'];
+          
+          console.log(`[InterpretersTab] Direct DB subscription detected status change: ${interpreterId} -> ${newStatus}`);
+          
+          interpretersMapRef.current.set(interpreterId, newStatus);
+          
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+            interpreterId: interpreterId,
+            status: newStatus,
+            timestamp: Date.now(),
+            uuid: `direct-sub-${Date.now()}`
+          });
+          
+          setTimeout(() => {
+            setInterpreters(current => 
+              current.map(interpreter => 
+                interpreter.id === interpreterId 
+                  ? { ...interpreter, status: newStatus } 
+                  : interpreter
+              )
+            );
+          }, 50);
+        }
+      })
+      .subscribe();
+    
+    directChannelRef.current = channel;
+    
+    return () => {
+      if (directChannelRef.current) {
+        supabase.removeChannel(directChannelRef.current);
+      }
+    };
+  }, []);
+
   useTableSubscription(
     'private_reservations',
     '*',
@@ -120,7 +171,8 @@ export const InterpretersTab: React.FC = () => {
     try {
       console.log(`[InterpretersTab] Status change requested for ${interpreterId} to ${newStatus}`);
       
-      // Update our local state immediately for better UX
+      interpretersMapRef.current.set(interpreterId, newStatus);
+      
       setInterpreters(current => 
         current.map(interpreter => 
           interpreter.id === interpreterId 
@@ -129,12 +181,11 @@ export const InterpretersTab: React.FC = () => {
         )
       );
 
-      // Emit event for better sync across components
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: newStatus,
         timestamp: Date.now(),
-        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+        uuid: uuidv4()
       });
 
       const interpreter = interpreters.find(i => i.id === interpreterId);
@@ -145,7 +196,6 @@ export const InterpretersTab: React.FC = () => {
         });
       }
       
-      // Update in database
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: newStatus
@@ -163,59 +213,11 @@ export const InterpretersTab: React.FC = () => {
         variant: "destructive"
       });
       
-      // Fetch interpreters again to ensure our state is in sync with the database
       fetchInterpreters();
     }
   };
-  
-  // Direct subscription to interpreter profile changes for immediate UI updates
-  useTableSubscription(
-    'interpreter_profiles',
-    'UPDATE',
-    null, // Use null to catch all updates without filtering
-    (payload) => {
-      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
-        const interpreterId = payload.new.id;
-        const newStatus = payload.new.status;
-        
-        console.log(`[InterpretersTab] DB update detected: Interpreter ${interpreterId} status changed to ${newStatus}`);
-        
-        setInterpreters(current => 
-          current.map(interpreter => 
-            interpreter.id === interpreterId 
-              ? { ...interpreter, status: newStatus as Profile['status'] } 
-              : interpreter
-          )
-        );
-        
-        // Broadcast to ensure all components have the latest status
-        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-          interpreterId: interpreterId,
-          status: newStatus,
-          timestamp: Date.now(),
-          uuid: uuidv4()
-        });
-      }
-    }
-  );
 
-  useEffect(() => {
-    fetchInterpreters();
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchInterpreters();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  const fetchInterpreters = async () => {
+  const fetchInterpreters = useCallback(async () => {
     try {
       console.log("[InterpretersTab] Fetching interpreters data");
       const {
@@ -253,6 +255,8 @@ export const InterpretersTab: React.FC = () => {
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         
+        interpretersMapRef.current.set(interpreter.id, interpreter.status);
+        
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
@@ -273,6 +277,7 @@ export const InterpretersTab: React.FC = () => {
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
+          landline_phone: interpreter.landline_phone || null,
           work_hours: workHours,
           work_location: workLocation
         };
@@ -289,7 +294,7 @@ export const InterpretersTab: React.FC = () => {
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
 
   const fetchTodayMissions = async () => {
     try {
@@ -325,6 +330,22 @@ export const InterpretersTab: React.FC = () => {
       console.error("[InterpretersTab] Error fetching today's missions:", error);
     }
   };
+
+  useEffect(() => {
+    fetchInterpreters();
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchInterpreters();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchInterpreters]);
 
   const filteredInterpreters = interpreters.filter(interpreter => {
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
@@ -394,7 +415,7 @@ export const InterpretersTab: React.FC = () => {
         interpreters={filteredInterpreters}
         onStatusChange={handleInterpreterStatusChange}
         viewMode={viewMode}
-        key={`interpreters-list-${interpreters.map(i => `${i.id}-${i.status}`).join('-')}`}
+        key={`interpreters-list-${forceUpdate}`}
       />
     </div>
   );

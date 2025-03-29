@@ -14,6 +14,9 @@ class RealtimeService {
   private eventDebouncer: EventDebouncer;
   private connectionMonitor: ConnectionMonitor | null = null;
   private initialized: boolean = false;
+  private lastEventIds: Map<string, string> = new Map();
+  private errorCount: Map<string, number> = new Map();
+  private MAX_ERROR_COUNT = 5;
 
   constructor() {
     this.eventDebouncer = new EventDebouncer();
@@ -60,6 +63,9 @@ class RealtimeService {
   public reconnectAll(): void {
     console.log('[RealtimeService] Forcing reconnection for all subscriptions');
     
+    // Clear error counters when doing a full reconnect
+    this.errorCount.clear();
+    
     // Reset all active Supabase channels
     supabase.removeAllChannels();
     
@@ -100,13 +106,27 @@ class RealtimeService {
       (newStatus) => {
         console.log(`[RealtimeService] Status changed to ${newStatus} for interpreter ${interpreterId}`);
         
+        // Generate a unique event ID
+        const eventId = uuidv4();
+        this.lastEventIds.set(interpreterId, eventId);
+        
         // Global immediate broadcast for UI updates
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
           interpreterId, 
           status: newStatus,
           timestamp: Date.now(),
-          uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+          uuid: eventId
         });
+        
+        // Send a second broadcast with a brief delay to ensure it propagates
+        setTimeout(() => {
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+            interpreterId, 
+            status: newStatus,
+            timestamp: Date.now(), 
+            uuid: `${eventId}-followup`
+          });
+        }, 100);
       }
     );
     
@@ -124,6 +144,7 @@ class RealtimeService {
     
     // Generate a unique ID for this update to prevent duplicate processing
     const updateId = uuidv4();
+    this.lastEventIds.set(interpreterId, updateId);
     
     // Immediate broadcast with minimal delay to ensure event is processed
     setTimeout(() => {
@@ -167,7 +188,20 @@ class RealtimeService {
       return this.subscriptions.get(key) || (() => {});
     }
     
+    // Track errors for this subscription
+    let errorCount = this.errorCount.get(key) || 0;
+    
     try {
+      // If we've exceeded the maximum error count for this subscription, back off
+      if (errorCount >= this.MAX_ERROR_COUNT) {
+        console.log(`[RealtimeService] Max error count reached for ${key}, using error handler only`);
+        
+        // Return a dummy cleanup function that just resets the error count
+        return () => {
+          this.errorCount.set(key, 0);
+        };
+      }
+      
       const channel = supabase.channel(key)
         .on('postgres_changes' as any, {
           event: event,
@@ -175,16 +209,33 @@ class RealtimeService {
           table: table,
           filter: filter || undefined
         }, (payload) => {
-          const now = Date.now();
-          const eventId = `${table}-${event}-${now}`;
-          
-          if (this.eventDebouncer.shouldProcessEvent(eventId, now)) {
-            console.log(`[RealtimeService] ${event} event on ${table}:`, payload);
-            callback(payload);
+          try {
+            const now = Date.now();
+            const eventId = `${table}-${event}-${now}`;
+            
+            // Reset error count on successful events
+            this.errorCount.set(key, 0);
+            
+            if (this.eventDebouncer.shouldProcessEvent(eventId, now)) {
+              console.log(`[RealtimeService] ${event} event on ${table}:`, payload);
+              callback(payload);
+            }
+          } catch (error) {
+            // If the callback throws, increment error count but don't fail the subscription
+            console.error(`[RealtimeService] Error processing event for ${key}:`, error);
+            this.errorCount.set(key, (this.errorCount.get(key) || 0) + 1);
           }
         })
         .subscribe((status) => {
           console.log(`[RealtimeService] Subscription status for ${key}: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            // Reset error count on successful subscription
+            this.errorCount.set(key, 0);
+          } else if (status === 'CHANNEL_ERROR') {
+            // Increment error count on channel errors
+            this.errorCount.set(key, (this.errorCount.get(key) || 0) + 1);
+          }
         });
       
       // Create cleanup function
@@ -200,7 +251,13 @@ class RealtimeService {
       return cleanup;
     } catch (error) {
       console.error(`[RealtimeService] Error creating subscription: ${error}`);
-      return () => {};
+      
+      // Increment error count on subscription creation errors
+      this.errorCount.set(key, (this.errorCount.get(key) || 0) + 1);
+      
+      return () => {
+        this.errorCount.set(key, 0);
+      };
     }
   }
 

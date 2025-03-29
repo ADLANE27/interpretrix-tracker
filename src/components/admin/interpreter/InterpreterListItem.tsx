@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -5,10 +6,11 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { v4 as uuidv4 } from 'uuid';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -50,6 +52,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const { toast } = useToast();
   const [localStatus, setLocalStatus] = useState<Profile['status']>(interpreter.status);
   const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const processingEventRef = useRef<string | null>(null);
   
   const {
     status: interpreterStatus,
@@ -70,10 +73,22 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     const handleStatusUpdate = (data: { 
       interpreterId: string, 
       status: Profile['status'],
-      timestamp?: number
+      timestamp?: number,
+      uuid?: string
     }) => {
+      // Prevent duplicate processing
+      if (data.uuid && data.uuid === processingEventRef.current) {
+        return;
+      }
+      
       if (data.interpreterId === interpreter.id) {
         console.log(`[InterpreterListItem] Received status update for ${interpreter.id}: ${data.status}`);
+        
+        // Store the event ID to prevent duplicate processing
+        if (data.uuid) {
+          processingEventRef.current = data.uuid;
+        }
+        
         setLocalStatus(data.status);
       }
     };
@@ -95,7 +110,20 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id} to ${newStatus}`);
     
+    // Generate a unique event ID
+    const eventId = uuidv4();
+    processingEventRef.current = eventId;
+    
+    // Update local state immediately
     setLocalStatus(newStatus);
+    
+    // Broadcast the change for other components
+    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+      interpreterId: interpreter.id,
+      status: newStatus,
+      timestamp: Date.now(),
+      uuid: eventId
+    });
     
     if (statusUpdateTimeoutRef.current) {
       clearTimeout(statusUpdateTimeoutRef.current);
@@ -143,7 +171,10 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     interpreter.booth_number;
 
   return (
-    <Card className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`} key={`${interpreter.id}-${localStatus}`}>
+    <Card 
+      className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`} 
+      key={`list-item-${interpreter.id}-${localStatus}`}
+    >
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -227,3 +258,9 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     </Card>
   );
 };
+
+// Export a memoized version to prevent unnecessary re-renders
+export default memo(InterpreterListItem, (prevProps, nextProps) => {
+  // Only re-render if the status changed
+  return prevProps.interpreter.status === nextProps.interpreter.status;
+});

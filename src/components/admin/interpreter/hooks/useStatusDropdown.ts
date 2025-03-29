@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
@@ -19,6 +20,7 @@ export function useStatusDropdown(
   const { toast } = useToast();
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryAttemptsRef = useRef(0);
+  const lastReceivedEventIdRef = useRef<string | null>(null);
   
   const {
     status: hookStatus,
@@ -35,7 +37,9 @@ export function useStatusDropdown(
     },
     onStatusChange: (newStatus) => {
       console.log(`[useStatusDropdown] Status from hook updated to ${newStatus} for ${interpreterId}`);
-      setLocalStatus(newStatus);
+      if (newStatus !== localStatus) {
+        setLocalStatus(newStatus);
+      }
     }
   });
 
@@ -47,9 +51,19 @@ export function useStatusDropdown(
       timestamp?: number,
       uuid?: string
     }) => {
+      // Prevent processing duplicate events
+      if (data.uuid && data.uuid === lastReceivedEventIdRef.current) {
+        return;
+      }
+      
       if (data.interpreterId === interpreterId && data.status !== localStatus) {
         console.log(`[useStatusDropdown] Received status update event for ${interpreterId}: ${data.status}`);
         setLocalStatus(data.status);
+        
+        // Store the event ID to prevent duplicate processing
+        if (data.uuid) {
+          lastReceivedEventIdRef.current = data.uuid;
+        }
       }
     };
     
@@ -93,19 +107,36 @@ export function useStatusDropdown(
         onStatusChange(pendingStatus);
       }
       
+      // Generate a unique event ID
+      const eventId = uuidv4();
+      
       // Broadcast status change for immediate UI updates across components
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: pendingStatus,
         timestamp: Date.now(),
-        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+        uuid: eventId
       });
       
+      // Also send through the service for redundancy
+      realtimeService.broadcastStatusUpdate(interpreterId, pendingStatus);
+      
+      // Attempt database update
       const success = await updateStatus(pendingStatus);
       
       if (!success) {
         throw new Error('Failed to update status');
       }
+
+      // Broadcast a second time after successful update to ensure all components are in sync
+      setTimeout(() => {
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+          interpreterId,
+          status: pendingStatus,
+          timestamp: Date.now(),
+          uuid: `${eventId}-confirmation`
+        });
+      }, 300);
 
       toast({
         title: "Statut mis à jour",
