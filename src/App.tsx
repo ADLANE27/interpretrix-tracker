@@ -13,8 +13,6 @@ import { Footer } from './components/Footer';
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
-  const isLandingPage = location.pathname === '/';
-  const isInterpreterRoute = location.pathname.startsWith('/interpreter');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -38,7 +36,7 @@ function App() {
           <Route path="*" element={<Index />} />
         </Routes>
       </div>
-      {!isAdminRoute && !isLandingPage && !isInterpreterRoute && <Footer />}
+      {!isAdminRoute && <Footer />}
       <Toaster />
     </div>
   );
