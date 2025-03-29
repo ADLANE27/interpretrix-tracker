@@ -11,39 +11,6 @@ interface MapProps {
   lineColor?: string;
 }
 
-// Country outlines represented as arrays of [latitude, longitude] coordinates
-const COUNTRIES_DATA = {
-  // Simplified outlines of major countries/continents
-  northAmerica: [
-    [70, -125], [60, -140], [50, -130], [45, -125], [40, -120], [35, -115], 
-    [30, -110], [25, -105], [30, -95], [35, -90], [40, -85], [45, -80], 
-    [50, -70], [55, -65], [60, -75], [65, -85], [70, -100], [70, -125]
-  ],
-  southAmerica: [
-    [15, -80], [5, -75], [0, -80], [-10, -75], [-20, -70], [-30, -75], 
-    [-40, -65], [-50, -70], [-55, -65], [-50, -60], [-40, -60], [-30, -50], 
-    [-20, -45], [-10, -50], [0, -55], [10, -65], [15, -80]
-  ],
-  europe: [
-    [60, 0], [55, 10], [50, 15], [45, 20], [40, 25], [35, 30], 
-    [40, 40], [45, 35], [50, 30], [55, 25], [60, 20], [65, 15], [60, 0]
-  ],
-  africa: [
-    [35, -10], [30, 0], [25, 10], [20, 20], [15, 30], [10, 40], 
-    [0, 45], [-10, 40], [-20, 35], [-30, 25], [-35, 20], [-30, 15], 
-    [-25, 10], [-20, 0], [-10, -10], [0, -15], [10, -15], [20, -10], [30, -5], [35, -10]
-  ],
-  asia: [
-    [70, 60], [60, 80], [50, 100], [40, 120], [30, 130], [20, 120], 
-    [10, 110], [0, 100], [10, 90], [20, 80], [30, 70], [40, 60], 
-    [50, 50], [60, 40], [70, 30], [70, 60]
-  ],
-  australia: [
-    [-10, 110], [-20, 120], [-30, 130], [-40, 140], [-30, 150], 
-    [-20, 145], [-10, 135], [-10, 120], [-10, 110]
-  ]
-};
-
 export function WorldMap({
   dots = [],
   lineColor = "#0ea5e9",
@@ -51,12 +18,14 @@ export function WorldMap({
   const svgRef = useRef<SVGSVGElement>(null);
   const { theme } = useTheme();
 
+  // Project a point to SVG coordinates
   const projectPoint = (lat: number, lng: number) => {
     const x = (lng + 180) * (800 / 360);
     const y = (90 - lat) * (400 / 180);
     return { x, y };
   };
 
+  // Create a curved connection path
   const createCurvedPath = (
     start: { x: number; y: number },
     end: { x: number; y: number }
@@ -66,65 +35,81 @@ export function WorldMap({
     return `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y}`;
   };
 
-  // Dot size and spacing for the world map
-  const dotSize = 1;
-  const dotSpacing = 10;
-  
-  // Generate dots for all countries
-  const generateCountryDots = () => {
-    const allDots = [];
-    
-    // For each country in our data
-    Object.values(COUNTRIES_DATA).forEach((countryCoords) => {
-      // For each coordinate pair, create dots around it
-      countryCoords.forEach((coords, index) => {
-        const [lat, lng] = coords;
-        const { x, y } = projectPoint(lat, lng);
-        
-        // Create the main dot
-        allDots.push(
-          <circle 
-            key={`country-dot-${index}-${lat}-${lng}`}
-            cx={x}
-            cy={y}
-            r={dotSize}
-            fill={theme === "dark" ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.2)"}
-          />
-        );
-        
-        // Create some additional dots around this point
-        for (let i = 0; i < 3; i++) {
-          const offsetX = (Math.random() - 0.5) * dotSpacing;
-          const offsetY = (Math.random() - 0.5) * dotSpacing;
-          
-          allDots.push(
-            <circle 
-              key={`country-dot-${index}-${lat}-${lng}-${i}`}
-              cx={x + offsetX}
-              cy={y + offsetY}
-              r={dotSize * (Math.random() * 0.5 + 0.5)}
-              fill={theme === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"}
-            />
-          );
-        }
-      });
-    });
-    
-    return allDots;
-  };
-
   return (
-    <div className="w-full h-full dark:bg-black bg-white rounded-lg relative font-sans">
+    <div className="w-full h-full dark:bg-gray-950 bg-white rounded-lg relative font-sans overflow-hidden">
+      {/* Abstract background patterns representing language and culture */}
+      <div className="absolute inset-0 opacity-5">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="languages-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+              <text x="10" y="30" className={`text-2xl ${theme === "dark" ? "fill-white" : "fill-black"}`}>اَلْعَرَبِيَّة</text>
+              <text x="20" y="60" className={`text-xl ${theme === "dark" ? "fill-white" : "fill-black"}`}>français</text>
+              <text x="50" y="90" className={`text-lg ${theme === "dark" ? "fill-white" : "fill-black"}`}>English</text>
+              <text x="60" y="20" className={`text-xl ${theme === "dark" ? "fill-white" : "fill-black"}`}>中文</text>
+              <text x="70" y="50" className={`text-lg ${theme === "dark" ? "fill-white" : "fill-black"}`}>Español</text>
+              <text x="0" y="80" className={`text-xl ${theme === "dark" ? "fill-white" : "fill-black"}`}>Русский</text>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#languages-pattern)" />
+        </svg>
+      </div>
+
+      {/* Flowing gradient background */}
+      <div className="absolute inset-0">
+        <motion.div 
+          className="absolute inset-0 bg-gradient-to-br from-palette-ocean-blue/10 via-palette-vivid-purple/5 to-palette-bright-orange/10 dark:from-palette-ocean-blue/20 dark:via-palette-vivid-purple/10 dark:to-palette-bright-orange/20"
+          animate={{ 
+            backgroundPosition: ['0% 0%', '100% 100%'],
+          }}
+          transition={{ 
+            duration: 20, 
+            repeat: Infinity, 
+            repeatType: "reverse",
+            ease: "linear"
+          }}
+          style={{ backgroundSize: '200% 200%' }}
+        />
+      </div>
+
+      {/* Circular elements representing cultural connection points */}
+      <div className="absolute inset-0">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={`circle-${i}`}
+            className={`absolute rounded-full bg-gradient-to-r ${
+              i % 3 === 0 
+              ? 'from-palette-ocean-blue/20 to-palette-vivid-purple/20' 
+              : i % 3 === 1 
+                ? 'from-palette-vivid-purple/20 to-palette-bright-orange/20' 
+                : 'from-palette-bright-orange/20 to-palette-ocean-blue/20'
+            }`}
+            style={{
+              left: `${Math.random() * 80 + 10}%`,
+              top: `${Math.random() * 80 + 10}%`,
+              width: `${Math.random() * 200 + 50}px`,
+              height: `${Math.random() * 200 + 50}px`,
+            }}
+            animate={{
+              opacity: [0.3, 0.6, 0.3],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: Math.random() * 10 + 10,
+              repeat: Infinity,
+              repeatType: "reverse",
+              ease: "easeInOut",
+              delay: i * 0.5,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Connection lines */}
       <svg
         ref={svgRef}
         viewBox="0 0 800 400"
         className="w-full h-full absolute inset-0 pointer-events-none select-none"
       >
-        {/* Country outlines represented as dots */}
-        <g className="country-dots">
-          {generateCountryDots()}
-        </g>
-
         {/* Connection paths between dots */}
         {dots.map((dot, i) => {
           const startPoint = projectPoint(dot.start.lat, dot.start.lng);
