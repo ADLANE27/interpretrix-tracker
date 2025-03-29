@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Building, Headset, ChevronRight } from "lucide-react";
@@ -35,7 +34,7 @@ export const WelcomeContent = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
       {/* Background animation layer */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {/* Large floating circles */}
@@ -131,6 +130,20 @@ export const WelcomeContent = () => {
         ))}
       </div>
 
+      <div className="absolute top-4 left-4 z-20">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          <img 
+            src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
+            alt="Logo" 
+            className="h-20 md:h-32" 
+          />
+        </motion.div>
+      </div>
+
       <div className="flex-1 flex items-center justify-center relative overflow-hidden pb-16">
         <motion.div 
           className="absolute inset-0 -z-10"
@@ -153,11 +166,7 @@ export const WelcomeContent = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <img 
-              src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
-              alt="Logo" 
-              className="h-40 md:h-64 mx-auto" 
-            />
+            {/* Remove the logo from this section */}
           </motion.div>
           
           <motion.div 
