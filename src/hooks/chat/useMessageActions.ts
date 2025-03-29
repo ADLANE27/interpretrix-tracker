@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -69,7 +68,6 @@ const validateFile = (file: File): string | null => {
   return null;
 };
 
-// Check if we have an internet connection
 const checkConnection = (): boolean => {
   return navigator.onLine;
 };
@@ -82,12 +80,10 @@ export const useMessageActions = (
   const { toast } = useToast();
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
-    // Check connection before attempting upload
     if (!checkConnection()) {
       throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
     }
 
-    // Validate file before upload
     const validationError = validateFile(file);
     if (validationError) {
       console.error('[Chat] File validation error:', validationError);
@@ -123,8 +119,9 @@ export const useMessageActions = (
         });
 
         return {
+          id: sanitizedFilename,
           url: publicUrl,
-          filename: file.name, // Keep original filename for display
+          name: file.name,
           type: file.type,
           size: file.size
         };
@@ -132,7 +129,7 @@ export const useMessageActions = (
         console.error(`[Chat] Upload attempt ${4 - retries} failed:`, error);
         retries--;
         if (retries === 0) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     throw new Error('Upload failed after all retries');
@@ -146,7 +143,6 @@ export const useMessageActions = (
     if (!channelId || !currentUserId) throw new Error("Données requises manquantes");
     if (!content.trim() && files.length === 0) throw new Error("Le message ne peut pas être vide");
     
-    // Check connection before attempting to send
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -199,7 +195,6 @@ export const useMessageActions = (
   };
 
   const deleteMessage = async (messageId: string) => {
-    // Check for connection before attempting to delete
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -209,7 +204,6 @@ export const useMessageActions = (
       return;
     }
 
-    // Check for required data
     if (!messageId) {
       toast({
         title: "Erreur", 
@@ -231,7 +225,6 @@ export const useMessageActions = (
     try {
       console.log('[Chat] Attempting to delete message:', messageId);
       
-      // First verify the message belongs to the current user, using maybeSingle instead of single
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('sender_id')
@@ -256,7 +249,6 @@ export const useMessageActions = (
         throw new Error("Vous ne pouvez supprimer que vos propres messages");
       }
 
-      // Proceed with deletion inside a transaction to ensure consistency
       const { error } = await supabase
         .from('chat_messages')
         .delete()
@@ -267,7 +259,6 @@ export const useMessageActions = (
         throw error;
       }
 
-      // Refresh messages list after deletion
       await fetchMessages();
       
       toast({
@@ -289,7 +280,6 @@ export const useMessageActions = (
   const markMentionsAsRead = async () => {
     if (!currentUserId || !channelId) return;
 
-    // Check connection before attempting to update mentions
     if (!checkConnection()) {
       console.error('[Chat] Cannot mark mentions as read: No internet connection');
       return;
@@ -314,7 +304,6 @@ export const useMessageActions = (
   const reactToMessage = async (messageId: string, emoji: string) => {
     if (!currentUserId) return;
 
-    // Check connection before attempting to react
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -325,7 +314,6 @@ export const useMessageActions = (
     }
 
     try {
-      // Use maybeSingle instead of single for better error handling
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')

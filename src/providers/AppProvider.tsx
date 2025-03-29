@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -52,7 +53,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Connexion établie",
         description: "Connexion aux mises à jour en temps réel établie avec succès.",
-        variant: "default", // Using default variant
+        variant: "default", // Changed from "warning" to "default"
         duration: 3000,
       });
     }

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +12,10 @@ export interface ChatInputProps {
   handleFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   selectedFiles?: File[];
+  attachments?: File[];
   removeSelectedFile?: (index: number) => void;
   isUploading?: boolean;
-  additionActions?: React.ReactNode; // Add this line
+  additionActions?: React.ReactNode;
   replyTo?: {
     id: string;
     content: string;
@@ -22,6 +24,9 @@ export interface ChatInputProps {
     };
   } | null;
   setReplyTo?: (replyTo: null) => void;
+  inputRef?: React.RefObject<HTMLTextAreaElement>;
+  style?: React.CSSProperties;
+  className?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -35,16 +40,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isUploading,
   additionActions,
   replyTo,
-  setReplyTo
+  setReplyTo,
+  inputRef: externalInputRef,
+  style,
+  className
 }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalInputRef || internalTextareaRef;
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'inherit';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-  }, [message]);
+  }, [message, textareaRef]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -54,7 +63,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="relative">
+    <div className={`relative ${className || ''}`} style={style}>
       {replyTo && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
