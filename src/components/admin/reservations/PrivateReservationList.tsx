@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,21 +30,10 @@ export const PrivateReservationList = ({
 }: PrivateReservationListProps) => {
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchReservations = async () => {
     try {
-      setIsLoading(true);
-      console.log('[PrivateReservationList] Fetching reservations with filters:', {
-        nameFilter,
-        sourceLanguageFilter,
-        targetLanguageFilter,
-        startDateFilter,
-        endDateFilter,
-        companyFilter
-      });
-
       let query = supabase
         .from('private_reservations')
         .select(`
@@ -58,7 +46,6 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Fix for interpreter name filter - use correct syntax for filtering on joins
       if (nameFilter) {
         query = query.or(`interpreter_profiles.first_name.ilike.%${nameFilter}%,interpreter_profiles.last_name.ilike.%${nameFilter}%`);
       }
@@ -86,7 +73,6 @@ export const PrivateReservationList = ({
       const { data, error } = await query;
 
       if (error) throw error;
-      console.log('[PrivateReservationList] Fetched reservations:', data?.length);
       setReservations(data || []);
     } catch (error) {
       console.error('[PrivateReservationList] Error:', error);
@@ -95,8 +81,6 @@ export const PrivateReservationList = ({
         description: "Impossible de charger les réservations",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -145,74 +129,68 @@ export const PrivateReservationList = ({
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Réservations privées</h2>
 
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {reservations.length === 0 ? (
-            <p className="text-muted-foreground">Aucune réservation privée</p>
-          ) : (
-            reservations.map((reservation) => (
-              <Card key={reservation.id} className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-blue-500" />
-                        <span className="font-medium">
-                          {formatDateTimeDisplay(reservation.start_time)}
-                        </span>
-                        <Badge variant="outline">
-                          {reservation.duration_minutes} min
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Languages className="h-4 w-4 text-green-500" />
-                        <span>
-                          {reservation.source_language} → {reservation.target_language}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-purple-500" />
-                        <span>
-                          {reservation.interpreter_profiles?.first_name}{' '}
-                          {reservation.interpreter_profiles?.last_name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-amber-500" />
-                        <Badge variant={reservation.company === COMPANY_TYPES.AFTCOM ? "secondary" : "default"}>
-                          {reservation.company}
-                        </Badge>
-                      </div>
+      <div className="grid gap-4">
+        {reservations.length === 0 ? (
+          <p className="text-muted-foreground">Aucune réservation privée</p>
+        ) : (
+          reservations.map((reservation) => (
+            <Card key={reservation.id} className="p-4">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">
+                        {formatDateTimeDisplay(reservation.start_time)}
+                      </span>
+                      <Badge variant="outline">
+                        {reservation.duration_minutes} min
+                      </Badge>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedReservation(reservation)}
-                      >
-                        Modifier
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleDeleteReservation(reservation.id)}
-                      >
-                        Supprimer
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <Languages className="h-4 w-4 text-green-500" />
+                      <span>
+                        {reservation.source_language} → {reservation.target_language}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-purple-500" />
+                      <span>
+                        {reservation.interpreter_profiles?.first_name}{' '}
+                        {reservation.interpreter_profiles?.last_name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-amber-500" />
+                      <Badge variant={reservation.company === COMPANY_TYPES.AFTCOM ? "secondary" : "default"}>
+                        {reservation.company}
+                      </Badge>
                     </div>
                   </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedReservation(reservation)}
+                    >
+                      Modifier
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDeleteReservation(reservation.id)}
+                    >
+                      Supprimer
+                    </Button>
+                  </div>
                 </div>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
 
       {selectedReservation && (
         <ReservationEditDialog
