@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -122,16 +123,16 @@ export const CardFront: React.FC<CardFrontProps> = ({
               currentStatus={status}
               displayFormat="badge"
               onStatusChange={handleStatusChange}
-              className="text-[14px] px-2.5 py-1.5"
+              className="text-[14px] px-2.5 py-1.5 min-w-[100px] flex justify-center"
             />
           </div>
           
-          <Badge variant="outline" className={`text-[14px] px-2.5 py-1.5 flex items-center gap-1 ${locationConfig[workLocation].color}`}>
+          <Badge variant="outline" className={`text-[14px] px-2.5 py-1.5 min-w-[100px] flex items-center justify-center gap-1 ${locationConfig[workLocation].color}`}>
             <LocationIcon className="h-4 w-4" />
             <span>{workLocation === "remote" ? "Télétravail" : "Sur site"}</span>
           </Badge>
           
-          <Badge variant="outline" className="text-[14px] px-2.5 py-1.5 bg-gray-50">
+          <Badge variant="outline" className="text-[14px] px-2.5 py-1.5 min-w-[100px] flex justify-center bg-gray-50">
             {employmentStatusLabels[interpreter.employment_status as any]}
           </Badge>
         </div>
@@ -139,13 +140,13 @@ export const CardFront: React.FC<CardFrontProps> = ({
         {showAnyTarif && (
           <div className="flex flex-wrap gap-1 mb-2">
             {showTarif5min && (
-              <Badge variant="outline" className="text-[14px] bg-gray-50">
+              <Badge variant="outline" className="text-[14px] bg-gray-50 min-w-[80px] flex justify-center">
                 5min: {interpreter.tarif_5min}€
               </Badge>
             )}
             
             {showTarif15min && (
-              <Badge variant="outline" className="text-[14px] bg-gray-50">
+              <Badge variant="outline" className="text-[14px] bg-gray-50 min-w-[80px] flex justify-center">
                 15min: {interpreter.tarif_15min}€
               </Badge>
             )}
