@@ -44,13 +44,31 @@ export const useReservations = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply name filter correctly - FIXED FILTER SYNTAX
+      // Apply name filter - fixed implementation
       if (nameFilter && nameFilter.trim() !== '') {
         const searchTerm = nameFilter.trim().toLowerCase();
         console.log('[useReservations] Applying name filter with term:', searchTerm);
         
-        // Use the correct syntax for filtering related tables with OR condition
-        query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
+        // First get the matching interpreter IDs through a separate query
+        const { data: matchingInterpreters, error: interpreterError } = await supabase
+          .from('interpreter_profiles')
+          .select('id')
+          .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`);
+          
+        if (interpreterError) {
+          console.error('[useReservations] Error finding matching interpreters:', interpreterError);
+          throw interpreterError;
+        }
+        
+        if (matchingInterpreters && matchingInterpreters.length > 0) {
+          const interpreterIds = matchingInterpreters.map(interpreter => interpreter.id);
+          console.log('[useReservations] Found matching interpreters:', interpreterIds);
+          query = query.in('interpreter_id', interpreterIds);
+        } else {
+          // If no interpreters match, return empty result by using a non-existent ID
+          console.log('[useReservations] No matching interpreters found');
+          query = query.eq('interpreter_id', '00000000-0000-0000-0000-000000000000');
+        }
       }
 
       if (sourceLanguageFilter !== 'all') {
