@@ -11,6 +11,7 @@ import { Clock, Languages, User, Building } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 import { COMPANY_TYPES } from "@/lib/constants";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface PrivateReservationListProps {
   nameFilter: string;
@@ -53,12 +54,13 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      if (nameFilter) {
-        // Fixed the filter syntax for interpreter name
-        console.log('[PrivateReservationList] Applying name filter:', nameFilter);
-        query = query.or(
-          `interpreter_profiles.first_name.ilike.%${nameFilter}%,interpreter_profiles.last_name.ilike.%${nameFilter}%`
-        );
+      // Apply name filter (fixed syntax)
+      if (nameFilter && nameFilter.trim() !== '') {
+        const searchTerm = nameFilter.trim().toLowerCase();
+        console.log('[PrivateReservationList] Applying name filter with term:', searchTerm);
+        
+        // Correct way to use or() for filtering on related tables
+        query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
       }
 
       if (sourceLanguageFilter !== 'all') {
@@ -150,7 +152,7 @@ export const PrivateReservationList = ({
 
       {isLoading ? (
         <div className="text-center py-4">
-          <p className="text-muted-foreground">Chargement des réservations...</p>
+          <LoadingSpinner size="md" text="Chargement des réservations..." />
         </div>
       ) : (
         <div className="grid gap-4">
