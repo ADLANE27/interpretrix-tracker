@@ -1,50 +1,64 @@
 
 /**
- * Utility class to debounce events and manage cooldowns
+ * Helper class to prevent duplicate processing of realtime events
  */
 export class EventDebouncer {
-  private eventTimestamps: Map<string, number> = new Map();
-  private cooldownPeriod: number;
+  private processedEvents: Map<string, number> = new Map();
+  private readonly MAX_EVENTS = 100;
+  private readonly EVENT_TTL = 5000; // 5 seconds
 
-  constructor(cooldownPeriod = 500) {
-    this.cooldownPeriod = cooldownPeriod;
+  constructor() {
+    // Clean up old events periodically
+    setInterval(() => this.cleanupOldEvents(), 30000);
   }
 
   /**
-   * Check if an event should be processed based on cooldown
+   * Checks if an event should be processed based on its ID and timestamp
    */
   public shouldProcessEvent(eventId: string, timestamp: number): boolean {
-    const lastTimestamp = this.eventTimestamps.get(eventId);
-    
-    if (!lastTimestamp || (timestamp - lastTimestamp > this.cooldownPeriod)) {
-      this.eventTimestamps.set(eventId, timestamp);
-      return true;
+    // Check if this event was recently processed
+    if (this.processedEvents.has(eventId)) {
+      const lastProcessed = this.processedEvents.get(eventId) || 0;
+      
+      // If it was processed recently, skip it
+      if (timestamp - lastProcessed < this.EVENT_TTL) {
+        console.log(`[EventDebouncer] Skipping duplicate event: ${eventId}`);
+        return false;
+      }
     }
     
-    return false;
+    // Record that we processed this event
+    this.processedEvents.set(eventId, timestamp);
+    
+    // If we're tracking too many events, remove the oldest ones
+    if (this.processedEvents.size > this.MAX_EVENTS) {
+      this.cleanupOldEvents();
+    }
+    
+    return true;
   }
 
   /**
-   * Execute a function after debounce period
+   * Clean up events that are older than the TTL
    */
-  public debounce(
-    fn: Function, 
-    id: string, 
-    wait: number = this.cooldownPeriod
-  ): void {
-    const timestamp = Date.now();
-    const lastExecution = this.eventTimestamps.get(id) || 0;
+  private cleanupOldEvents(): void {
+    const now = Date.now();
+    const toDelete: string[] = [];
     
-    if (timestamp - lastExecution > wait) {
-      fn();
-      this.eventTimestamps.set(id, timestamp);
+    // Find old events
+    this.processedEvents.forEach((timestamp, eventId) => {
+      if (now - timestamp > this.EVENT_TTL) {
+        toDelete.push(eventId);
+      }
+    });
+    
+    // Delete them
+    toDelete.forEach(eventId => {
+      this.processedEvents.delete(eventId);
+    });
+    
+    if (toDelete.length > 0) {
+      console.log(`[EventDebouncer] Cleaned up ${toDelete.length} old events`);
     }
-  }
-
-  /**
-   * Clear all stored timestamps
-   */
-  public reset(): void {
-    this.eventTimestamps.clear();
   }
 }

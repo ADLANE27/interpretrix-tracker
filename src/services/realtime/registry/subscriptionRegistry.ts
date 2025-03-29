@@ -1,145 +1,69 @@
 
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { SubscriptionStatus, createSubscriptionStatus } from './types';
-import { handleStaggeredReconnection } from './reconnectionUtils';
-
 /**
- * Registry to manage and track all active subscriptions
+ * Helper class to track and manage Supabase realtime subscriptions
  */
 export class SubscriptionRegistry {
-  private subscriptionStatuses: Record<string, SubscriptionStatus> = {};
-  private reconnectInProgress: boolean = false;
-  
+  private subscriptions: Map<string, () => void> = new Map();
+
   /**
-   * Register a new subscription in the registry
+   * Register a new subscription
    */
-  public register(key: string, channel: RealtimeChannel): void {
-    this.subscriptionStatuses[key] = createSubscriptionStatus(channel);
-    console.log(`[RealtimeService] Registered subscription: ${key}`);
+  public register(key: string, cleanup: () => void): void {
+    // If we already have a subscription with this key, clean it up first
+    if (this.subscriptions.has(key)) {
+      console.log(`[SubscriptionRegistry] Cleaning up existing subscription: ${key}`);
+      this.unregister(key);
+    }
+    
+    console.log(`[SubscriptionRegistry] Registering subscription: ${key}`);
+    this.subscriptions.set(key, cleanup);
   }
-  
+
   /**
-   * Update the status of a subscription
-   */
-  public updateStatus(key: string, connected: boolean, channel?: RealtimeChannel): void {
-    const status = this.subscriptionStatuses[key];
-    
-    if (!status) {
-      this.subscriptionStatuses[key] = createSubscriptionStatus(channel);
-      this.subscriptionStatuses[key].connected = connected;
-      this.subscriptionStatuses[key].isActive = connected; // Set isActive to the same value as connected
-      this.subscriptionStatuses[key].lastUpdate = new Date();
-      return;
-    }
-    
-    if (connected) {
-      // Reset retry count on successful connection
-      status.retryCount = 0;
-    }
-    
-    status.connected = connected;
-    status.isActive = connected; // Set isActive to the same value as connected
-    status.lastUpdate = new Date();
-    
-    if (channel) {
-      status.channelRef = channel;
-    }
-  }
-  
-  /**
-   * Remove a subscription from the registry and clean up resources
+   * Unregister and clean up a subscription
    */
   public unregister(key: string): void {
-    const status = this.subscriptionStatuses[key];
+    const cleanup = this.subscriptions.get(key);
     
-    if (status && status.channelRef) {
-      console.log(`[RealtimeService] Unregistering subscription: ${key}`);
-      try {
-        supabase.removeChannel(status.channelRef);
-      } catch (error) {
-        console.error(`[RealtimeService] Error removing channel for ${key}:`, error);
-      }
-      delete this.subscriptionStatuses[key];
+    if (cleanup) {
+      console.log(`[SubscriptionRegistry] Unregistering subscription: ${key}`);
+      cleanup();
+      this.subscriptions.delete(key);
     }
   }
-  
-  /**
-   * Reconnect all registered subscriptions with staggered timing
-   */
-  public reconnectAll(): void {
-    if (this.reconnectInProgress) {
-      console.log('[RealtimeService] Reconnection already in progress, skipping');
-      return;
-    }
-    
-    this.reconnectInProgress = true;
-    
-    // Using the utility function for reconnection logic
-    handleStaggeredReconnection(
-      this.subscriptionStatuses, 
-      (key, connected) => this.updateStatus(key, connected)
-    );
-    
-    // Reset the flag after a delay
-    setTimeout(() => {
-      this.reconnectInProgress = false;
-      console.log('[RealtimeService] Reconnection process completed');
-    }, 1000);
-  }
-  
-  /**
-   * Get the status of a specific subscription
-   */
-  public getStatus(key: string): SubscriptionStatus | undefined {
-    return this.subscriptionStatuses[key];
-  }
-  
-  /**
-   * Get all subscription statuses
-   */
-  public getAllStatuses(): Record<string, SubscriptionStatus> {
-    return { ...this.subscriptionStatuses };
-  }
-  
+
   /**
    * Clean up all subscriptions
    */
-  public cleanupAll(): void {
-    Object.entries(this.subscriptionStatuses).forEach(([key, status]) => {
-      if (status.channelRef) {
-        try {
-          supabase.removeChannel(status.channelRef);
-        } catch (error) {
-          console.error(`[RealtimeService] Error removing channel for ${key}:`, error);
-        }
-      }
+  public unregisterAll(): void {
+    console.log(`[SubscriptionRegistry] Cleaning up all subscriptions (${this.subscriptions.size})`);
+    
+    this.subscriptions.forEach((cleanup, key) => {
+      console.log(`[SubscriptionRegistry] Cleaning up subscription: ${key}`);
+      cleanup();
     });
     
-    this.subscriptionStatuses = {};
-    console.log(`[RealtimeService] All subscriptions cleaned up`);
+    this.subscriptions.clear();
   }
-  
+
   /**
-   * Get the count of active subscriptions
+   * Get the number of active subscriptions
    */
-  public getActiveCount(): number {
-    return Object.values(this.subscriptionStatuses).filter(status => status.isActive).length;
+  public get count(): number {
+    return this.subscriptions.size;
   }
-  
+
   /**
-   * Get the total count of subscriptions
+   * Check if a subscription exists
    */
-  public getTotalCount(): number {
-    return Object.keys(this.subscriptionStatuses).length;
+  public has(key: string): boolean {
+    return this.subscriptions.has(key);
   }
-  
+
   /**
-   * Is reconnection in progress
+   * Get all subscription keys
    */
-  public isReconnecting(): boolean {
-    return this.reconnectInProgress;
+  public get keys(): string[] {
+    return Array.from(this.subscriptions.keys());
   }
 }
-
-export const subscriptionRegistry = new SubscriptionRegistry();

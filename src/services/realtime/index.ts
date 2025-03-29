@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';

@@ -1,85 +1,70 @@
 
-import type { Json } from '@/integrations/supabase/types';
-
 export interface Message {
   id: string;
   content: string;
+  created_at: string;
+  sender_id: string;
+  channel_id: string;
+  parent_message_id?: string;
+  attachments?: Attachment[];
+  is_system_message?: boolean;
+  mentions?: string[];
   sender: {
     id: string;
     name: string;
-    avatarUrl?: string;
+    avatar_url?: string;
   };
-  timestamp: Date;
-  parent_message_id?: string | null;
-  reactions?: Record<string, string[]>;
-  attachments?: Attachment[];
-  channelType?: 'group' | 'direct';
-}
-
-export interface MessageData {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  parent_message_id?: string | null;
-  reactions: Record<string, string[]>;
-  attachments?: Array<{
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  }>;
+  reactions?: MessageReaction[];
+  reply_count?: number;
 }
 
 export interface Attachment {
-  url: string;
-  filename: string;
+  id: string;
+  name: string;
   type: string;
-  size: number;
+  url: string;
+  thumbnail_url?: string;
+  size?: number;
+}
+
+export interface MessageReaction {
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+  user?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+  };
 }
 
 export interface ChannelMember {
+  id: string;
+  channel_id: string;
   user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
+  role: 'admin' | 'member';
   joined_at: string;
+  user: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+    email?: string;
+    status?: 'available' | 'busy' | 'pause' | 'unavailable';
+  };
 }
 
-export function isAttachment(obj: any): obj is Attachment {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    typeof obj.url === 'string' &&
-    typeof obj.filename === 'string' &&
-    typeof obj.type === 'string' &&
-    typeof obj.size === 'number'
-  );
-}
-
-export interface MessageListProps {
-  messages: Message[];
-  currentUserId: string | null;
-  onDeleteMessage: (messageId: string) => Promise<void>;
-  onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
-  replyTo?: Message | null;
-  setReplyTo?: (message: Message | null) => void;
-  channelId: string;
-}
-
-// Add dedicated mention interfaces
-export interface MemberSuggestion {
+export interface Channel {
   id: string;
   name: string;
-  email: string;
-  role: 'admin' | 'interpreter';
-  avatarUrl?: string;
+  description?: string;
+  is_private: boolean;
+  created_at: string;
+  created_by: string;
+  last_message_at?: string;
+  last_message?: string;
+  unread_count?: number;
+  members_count?: number;
+  type?: 'channel' | 'direct';
+  members?: ChannelMember[];
 }
-
-export interface LanguageSuggestion {
-  name: string;
-  type: 'language';
-}
-
-export type Suggestion = MemberSuggestion | LanguageSuggestion;

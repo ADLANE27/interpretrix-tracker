@@ -25,7 +25,7 @@ export function AppProvider({ children }: AppProviderProps) {
         toast({
           title: "Problème de connexion",
           description: "La connexion temps réel a été perdue. Les mises à jour peuvent être retardées.",
-          variant: "warning",
+          variant: "destructive", // Changed from "warning" to "destructive"
           duration: 5000,
         });
       }
