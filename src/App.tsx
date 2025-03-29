@@ -8,7 +8,6 @@ import Admin from './pages/Admin';
 import Index from './pages/Index';
 import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
-import { Footer } from './components/Footer';
 
 function App() {
   const location = useLocation();
@@ -36,7 +35,6 @@ function App() {
           <Route path="*" element={<Index />} />
         </Routes>
       </div>
-      {!isAdminRoute && <Footer />}
       <Toaster />
     </div>
   );
