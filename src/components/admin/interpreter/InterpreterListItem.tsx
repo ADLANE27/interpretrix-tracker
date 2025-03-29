@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -152,10 +153,13 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               currentStatus={localStatus}
               displayFormat="badge"
               onStatusChange={handleStatusChange}
+              className="text-[14px] px-2.5 py-1.5"
             />
-            <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
+            <span className="text-xl font-medium text-gradient-primary truncate">
+              {interpreter.name}
+            </span>
             {!isConnected && (
-              <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+              <span className="text-[13px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
                 Reconnexion...
               </span>
             )}
@@ -163,12 +167,12 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
 
           <div className="flex flex-1 flex-wrap items-center gap-2 justify-end">
             <div className="flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5 text-palette-ocean-blue" />
+              <Globe className="h-4 w-4 text-palette-ocean-blue" />
               <div className="flex flex-wrap gap-1">
                 {parsedLanguages.map((lang, index) => (
                   <div
                     key={index}
-                    className="px-2 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-xs flex items-center gap-1 shadow-sm"
+                    className="px-2 py-0.5 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-[14px] flex items-center gap-1 shadow-sm"
                   >
                     <span>{lang.source}</span>
                     <span className="text-palette-vivid-purple">→</span>
@@ -178,12 +182,12 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               </div>
             </div>
 
-            <div className="text-xs text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 rounded-full shadow-sm">
+            <div className="text-[14px] text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-2 py-0.5 rounded-full shadow-sm">
               {employmentStatusLabels[interpreter.employment_status]}
             </div>
 
-            <div className={`px-2 py-0.5 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
-              <LocationIcon className="h-3 w-3" />
+            <div className={`px-2 py-0.5 rounded-full text-[14px] flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-4 w-4" />
               <span>{workLocationLabels[workLocation]}</span>
             </div>
 
@@ -191,11 +195,12 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
                 estimatedDuration={interpreter.next_mission_duration || 0}
+                className="text-[14px]"
               />
             )}
             
             {hasAnyPhoneNumber && (
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-2 text-[14px] text-muted-foreground">
                 {interpreter.booth_number && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Cabine:</span> {interpreter.booth_number}
@@ -203,13 +208,13 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
                 )}
                 {interpreter.phone_number && (
                   <div className="flex items-center gap-1">
-                    <Phone className="h-3 w-3 text-palette-ocean-blue" />
+                    <Phone className="h-4 w-4 text-palette-ocean-blue" />
                     <span>{interpreter.phone_number}</span>
                   </div>
                 )}
                 {interpreter.work_hours && (
                   <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-palette-ocean-blue" />
+                    <Clock className="h-4 w-4 text-palette-ocean-blue" />
                     <span>
                       {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                         `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
