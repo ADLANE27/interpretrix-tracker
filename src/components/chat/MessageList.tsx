@@ -190,7 +190,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
         <div className="flex items-start gap-2 relative">
           {showSender ? <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
-              <AvatarImage src={message.sender.avatar_url} alt={message.sender.name} className="object-cover" />
+              <AvatarImage src={message.sender.avatarUrl} alt={message.sender.name} className="object-cover" />
               <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
                 {getInitials(message.sender.name)}
               </AvatarFallback>
@@ -207,7 +207,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
 
             {message.attachments && message.attachments.length > 0 && <div className="mt-2 max-w-sm">
-                {message.attachments.map((attachment, idx) => <MessageAttachment key={idx} url={attachment.url} name={attachment.name} locale="fr" />)}
+                {message.attachments.map((attachment, idx) => <MessageAttachment key={idx} url={attachment.url} filename={attachment.filename} locale="fr" />)}
               </div>}
 
             {renderReactions(message)}

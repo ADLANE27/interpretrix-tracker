@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,20 +9,18 @@ import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 
 type Status = Profile['status'];
 
-export interface StatusButtonsBarProps {
+interface StatusButtonsBarProps {
   currentStatus?: Status;
   onStatusChange?: (newStatus: Status) => Promise<void>;
   variant?: 'default' | 'compact';
   interpreterId?: string;
-  className?: string;
 }
 
 export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({ 
   currentStatus = 'available', 
   onStatusChange,
   variant = 'default',
-  interpreterId,
-  className = ''
+  interpreterId
 }) => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -151,8 +148,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   return (
     <div className={cn(
       "flex items-center gap-2 mx-auto w-full max-w-screen-sm overflow-x-auto hide-scrollbar py-1",
-      variant === 'compact' ? 'px-1' : 'px-4',
-      className
+      variant === 'compact' ? 'px-1' : 'px-4'
     )}>
       {!isConnected && (
         <div className="w-full text-center py-1 px-2 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs">
