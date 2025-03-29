@@ -8,12 +8,10 @@ import Admin from './pages/Admin';
 import Index from './pages/Index';
 import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
-import { Footer } from './components/Footer';
 
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
-  const isIndexRoute = location.pathname === '/';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -37,7 +35,6 @@ function App() {
           <Route path="*" element={<Index />} />
         </Routes>
       </div>
-      {!isAdminRoute && !isIndexRoute && <Footer />}
       <Toaster />
     </div>
   );
