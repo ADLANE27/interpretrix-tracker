@@ -25,6 +25,10 @@ const AdminDashboard = () => {
       label: "Interprètes"
     }, 
     {
+      id: "messages",
+      label: "Messages"
+    },
+    {
       id: "missions",
       label: "Missions"
     }, 
@@ -35,10 +39,6 @@ const AdminDashboard = () => {
     {
       id: "calendar",
       label: "Calendrier"
-    }, 
-    {
-      id: "messages",
-      label: "Messages"
     }, 
     {
       id: "users",
