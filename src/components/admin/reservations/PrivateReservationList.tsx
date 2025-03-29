@@ -54,13 +54,14 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply name filter (fixed syntax)
+      // Apply name filter with fixed approach
       if (nameFilter && nameFilter.trim() !== '') {
         const searchTerm = nameFilter.trim().toLowerCase();
         console.log('[PrivateReservationList] Applying name filter with term:', searchTerm);
         
-        // Correct way to use or() for filtering on related tables
-        query = query.or(`interpreter_profiles.first_name.ilike.%${searchTerm}%,interpreter_profiles.last_name.ilike.%${searchTerm}%`);
+        // Using separate filter() calls instead of or() for related entities
+        query = query.filter('interpreter_profiles.first_name', 'ilike', `%${searchTerm}%`)
+          .or(`interpreter_profiles.last_name.ilike.%${searchTerm}%`);
       }
 
       if (sourceLanguageFilter !== 'all') {
