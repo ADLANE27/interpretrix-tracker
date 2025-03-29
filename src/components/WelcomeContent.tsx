@@ -3,11 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Building, Headset, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const WelcomeContent = () => {
-  const isMobile = useIsMobile();
-  
   const container = {
     hidden: { opacity: 0 },
     visible: {
@@ -32,19 +29,19 @@ export const WelcomeContent = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
-      {/* Hero Background Image with Gradient Overlay */}
-      <div className="absolute inset-0 z-0">
-        <div 
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&q=80')] 
-                    bg-cover bg-center"
-          style={{ opacity: 0.7 }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-palette-vivid-purple/80 via-palette-ocean-blue/60 to-transparent" />
-      </div>
-      
+    <div className="min-h-screen flex flex-col">
       {/* Hero Section with Centered Content */}
-      <div className="flex-1 flex items-center justify-center relative z-10 overflow-hidden pb-16">
+      <div className="flex-1 flex items-center justify-center relative overflow-hidden pb-16">
+        {/* Background with subtle animation */}
+        <motion.div 
+          className="absolute inset-0 -z-10 opacity-20"
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.2 }}
+          transition={{ duration: 1.5 }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-palette-soft-blue via-white to-palette-soft-purple" />
+        </motion.div>
+        
         {/* Main content container - reduced vertical spacing */}
         <motion.div 
           className="w-full max-w-6xl mx-auto px-6 py-4 text-center"
@@ -62,7 +59,7 @@ export const WelcomeContent = () => {
             <img 
               src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
               alt="Logo" 
-              className="h-40 md:h-64 mx-auto filter drop-shadow-lg" 
+              className="h-40 md:h-64 mx-auto" 
             />
           </motion.div>
           
@@ -71,15 +68,15 @@ export const WelcomeContent = () => {
             variants={item}
             className="mb-8 md:mb-12 max-w-3xl mx-auto"
           >
-            <h1 className="text-3xl md:text-5xl font-bold mb-4 text-white drop-shadow-md">
+            <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-palette-ocean-blue to-palette-vivid-purple bg-clip-text text-transparent">
               Interprétation Professionnelle
             </h1>
-            <p className="text-base md:text-lg text-white/90 max-w-xl mx-auto drop-shadow">
+            <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
               Connectez-vous à notre plateforme dédiée aux professionnels de l'interprétation
             </p>
           </motion.div>
           
-          {/* Buttons - with glass effect */}
+          {/* Buttons - reduced spacing */}
           <motion.div 
             variants={item}
             className="flex flex-col sm:flex-row justify-center gap-4 mb-6"
@@ -88,7 +85,7 @@ export const WelcomeContent = () => {
               asChild 
               size="lg" 
               variant="default"
-              className="text-lg px-8 py-6 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 shadow-lg hover:bg-white/30 transition-all duration-300 group"
+              className="text-lg px-8 py-6 rounded-xl shadow-lg shadow-palette-vivid-purple/20 hover:shadow-palette-vivid-purple/40 transition-all duration-300 group"
             >
               <Link to="/admin/login" className="flex items-center gap-3">
                 <Building className="w-5 h-5" />
@@ -101,7 +98,7 @@ export const WelcomeContent = () => {
               asChild 
               size="lg" 
               variant="secondary"
-              className="text-lg px-8 py-6 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg hover:bg-white/20 transition-all duration-300 group"
+              className="text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group"
             >
               <Link to="/interpreter/login" className="flex items-center gap-3">
                 <Headset className="w-5 h-5" />
@@ -113,14 +110,14 @@ export const WelcomeContent = () => {
           
           {/* Decorative Elements */}
           <motion.div 
-            className="absolute bottom-0 left-0 w-40 h-40 bg-palette-soft-purple opacity-30 rounded-full -ml-20 -mb-20 backdrop-blur-xl"
+            className="absolute bottom-0 left-0 w-40 h-40 bg-palette-soft-purple opacity-30 rounded-full -ml-20 -mb-20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.3 }}
             transition={{ delay: 0.5, duration: 1 }}
           />
           
           <motion.div 
-            className="absolute top-1/4 right-0 w-60 h-60 bg-palette-ocean-blue opacity-20 rounded-full -mr-20 backdrop-blur-xl"
+            className="absolute top-1/4 right-0 w-60 h-60 bg-palette-ocean-blue opacity-20 rounded-full -mr-20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.2 }}
             transition={{ delay: 0.7, duration: 1 }}
@@ -128,14 +125,14 @@ export const WelcomeContent = () => {
         </motion.div>
       </div>
       
-      {/* Footer - with glass effect */}
+      {/* Footer - reduced padding */}
       <motion.footer 
-        className="py-4 text-center text-white/80 text-sm relative z-10 bg-black/20 backdrop-blur-sm"
+        className="py-4 text-center text-slate-500 text-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
       >
-        <p className="px-4">Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
+        <p>Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
       </motion.footer>
     </div>
   );
