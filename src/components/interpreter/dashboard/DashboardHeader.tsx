@@ -57,7 +57,7 @@ export const DashboardHeader = ({
 
   return (
     <motion.header 
-      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm"
+      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 fixed top-0 left-0 right-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 shadow-sm safe-area-top"
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, type: "spring" }}

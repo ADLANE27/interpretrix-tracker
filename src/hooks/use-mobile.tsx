@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -16,4 +17,10 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+}
+
+// Helper hook to get header height
+export function useHeaderHeight() {
+  const isMobile = useIsMobile();
+  return isMobile ? 56 : 64; // 56px on mobile, 64px (16 * 4) on desktop
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { DashboardHeader } from "./interpreter/dashboard/DashboardHeader";
 import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
 import { Profile } from "@/types/profile";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useHeaderHeight } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 import { MobileNavigationBar } from "./interpreter/MobileNavigationBar";
@@ -49,6 +50,7 @@ export const InterpreterDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
+  const headerHeight = useHeaderHeight();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -322,7 +324,9 @@ export const InterpreterDashboard = () => {
           isMobile={isMobile}
         />
 
-        <div className="flex-1 overflow-hidden relative">
+        <div 
+          className="flex-1 overflow-hidden relative pt-[56px] md:pt-16" 
+        >
           <DashboardContent 
             activeTab={activeTab}
             profile={profile}
