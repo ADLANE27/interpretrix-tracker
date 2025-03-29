@@ -70,21 +70,21 @@ export const InterpreterSuggestionCard: React.FC<InterpreterSuggestionCardProps>
               {employmentStatusLabels[interpreter.employment_status as keyof typeof employmentStatusLabels] || interpreter.employment_status}
             </Badge>
           )}
+        </div>
+        
+        {/* Rate badges */}
+        <div className="flex flex-wrap gap-1 mt-1">
+          {interpreter.tarif_5min !== null && interpreter.tarif_5min > 0 && (
+            <Badge variant="outline" className="text-xs bg-gray-50">
+              5min: {interpreter.tarif_5min}€
+            </Badge>
+          )}
           
-          {/* Rate badges */}
-          <div className="flex gap-1">
-            {interpreter.tarif_5min !== null && interpreter.tarif_5min > 0 && (
-              <Badge variant="outline" className="text-xs bg-gray-50">
-                5min: {interpreter.tarif_5min}€
-              </Badge>
-            )}
-            
-            {interpreter.tarif_15min !== null && interpreter.tarif_15min > 0 && (
-              <Badge variant="outline" className="text-xs bg-gray-50">
-                15min: {interpreter.tarif_15min}€
-              </Badge>
-            )}
-          </div>
+          {interpreter.tarif_15min !== null && interpreter.tarif_15min > 0 && (
+            <Badge variant="outline" className="text-xs bg-gray-50">
+              15min: {interpreter.tarif_15min}€
+            </Badge>
+          )}
         </div>
       </div>
     </Card>

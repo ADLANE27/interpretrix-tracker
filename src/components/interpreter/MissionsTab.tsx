@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +19,6 @@ export const MissionsTab = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
   const isMobile = useIsMobile();
   
-  // Count for different mission types
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [upcomingCount, setUpcomingCount] = useState<number>(0);
   const [incomingCount, setIncomingCount] = useState<number>(0);
@@ -48,10 +46,8 @@ export const MissionsTab = () => {
         throw missionsError;
       }
       
-      // Use the mission data directly without any parsing or conversion
       setMissions(missionsData as Mission[]);
       
-      // Calculate counts
       const now = new Date();
       const pendingMissions = missionsData.filter((mission) => mission.status === 'awaiting_acceptance');
       const acceptedUpcomingMissions = missionsData.filter((mission) => 
@@ -78,7 +74,7 @@ export const MissionsTab = () => {
     }
   };
 
-  const { isProcessing, handleMissionResponse } = useMissionManagement(fetchMissions);
+  const { isProcessing, handleMissionResponse, sortInterpretersAlphabetically } = useMissionManagement(fetchMissions);
   useMissionSubscription(currentUserId, fetchMissions);
   useMissionUpdates(fetchMissions); // Additional subscription for real-time updates
 
@@ -87,7 +83,6 @@ export const MissionsTab = () => {
     fetchMissions();
   }, []);
 
-  // Filter missions based on active tab
   const filteredMissions = missions.filter(mission => {
     const now = new Date();
     
@@ -107,12 +102,9 @@ export const MissionsTab = () => {
     }
   });
 
-  // Check if there are no missions at all
   const noMissions = missions.length === 0;
-  // Check if there are no missions in the current filtered view
   const noFilteredMissions = filteredMissions.length === 0;
 
-  // Custom rendering for tab triggers based on device size
   const renderTabTrigger = (value: string, icon: React.ReactNode, label: string, count?: number) => {
     if (isMobile) {
       return (

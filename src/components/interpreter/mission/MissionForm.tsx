@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Search } from "lucide-react";
-import { InterpreterSuggestionCard } from "@/components/admin/interpreter/InterpreterSuggestionCard";
+import { InterpreterSuggestionCard } from "@/components/interpreter/mission/InterpreterSuggestionCard";
 
-export const MissionForm = ({ onMissionCreated }) => {
+export const MissionForm = ({ onMissionCreated }: { onMissionCreated: () => void }) => {
   const [sourceLanguage, setSourceLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
   const [commentary, setCommentary] = useState("");
@@ -110,15 +111,23 @@ export const MissionForm = ({ onMissionCreated }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Calculate estimated duration in minutes
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      const durationInMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+
       const { error } = await supabase.from("interpretation_missions").insert([
         {
           source_language: sourceLanguage,
           target_language: targetLanguage,
-          commentary: commentary,
+          commentary, // This will be ignored by Supabase if commentary is not a valid column
           scheduled_start_time: startTime,
           scheduled_end_time: endTime,
           assigned_interpreter_id: selectedInterpreter,
           created_by: user.id,
+          estimated_duration: durationInMinutes,
+          mission_type: 'scheduled',
+          status: 'scheduled'
         },
       ]);
 

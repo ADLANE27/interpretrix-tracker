@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,20 +81,23 @@ const MissionManagement = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      let missionData = {
+      let missionData: any = {
         mission_type: missionType,
         source_language: sourceLanguage,
         target_language: targetLanguage,
         commentary,
         created_by: user.id,
         is_urgent: isUrgent,
+        estimated_duration: 0 // Default value that will be updated below
       };
 
       if (missionType === "immediate") {
+        // For immediate missions, add a default estimated duration
         missionData = {
           ...missionData,
           status: "awaiting_acceptance",
           notified_interpreters: [selectedInterpreter],
+          estimated_duration: 30 // Default 30 minutes for immediate missions
         };
       } else if (missionType === "scheduled") {
         const isAvailable = await isInterpreterAvailableForScheduledMission(
@@ -112,18 +116,24 @@ const MissionManagement = () => {
           return;
         }
 
+        // Calculate estimated duration in minutes
+        const startDate = new Date(startTime);
+        const endDate = new Date(endTime);
+        const durationInMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+
         missionData = {
           ...missionData,
           scheduled_start_time: startTime,
           scheduled_end_time: endTime,
           assigned_interpreter_id: selectedInterpreter,
           status: "scheduled",
+          estimated_duration: durationInMinutes
         };
       }
 
       const { error } = await supabase
         .from('interpretation_missions')
-        .insert([missionData]);
+        .insert(missionData);
 
       if (error) throw error;
 
