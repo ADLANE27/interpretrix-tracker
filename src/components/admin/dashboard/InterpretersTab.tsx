@@ -255,13 +255,21 @@ export const InterpretersTab: React.FC = () => {
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         
-        interpretersMapRef.current.set(interpreter.id, interpreter.status);
+        const status: Profile['status'] = 
+          interpreter.status === "available" || 
+          interpreter.status === "busy" || 
+          interpreter.status === "pause" || 
+          interpreter.status === "unavailable" 
+            ? interpreter.status 
+            : "unavailable";
+        
+        interpretersMapRef.current.set(interpreter.id, status);
         
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
-          status: interpreter.status === "available" || interpreter.status === "unavailable" || interpreter.status === "pause" || interpreter.status === "busy" ? interpreter.status : "unavailable" as const,
+          status: status,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
