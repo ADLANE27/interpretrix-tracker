@@ -6,20 +6,23 @@ import { RealtimeChannel } from '@supabase/supabase-js';
  */
 export interface SubscriptionStatus {
   connected: boolean;
+  isActive: boolean;
   retryCount: number;
+  maxRetriesReached: boolean;
   lastUpdate: Date;
   channelRef?: RealtimeChannel;
-  isActive: boolean;
-  maxRetriesReached: boolean;
 }
 
+/**
+ * Creates a new subscription status
+ */
 export function createSubscriptionStatus(channel?: RealtimeChannel): SubscriptionStatus {
   return {
     connected: false,
+    isActive: true,
     retryCount: 0,
-    lastUpdate: new Date(),
-    channelRef: channel,
-    isActive: false,
     maxRetriesReached: false,
+    lastUpdate: new Date(),
+    channelRef: channel
   };
 }

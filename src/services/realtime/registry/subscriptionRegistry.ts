@@ -142,4 +142,5 @@ export class SubscriptionRegistry {
   }
 }
 
+// Create a singleton instance
 export const subscriptionRegistry = new SubscriptionRegistry();

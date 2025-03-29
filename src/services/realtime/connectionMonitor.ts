@@ -17,6 +17,7 @@ export class ConnectionMonitor {
   private retryTimers: Map<string, NodeJS.Timeout> = new Map();
   private lastSuccessfulConnection: number = Date.now();
   private consecutiveFailures: number = 0;
+  private channelStatuses: Map<string, boolean> = new Map();
 
   constructor(retryCallback: RetryCallback, connectionCallback: ConnectionCallback) {
     this.retryCallback = retryCallback;
@@ -81,6 +82,40 @@ export class ConnectionMonitor {
     // Check if any subscriptions are disconnected
     const disconnectedSubscriptions = activeSubscriptions.filter(key => !statuses[key].connected);
     return disconnectedSubscriptions.length === 0;
+  }
+
+  /**
+   * Check if connection is healthy based on channel statuses
+   */
+  public isConnectionHealthy(): boolean {
+    // If we have no channels, assume connection is healthy
+    if (this.channelStatuses.size === 0) {
+      return true;
+    }
+
+    // Check if all channels are healthy
+    for (const [_, isHealthy] of this.channelStatuses.entries()) {
+      if (!isHealthy) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Update the status of a specific channel
+   */
+  public updateChannelStatus(channelKey: string, isConnected: boolean): void {
+    this.channelStatuses.set(channelKey, isConnected);
+    
+    // Update overall connection status if needed
+    const wasConnected = this.isConnectionHealthy();
+    
+    if (wasConnected !== this.lastConnectionStatus) {
+      this.lastConnectionStatus = wasConnected;
+      this.connectionCallback(wasConnected);
+    }
   }
 
   /**

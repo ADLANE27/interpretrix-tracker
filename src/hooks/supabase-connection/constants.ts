@@ -1,9 +1,14 @@
 
+/**
+ * Constants for connection monitoring
+ */
 export const CONNECTION_CONSTANTS = {
-  MAX_RECONNECT_ATTEMPTS: 10,
-  BASE_RECONNECT_DELAY: 3000,
-  HEARTBEAT_TIMEOUT: 60000,
-  HEARTBEAT_INTERVAL: 45000,
-  PRESENCE_VALIDATION_DELAY: 3000,
-  SESSION_CHECK_INTERVAL: 60000
-} as const;
+  // Heartbeat interval in milliseconds
+  HEARTBEAT_INTERVAL: 30000, // 30 seconds
+  
+  // Heartbeat timeout in milliseconds
+  HEARTBEAT_TIMEOUT: 60000, // 60 seconds
+  
+  // Maximum number of retries before considering the connection as failed
+  MAX_RETRIES: 5
+};

@@ -1,30 +1,27 @@
-
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Message } from "@/types/messaging";
-import { Paperclip, Send, Smile, AtSign } from 'lucide-react';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from "@/components/ui/textarea";
-import { MentionSuggestions } from './MentionSuggestions';
-import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
-import { useMessageMentions } from "@/hooks/chat/useMessageMentions"; 
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { Send, PaperclipIcon, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-interface ChatInputProps {
+export interface ChatInputProps {
   message: string;
-  setMessage: (message: string) => void;
-  onSendMessage: () => void;
-  handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  attachments: File[];
-  handleRemoveAttachment: (index: number) => void;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
-  replyTo: Message | null;
-  setReplyTo: (message: Message | null) => void;
-  style?: React.CSSProperties;
-  className?: string; // Added className prop
+  setMessage: React.Dispatch<React.SetStateAction<string>>;
+  onSendMessage: () => Promise<void>;
+  handleFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  selectedFiles?: File[];
+  removeSelectedFile?: (index: number) => void;
+  isUploading?: boolean;
+  additionActions?: React.ReactNode; // Add this line
+  replyTo?: {
+    id: string;
+    content: string;
+    sender: {
+      name: string;
+    };
+  } | null;
+  setReplyTo?: (replyTo: null) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -32,242 +29,97 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   setMessage,
   onSendMessage,
   handleFileChange,
-  attachments,
-  handleRemoveAttachment,
-  inputRef,
+  placeholder = "Écrivez votre message...",
+  selectedFiles,
+  removeSelectedFile,
+  isUploading,
+  additionActions,
   replyTo,
-  setReplyTo,
-  style,
-  className,
+  setReplyTo
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState<number>(0);
-  const { formatMessage } = useMessageFormatter();
-  const { toast } = useToast();
-  
-  const { 
-    mentionSuggestionsVisible,
-    mentionSearchTerm,
-    suggestions,
-    isLoadingSuggestions,
-    checkForMentions,
-    resetMentionSuggestions,
-    handleMentionSelect
-  } = useMessageMentions();
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newMessage = e.target.value;
-    setMessage(newMessage);
-    
-    const cursorPos = e.target.selectionStart || 0;
-    setCursorPosition(cursorPos);
-    
-    checkForMentions(newMessage, cursorPos);
-  };
-
-  const handleMentionSelectWrapper = (suggestion: any) => {
-    if (!inputRef.current) return;
-    
-    const newMessage = handleMentionSelect(suggestion, message, cursorPosition);
-    setMessage(newMessage);
-    
-    resetMentionSuggestions();
-    
-    setTimeout(() => {
-      if (inputRef.current) {
-        const newCursorPos = newMessage.length - (message.length - cursorPosition);
-        inputRef.current.focus();
-        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        setCursorPosition(newCursorPos);
-      }
-    }, 0);
-  };
-
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage(message + emoji.native);
-    setEmojiPickerOpen(false);
-  };
-
-  const handleSelectionChange = () => {
-    if (inputRef.current) {
-      setCursorPosition(inputRef.current.selectionStart || 0);
-    }
-  };
-
-  const handleSend = () => {
-    try {
-      onSendMessage();
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
-        variant: "destructive",
-      });
-    }
-  };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const textarea = inputRef.current;
-    if (!textarea) return;
-    
-    textarea.addEventListener('click', handleSelectionChange);
-    textarea.addEventListener('keyup', handleSelectionChange);
-    
-    return () => {
-      textarea.removeEventListener('click', handleSelectionChange);
-      textarea.removeEventListener('keyup', handleSelectionChange);
-    };
-  }, [inputRef]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'inherit';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [message]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      onSendMessage();
+    }
+  };
 
   return (
-    <div className={cn("p-3 bg-white dark:bg-gray-900", className)} style={style}>
+    <div className="relative">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
-          <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReplyTo(null)}
-            className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
-          >
-            Annuler
-          </Button>
-        </div>
-      )}
-      <div className="relative">
-        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[40px] flex items-end">
-            <Textarea
-              ref={inputRef}
-              value={message}
-              onChange={handleInputChange}
-              placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 text-base rounded-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
-          </div>
-          <div className="flex items-center p-1.5 pr-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
-              onClick={(e) => {
-                const textarea = inputRef.current;
-                if (textarea) {
-                  const cursorPos = textarea.selectionStart || 0;
-                  const textBeforeCursor = message.substring(0, cursorPos);
-                  const textAfterCursor = message.substring(cursorPos);
-                  const newMessage = textBeforeCursor + '@' + textAfterCursor;
-                  setMessage(newMessage);
-                  
-                  setTimeout(() => {
-                    textarea.focus();
-                    const newPos = cursorPos + 1;
-                    textarea.setSelectionRange(newPos, newPos);
-                    setCursorPosition(newPos);
-                    
-                    checkForMentions(newMessage, newPos);
-                  }, 0);
-                }
-              }}
-            >
-              <AtSign className="h-5 w-5" />
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="absolute top-0 left-0 w-full p-2 bg-secondary rounded-md z-10"
+        >
+          <div className="flex items-center justify-between">
+            <div className="text-xs">
+              Répondre à <span className="font-semibold">{replyTo.sender.name}</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setReplyTo!(null)}>
+              <X className="h-4 w-4" />
             </Button>
-          
-            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-auto p-0" 
-                side="top" 
-                align="end"
-              >
-                <Picker
-                  data={data}
-                  onEmojiSelect={handleEmojiSelect}
-                  theme="light"
-                  locale="fr"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                  categories={[
-                    'frequent',
-                    'people',
-                    'nature',
-                    'foods',
-                    'activity',
-                    'places',
-                    'objects',
-                    'symbols',
-                    'flags'
-                  ]}
-                />
-              </PopoverContent>
-            </Popover>
+          </div>
+          <div className="text-xs italic">{replyTo.content}</div>
+        </motion.div>
+      )}
+      <div className="flex items-center gap-2 bg-secondary p-3 rounded-lg">
+        <Button variant="ghost" size="icon" asChild>
+          <label htmlFor="upload-attachment">
+            <PaperclipIcon className="h-5 w-5" />
             <input
               type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
+              id="upload-attachment"
               multiple
+              onChange={handleFileChange}
               className="hidden"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            <Button
-              size="icon"
-              className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
-              onClick={handleSend}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {mentionSuggestionsVisible && (
-          <MentionSuggestions 
-            suggestions={suggestions}
-            onSelect={handleMentionSelectWrapper}
-            visible={mentionSuggestionsVisible}
-            loading={isLoadingSuggestions}
-            searchTerm={mentionSearchTerm}
-          />
-        )}
+          </label>
+        </Button>
+        <Textarea
+          ref={textareaRef}
+          placeholder={placeholder}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          className="resize-none border-none shadow-none focus-visible:ring-0"
+        />
+        <Button onClick={onSendMessage} disabled={!message.trim() || isUploading}>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
-      {attachments.length > 0 && (
-        <div className="mt-2 space-y-1.5 px-1">
-          {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 hover:text-red-500 px-2"
-                onClick={() => handleRemoveAttachment(index)}
-              >
-                Supprimer
-              </Button>
-            </div>
-          ))}
-        </div>
+      <AnimatePresence>
+        {selectedFiles && selectedFiles.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-2 max-h-24 overflow-y-auto p-2 bg-secondary rounded-md"
+          >
+            {selectedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between text-xs py-1">
+                <span>{file.name}</span>
+                <Button variant="ghost" size="icon" onClick={() => removeSelectedFile!(index)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {additionActions && (
+        <div className="absolute right-3 bottom-3">{additionActions}</div>
       )}
     </div>
   );

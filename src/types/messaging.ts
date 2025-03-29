@@ -7,11 +7,11 @@ export interface Message {
   sender: {
     id: string;
     name: string;
-    avatarUrl?: string;
+    avatar_url?: string;
   };
   timestamp: Date;
   parent_message_id?: string | null;
-  reactions?: Record<string, string[]>;
+  reactions?: MessageReaction[];
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
 }
@@ -24,18 +24,25 @@ export interface MessageData {
   parent_message_id?: string | null;
   reactions: Record<string, string[]>;
   attachments?: Array<{
+    id: string;
     url: string;
-    filename: string;
+    name: string;
     type: string;
     size: number;
   }>;
 }
 
 export interface Attachment {
+  id: string;
   url: string;
-  filename: string;
+  name: string;
   type: string;
   size: number;
+}
+
+export interface MessageReaction extends Array<string> {
+  includes: (userId: string) => boolean;
+  length: number;
 }
 
 export interface ChannelMember {
@@ -52,9 +59,10 @@ export function isAttachment(obj: any): obj is Attachment {
     typeof obj === 'object' &&
     obj !== null &&
     typeof obj.url === 'string' &&
-    typeof obj.filename === 'string' &&
+    typeof obj.name === 'string' &&
     typeof obj.type === 'string' &&
-    typeof obj.size === 'number'
+    typeof obj.size === 'number' &&
+    typeof obj.id === 'string'
   );
 }
 

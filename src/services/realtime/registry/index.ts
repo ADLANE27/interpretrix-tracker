@@ -1,4 +1,4 @@
 
-export { subscriptionRegistry } from './subscriptionRegistry';
-export type { SubscriptionStatus } from './types';
-export { createSubscriptionStatus } from './types';
+export * from './types';
+export * from './reconnectionUtils';
+export { subscriptionRegistry, SubscriptionRegistry } from './subscriptionRegistry';

@@ -1,64 +1,33 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { RECONNECT_STAGGER_INTERVAL, RECONNECT_STAGGER_MAX_DELAY } from '../constants';
 import { SubscriptionStatus } from './types';
 
 /**
- * Handle staggered reconnection for a list of subscriptions
+ * Handle staggered reconnection of subscriptions
  */
 export function handleStaggeredReconnection(
   subscriptionStatuses: Record<string, SubscriptionStatus>,
   updateStatus: (key: string, connected: boolean) => void
 ): void {
-  const keys = Object.keys(subscriptionStatuses);
+  const statusEntries = Object.entries(subscriptionStatuses);
   
-  if (keys.length === 0) {
+  if (statusEntries.length === 0) {
     console.log('[RealtimeService] No subscriptions to reconnect');
     return;
   }
   
-  console.log(`[RealtimeService] Attempting to reconnect ${keys.length} subscriptions with staggered timing`);
+  console.log(`[RealtimeService] Reconnecting ${statusEntries.length} subscriptions with staggered timing`);
   
-  // First, mark all subscriptions as disconnected
-  keys.forEach(key => {
+  // Reconnect subscriptions with staggering
+  statusEntries.forEach(([key, status], index) => {
+    const delay = Math.min(index * 500, 5000); // Max 5 second delay
+    
+    // Temporarily mark as disconnected
     updateStatus(key, false);
-  });
-  
-  // Then reconnect with staggered timing to avoid overwhelming the server
-  let reconnectedCount = 0;
-  
-  keys.forEach((key, index) => {
-    const status = subscriptionStatuses[key];
-    const delay = Math.min(
-      index * RECONNECT_STAGGER_INTERVAL, 
-      RECONNECT_STAGGER_MAX_DELAY
-    );
     
     setTimeout(() => {
-      if (status && status.channelRef) {
-        try {
-          console.log(`[RealtimeService] Reconnecting ${key}`);
-          
-          // Check if channel is in a state that needs reconnection
-          if (status.channelRef.state !== 'joined') {
-            // Just attempt to reconnect first
-            status.channelRef.subscribe((status) => {
-              console.log(`[RealtimeService] Resubscription status for ${key}: ${status}`);
-              // Fixed: Check if status is 'SUBSCRIBED' instead of accessing channelRef property
-              if (status === 'SUBSCRIBED') {
-                updateStatus(key, true);
-              }
-            });
-          } else {
-            console.log(`[RealtimeService] Channel ${key} is already joined, skipping reconnection`);
-            updateStatus(key, true);
-          }
-        } catch (error) {
-          console.error(`[RealtimeService] Error reconnecting ${key}:`, error);
-        }
-      }
-      
-      reconnectedCount++;
+      console.log(`[RealtimeService] Reconnecting subscription: ${key}`);
+      // Let the listener know we're trying to reconnect
+      updateStatus(key, true);
     }, delay);
   });
 }
