@@ -31,8 +31,9 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
     setFilters({});
   };
 
-  // Use a more dynamic approach for message list height
-  const messageListHeight = "calc(100% - 120px)";
+  // Fixed height for message list to ensure status bar is always visible
+  // This will be consistent across the application
+  const messageListHeight = "calc(100vh - 240px)";
 
   return (
     <motion.div 
