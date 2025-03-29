@@ -5,6 +5,7 @@ import { useOrientation } from "@/hooks/use-orientation";
 import { StatusButtonsBar } from "../StatusButtonsBar";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useIsIOS } from "@/hooks/use-mobile";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -18,6 +19,7 @@ export const DashboardHeader = ({
   isMobile
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
+  const isIOS = useIsIOS();
   const [isInChatTab, setIsInChatTab] = useState(false);
   const [isInMessagesTab, setIsInMessagesTab] = useState(false);
   
@@ -57,7 +59,7 @@ export const DashboardHeader = ({
 
   return (
     <motion.header 
-      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 safe-area-top shadow-sm"
+      className={`bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200/20 dark:border-gray-700/20 shadow-sm ${isIOS ? 'pt-[env(safe-area-inset-top,0px)]' : 'safe-area-top'}`}
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, type: "spring" }}

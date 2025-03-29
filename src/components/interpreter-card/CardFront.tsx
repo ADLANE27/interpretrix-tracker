@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -8,6 +9,7 @@ import { WorkLocation } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from '../admin/interpreter/InterpreterStatusDropdown';
 import { UpcomingMissionBadge } from '../UpcomingMissionBadge';
 import { employmentStatusLabels } from '@/utils/employmentStatus';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CardFrontProps {
   interpreter: {
@@ -67,6 +69,7 @@ export const CardFront: React.FC<CardFrontProps> = ({
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
+  const isMobile = useIsMobile();
   
   const LocationIcon = locationConfig[workLocation].icon;
   const showAnyTarif = showTarif5min || showTarif15min;
@@ -157,37 +160,37 @@ export const CardFront: React.FC<CardFrontProps> = ({
             {interpreter.booth_number && (
               <div className="flex items-center gap-1">
                 <User className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">Cabine {interpreter.booth_number}</span>
+                <span className={isMobile ? "text-base" : "text-[15px]"}>Cabine {interpreter.booth_number}</span>
               </div>
             )}
             {interpreter.phone_number && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">{interpreter.phone_number}</span>
+                <span className={isMobile ? "text-base" : "text-[15px]"}>{interpreter.phone_number}</span>
               </div>
             )}
             {interpreter.landline_phone && (
               <div className="flex items-center gap-1">
                 <PhoneCall className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">{interpreter.landline_phone}</span>
+                <span className={isMobile ? "text-base" : "text-[15px]"}>{interpreter.landline_phone}</span>
               </div>
             )}
             {interpreter.private_phone && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">{interpreter.private_phone}</span>
+                <span className={isMobile ? "text-base" : "text-[15px]"}>{interpreter.private_phone}</span>
               </div>
             )}
             {interpreter.professional_phone && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">{interpreter.professional_phone}</span>
+                <span className={isMobile ? "text-base" : "text-[15px]"}>{interpreter.professional_phone}</span>
               </div>
             )}
             {interpreter.work_hours && (
               <div className="flex items-center gap-1 col-span-2">
                 <Clock className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[15px]">
+                <span className={isMobile ? "text-base" : "text-[15px]"}>
                   {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                     `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
                   {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
@@ -216,10 +219,11 @@ export const CardFront: React.FC<CardFrontProps> = ({
           <Button 
             variant="ghost" 
             size="sm" 
-            className="h-6 w-6 p-0 rounded-full" 
+            className="h-8 w-8 p-0 rounded-full" 
             onClick={flipCard}
+            style={{ touchAction: 'manipulation' }}
           >
-            <RotateCw className="h-3 w-3 text-muted-foreground" />
+            <RotateCw className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
       </CardContent>

@@ -1,6 +1,8 @@
+
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const IS_IOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
@@ -16,4 +18,28 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+}
+
+export function useIsIOS() {
+  const [isIOS, setIsIOS] = React.useState<boolean>(false)
+  
+  React.useEffect(() => {
+    setIsIOS(IS_IOS)
+  }, [])
+  
+  return isIOS
+}
+
+export function useMobileDetection() {
+  const isMobile = useIsMobile()
+  const isIOS = useIsIOS()
+  
+  return {
+    isMobile,
+    isIOS,
+    isSmallScreen: typeof window !== 'undefined' ? window.innerWidth < 375 : false,
+    isMediumScreen: typeof window !== 'undefined' ? window.innerWidth >= 375 && window.innerWidth < 428 : false,
+    safePaddingBottom: isIOS ? 'env(safe-area-inset-bottom, 0px)' : '0px',
+    safePaddingTop: isIOS ? 'env(safe-area-inset-top, 0px)' : '0px'
+  }
 }

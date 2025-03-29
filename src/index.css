@@ -35,6 +35,12 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.75rem;
+    
+    /* Mobile safe area variables */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
   }
 
   .dark {
@@ -79,6 +85,52 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     transition: background-color 0.3s ease, color 0.3s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+  }
+  
+  /* Force native touch-action behavior */
+  button, a {
+    touch-action: manipulation;
+  }
+  
+  /* Improve text readability with optimized font rendering */
+  * {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Prevent iOS from auto-zooming on input focus */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  
+  /* iOS specific adjustments */
+  .ios-device {
+    /* Fix for iOS vertical height issues */
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: calc(var(--vh, 1vh) * 100);
+    
+    /* Prevent overscroll bounce effect */
+    overscroll-behavior-y: none;
+  }
+  
+  /* Safe area padding helpers */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right, 0px);
   }
 }
 
@@ -103,13 +155,48 @@
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
-.scrollbar-none::-webkit-scrollbar {
+.hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 /* Hide scrollbar for Firefox */
-.scrollbar-none {
+.hide-scrollbar {
   scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Improved scrollbar styles for desktop */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
 .gradient-border {
@@ -208,4 +295,50 @@
 
 .status-indicator-unavailable:before {
   @apply bg-red-500;
+}
+
+/* Mobile-specific enhancements */
+@media (max-width: 767px) {
+  /* Larger touch targets for important elements */
+  button, a {
+    @apply min-h-10;
+  }
+  
+  /* Make sure form elements are big enough */
+  input, select, textarea, .form-control {
+    @apply text-base min-h-10 px-3 py-2;
+  }
+  
+  /* Ensure dropdowns appear above everything else */
+  [data-radix-popper-content-wrapper] {
+    z-index: 999 !important;
+  }
+  
+  /* Fix iOS 100vh problem */
+  .h-screen {
+    height: 100vh; /* Fallback */
+    height: calc(var(--vh, 1vh) * 100);
+  }
+}
+
+/* Fix backdrop blur inconsistencies on iOS */
+@supports (-webkit-backdrop-filter: none) or (backdrop-filter: none) {
+  .backdrop-blur-sm, 
+  .backdrop-blur-md, 
+  .backdrop-blur-lg {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Apply minimal transition effects on mobile for better performance */
+@media (max-width: 767px) {
+  .transition, 
+  .transition-all, 
+  .transition-colors, 
+  .transition-opacity, 
+  .transition-shadow, 
+  .transition-transform {
+    transition-duration: 150ms !important;
+  }
 }
