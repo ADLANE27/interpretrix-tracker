@@ -31,31 +31,35 @@ export const WelcomeContent = () => {
 
   const connectionDots = [
     {
-      start: { lat: 48.8566, lng: 2.3522 }, // Paris
-      end: { lat: 51.5074, lng: -0.1278 }, // London
+      start: { lat: 64.2008, lng: -149.4937 }, // Alaska (Fairbanks)
+      end: { lat: 34.0522, lng: -118.2437 }, // Los Angeles
     },
     {
-      start: { lat: 48.8566, lng: 2.3522 }, // Paris
-      end: { lat: 52.5200, lng: 13.4050 }, // Berlin
+      start: { lat: 64.2008, lng: -149.4937 }, // Alaska (Fairbanks)
+      end: { lat: -15.7975, lng: -47.8919 }, // Brazil (Brasília)
     },
     {
-      start: { lat: 48.8566, lng: 2.3522 }, // Paris
-      end: { lat: 41.9028, lng: 12.4964 }, // Rome
+      start: { lat: -15.7975, lng: -47.8919 }, // Brazil (Brasília)
+      end: { lat: 38.7223, lng: -9.1393 }, // Lisbon
     },
     {
-      start: { lat: 48.8566, lng: 2.3522 }, // Paris
-      end: { lat: 40.4168, lng: -3.7038 }, // Madrid
+      start: { lat: 51.5074, lng: -0.1278 }, // London
+      end: { lat: 28.6139, lng: 77.209 }, // New Delhi
     },
     {
-      start: { lat: 48.8566, lng: 2.3522 }, // Paris
-      end: { lat: 55.7558, lng: 37.6173 }, // Moscow
+      start: { lat: 28.6139, lng: 77.209 }, // New Delhi
+      end: { lat: 43.1332, lng: 131.9113 }, // Vladivostok
+    },
+    {
+      start: { lat: 28.6139, lng: 77.209 }, // New Delhi
+      end: { lat: -1.2921, lng: 36.8219 }, // Nairobi
     },
   ];
 
   return (
-    <div className="h-screen flex flex-col relative overflow-hidden">
-      {/* Background with WorldMap */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
+    <div className="h-screen flex flex-col relative">
+      {/* Full-screen WorldMap background */}
+      <div className="absolute inset-0 z-0">
         <WorldMap dots={connectionDots} lineColor="#8B5CF6" />
       </div>
 
@@ -75,18 +79,9 @@ export const WelcomeContent = () => {
         </motion.div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center relative">
+      <div className="flex-1 flex items-center justify-center relative z-10">
         <motion.div 
-          className="absolute inset-0 -z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.5 }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white via-palette-soft-blue/50 to-palette-soft-purple/60" />
-        </motion.div>
-        
-        <motion.div 
-          className="w-full max-w-6xl mx-auto px-6 py-4 text-center relative z-10"
+          className="w-full max-w-6xl mx-auto px-6 py-4 text-center"
           variants={container}
           initial="hidden"
           animate="visible"

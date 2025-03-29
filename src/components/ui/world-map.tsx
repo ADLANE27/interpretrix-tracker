@@ -34,7 +34,7 @@ export function WorldMap({
   };
 
   return (
-    <div className="w-full aspect-[2/1] dark:bg-black bg-white rounded-lg relative font-sans">
+    <div className="w-full h-full dark:bg-black bg-white rounded-lg relative font-sans">
       <svg
         ref={svgRef}
         viewBox="0 0 800 400"
