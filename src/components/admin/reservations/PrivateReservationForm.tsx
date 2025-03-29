@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -89,8 +90,15 @@ export const PrivateReservationForm = () => {
         });
       }) || [];
 
-      console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
-      setAvailableInterpreters(filteredInterpreters);
+      // Sort interpreters alphabetically by first name and then last name
+      const sortedInterpreters = [...filteredInterpreters].sort((a, b) => {
+        const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+        const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      console.log('[PrivateReservationForm] Interprètes trouvés et triés:', sortedInterpreters);
+      setAvailableInterpreters(sortedInterpreters);
       setSelectedInterpreter(null);
 
     } catch (error) {
