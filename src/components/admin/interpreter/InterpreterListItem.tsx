@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -200,7 +199,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
             )}
             
             {hasAnyPhoneNumber && (
-              <div className="flex flex-wrap gap-2 text-[14px] text-muted-foreground">
+              <div className="flex flex-wrap gap-2 text-[15px] text-muted-foreground">
                 {interpreter.booth_number && (
                   <div className="flex items-center gap-1">
                     <span className="font-medium">Cabine:</span> {interpreter.booth_number}

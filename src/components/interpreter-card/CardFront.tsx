@@ -157,37 +157,37 @@ export const CardFront: React.FC<CardFrontProps> = ({
             {interpreter.booth_number && (
               <div className="flex items-center gap-1">
                 <User className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">Cabine {interpreter.booth_number}</span>
+                <span className="text-[15px]">Cabine {interpreter.booth_number}</span>
               </div>
             )}
             {interpreter.phone_number && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">{interpreter.phone_number}</span>
+                <span className="text-[15px]">{interpreter.phone_number}</span>
               </div>
             )}
             {interpreter.landline_phone && (
               <div className="flex items-center gap-1">
                 <PhoneCall className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">{interpreter.landline_phone}</span>
+                <span className="text-[15px]">{interpreter.landline_phone}</span>
               </div>
             )}
             {interpreter.private_phone && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">{interpreter.private_phone}</span>
+                <span className="text-[15px]">{interpreter.private_phone}</span>
               </div>
             )}
             {interpreter.professional_phone && (
               <div className="flex items-center gap-1">
                 <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">{interpreter.professional_phone}</span>
+                <span className="text-[15px]">{interpreter.professional_phone}</span>
               </div>
             )}
             {interpreter.work_hours && (
               <div className="flex items-center gap-1 col-span-2">
                 <Clock className="h-4 w-4 text-palette-ocean-blue" />
-                <span className="text-[14px]">
+                <span className="text-[15px]">
                   {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
                     `${interpreter.work_hours.start_morning}-${interpreter.work_hours.end_morning}`}
                   {interpreter.work_hours.start_morning && interpreter.work_hours.end_morning && 
