@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -24,7 +23,7 @@ interface ChatInputProps {
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
   style?: React.CSSProperties;
-  className?: string; // Added className prop
+  className?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -122,7 +121,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [inputRef]);
 
   return (
-    <div className={cn("p-3 bg-white dark:bg-gray-900", className)} style={style}>
+    <div className={cn("p-3 bg-white dark:bg-gray-900 pb-safe", className)} style={style}>
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
           <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
