@@ -10,14 +10,14 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MissionList } from "./mission/MissionList";
+import { MissionList } from "./MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 import { parseISO, formatISO } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { Filter } from "lucide-react";
 import { Mission } from "@/types/mission";
 import { RealtimeChannel } from "@supabase/supabase-js";
-import { InterpreterSuggestionCard } from "../interpreter/mission/InterpreterSuggestionCard";
+import { InterpreterSuggestionCard } from "../interpreter/InterpreterSuggestionCard";
 import { employmentStatusLabels } from "@/utils/employmentStatus";
 
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
@@ -29,7 +29,6 @@ interface Interpreter {
   languages: string[];
   status: string;
   profile_picture_url: string | null;
-  tarif_15min: number;
   email: string;
   employment_status: string;
   tarif_5min: number | null;
@@ -957,67 +956,4 @@ export const MissionManagement = () => {
                   <div className="w-[200px]">
                     <Label className="mb-2">Date de début</Label>
                     <Input
-                      type="date"
-                      value={startDateFilter}
-                      onChange={(e) => setStartDateFilter(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="w-[200px]">
-                    <Label className="mb-2">Date de fin</Label>
-                    <Input
-                      type="date"
-                      value={endDateFilter}
-                      onChange={(e) => setEndDateFilter(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="w-[200px]">
-                    <Label className="mb-2">Créateur</Label>
-                    <Select 
-                      value={creatorFilter} 
-                      onValueChange={setCreatorFilter}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Filtrer par créateur" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous</SelectItem>
-                        {creators.map((creator) => (
-                          <SelectItem key={creator.id} value={creator.email}>
-                            {creator.first_name} {creator.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  className="w-fit"
-                  onClick={() => {
-                    setStatusFilter('all');
-                    setMissionTypeFilter('all');
-                    setLanguageFilter('');
-                    setStartDateFilter('');
-                    setEndDateFilter('');
-                    setCreatorFilter('all');
-                  }}
-                >
-                  Réinitialiser les filtres
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          <MissionList
-            missions={filteredMissions}
-            onDelete={handleDeleteMission}
-            onMissionResponse={handleMissionResponse}
-          />
-        </div>
-      </Card>
-    </div>
-  );
-};
+                      type="
