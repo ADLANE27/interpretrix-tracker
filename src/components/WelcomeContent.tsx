@@ -42,22 +42,22 @@ export const WelcomeContent = () => {
           {[...Array(6)].map((_, index) => (
             <motion.div
               key={`circle-${index}`}
-              className="absolute rounded-full bg-gradient-to-br from-palette-vivid-purple/5 to-palette-ocean-blue/10"
+              className="absolute rounded-full bg-gradient-to-br from-palette-vivid-purple/10 to-palette-ocean-blue/20"
               style={{
-                width: `${Math.random() * 400 + 200}px`,
-                height: `${Math.random() * 400 + 200}px`,
+                width: `${Math.random() * 600 + 300}px`,
+                height: `${Math.random() * 600 + 300}px`,
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
               }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{
-                opacity: [0.1, 0.3, 0.1],
+                opacity: [0.2, 0.4, 0.2],
                 scale: [0.8, 1.2, 0.8],
-                x: [0, Math.random() * 100 - 50, 0],
-                y: [0, Math.random() * 100 - 50, 0],
+                x: [0, Math.random() * 150 - 75, 0],
+                y: [0, Math.random() * 150 - 75, 0],
               }}
               transition={{
-                duration: Math.random() * 20 + 15,
+                duration: Math.random() * 25 + 20,
                 repeat: Infinity,
                 delay: index * 2,
               }}
@@ -65,7 +65,7 @@ export const WelcomeContent = () => {
           ))}
         </div>
 
-        {/* Animated words in different languages */}
+        {/* Animated words in different languages with improved visibility */}
         <AnimatePresence>
           {interpreterWords.map((word, index) => (
             <motion.div
@@ -77,7 +77,7 @@ export const WelcomeContent = () => {
                 scale: 0.5
               }}
               animate={{
-                opacity: [0, 0.7, 0],
+                opacity: [0, 0.8, 0],
                 x: [
                   Math.random() * window.innerWidth,
                   Math.random() * window.innerWidth,
@@ -88,58 +88,61 @@ export const WelcomeContent = () => {
                   Math.random() * window.innerHeight,
                   Math.random() * window.innerHeight
                 ],
-                scale: [0.5, 1.5, 0.5],
+                scale: [0.5, 1.8, 0.5],
                 rotate: [0, Math.random() * 360 - 180]
               }}
               transition={{
-                duration: 25,
+                duration: 30,
                 repeat: Infinity,
-                delay: index * 3,
+                delay: index * 4,
                 ease: "easeInOut"
               }}
-              className="absolute text-2xl md:text-5xl font-light text-palette-ocean-blue/20 whitespace-nowrap"
+              className="absolute text-3xl md:text-6xl font-light text-palette-ocean-blue/30 whitespace-nowrap"
             >
               {word}
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* Small floating particles */}
-        {[...Array(30)].map((_, i) => (
+        {/* Enhanced floating particles */}
+        {[...Array(40)].map((_, i) => (
           <motion.div
             key={`particle-${i}`}
-            className="absolute rounded-full bg-white"
+            className="absolute rounded-full bg-gradient-to-r from-palette-vivid-purple/30 to-palette-ocean-blue/30"
             style={{
-              width: Math.random() * 6 + 2,
-              height: Math.random() * 6 + 2,
+              width: Math.random() * 8 + 3,
+              height: Math.random() * 8 + 3,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              y: [0, Math.random() * 100 - 50, 0],
-              x: [0, Math.random() * 100 - 50, 0],
-              opacity: [0, 0.5, 0],
-              scale: [0, 1, 0],
+              y: [0, Math.random() * 150 - 75, 0],
+              x: [0, Math.random() * 150 - 75, 0],
+              opacity: [0, 0.7, 0],
+              scale: [0, 1.2, 0],
             }}
             transition={{
               repeat: Infinity,
-              duration: Math.random() * 10 + 10,
+              duration: Math.random() * 12 + 8,
               delay: Math.random() * 5,
             }}
           />
         ))}
       </div>
 
-      <div className="absolute top-4 left-4 z-20">
+      {/* Enhanced Logo */}
+      <div className="absolute top-6 left-6 z-20">
         <motion.div 
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          whileHover={{ scale: 1.05 }}
+          className="glass-card p-4 rounded-2xl"
         >
           <img 
             src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
             alt="Logo" 
-            className="h-20 md:h-32" 
+            className="h-24 md:h-40 hover:filter hover:brightness-110 transition-all duration-300" 
           />
         </motion.div>
       </div>
@@ -151,7 +154,7 @@ export const WelcomeContent = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1.5 }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white via-palette-soft-blue/40 to-palette-soft-purple/50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white via-palette-soft-blue/50 to-palette-soft-purple/60" />
         </motion.div>
         
         <motion.div 
