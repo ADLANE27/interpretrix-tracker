@@ -1,4 +1,3 @@
-
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
 import { CONNECTION_CONSTANTS } from '../../hooks/supabase-connection/constants';
 

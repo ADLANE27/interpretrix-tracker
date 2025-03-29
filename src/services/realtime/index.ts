@@ -17,6 +17,7 @@ class RealtimeService {
   private lastEventIds: Map<string, string> = new Map();
   private errorCount: Map<string, number> = new Map();
   private MAX_ERROR_COUNT = 5;
+  private reconnectInProgress: boolean = false;
 
   constructor() {
     this.eventDebouncer = new EventDebouncer();
@@ -27,7 +28,7 @@ class RealtimeService {
   }
 
   public isConnected(): boolean {
-    return this.connectionMonitor?.isConnected() || false;
+    return this.connectionMonitor?.isConnectionHealthy() || false;
   }
 
   public init(): () => void {
@@ -51,6 +52,13 @@ class RealtimeService {
       (connected) => {
         console.log(`[RealtimeService] Connection status changed: ${connected}`);
         eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
+        
+        // When connection is restored, refresh all subscriptions
+        if (connected && this.interpreterSubscriptions.size > 0) {
+          console.log('[RealtimeService] Connection restored, refreshing all subscriptions');
+          // Use a slight delay to avoid immediate reconnection attempts
+          setTimeout(() => this.reconnectAll(), 1000);
+        }
       }
     );
     this.connectionMonitor.start();
@@ -61,25 +69,38 @@ class RealtimeService {
   }
 
   public reconnectAll(): void {
+    if (this.reconnectInProgress) {
+      console.log('[RealtimeService] Reconnection already in progress, skipping');
+      return;
+    }
+    
+    this.reconnectInProgress = true;
     console.log('[RealtimeService] Forcing reconnection for all subscriptions');
     
     // Clear error counters when doing a full reconnect
     this.errorCount.clear();
     
-    // Reset all active Supabase channels
-    supabase.removeAllChannels();
-    
-    // Rebuild all active interpreter subscriptions
-    const interpreterIds = Array.from(this.interpreterSubscriptions.keys())
-      .map(key => key.replace('interpreter-status-', ''));
-    
-    interpreterIds.forEach(interpreterId => {
-      console.log(`[RealtimeService] Resubscribing to interpreter ${interpreterId}`);
-      this.subscribeToInterpreterStatus(interpreterId);
-    });
-    
-    // Emit connection change event to trigger UI updates
-    eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
+    // Reset all active Supabase channels after a brief delay
+    // This prevents multiple rapid reconnect attempts
+    setTimeout(() => {
+      try {
+        supabase.removeAllChannels();
+        
+        // Rebuild all active interpreter subscriptions
+        const interpreterIds = Array.from(this.interpreterSubscriptions.keys())
+          .map(key => key.replace('interpreter-status-', ''));
+        
+        interpreterIds.forEach(interpreterId => {
+          console.log(`[RealtimeService] Resubscribing to interpreter ${interpreterId}`);
+          this.subscribeToInterpreterStatus(interpreterId);
+        });
+        
+        // Emit connection change event to trigger UI updates
+        eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, true);
+      } finally {
+        this.reconnectInProgress = false;
+      }
+    }, 1000);
   }
 
   public subscribeToInterpreterStatus(interpreterId: string): () => void {
@@ -202,7 +223,8 @@ class RealtimeService {
         };
       }
       
-      const channel = supabase.channel(key)
+      const instanceId = Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
+      const channel = supabase.channel(`${key}-${instanceId}`)
         .on('postgres_changes' as any, {
           event: event,
           schema: 'public',
@@ -232,9 +254,19 @@ class RealtimeService {
           if (status === 'SUBSCRIBED') {
             // Reset error count on successful subscription
             this.errorCount.set(key, 0);
+            
+            // Update connection monitor
+            if (this.connectionMonitor) {
+              this.connectionMonitor.updateChannelStatus(key, true);
+            }
           } else if (status === 'CHANNEL_ERROR') {
             // Increment error count on channel errors
             this.errorCount.set(key, (this.errorCount.get(key) || 0) + 1);
+            
+            // Update connection monitor
+            if (this.connectionMonitor) {
+              this.connectionMonitor.updateChannelStatus(key, false);
+            }
           }
         });
       
