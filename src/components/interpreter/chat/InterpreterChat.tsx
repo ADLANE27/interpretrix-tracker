@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { StatusButtonsBar } from "@/components/interpreter/StatusButtonsBar";
 import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
@@ -304,16 +303,6 @@ export const InterpreterChat = ({
             {/* Empty space to balance the layout */}
           </div>
         </div>
-
-        {showStatusButtons && profile && onStatusChange && (
-          <div className="pb-2 w-full overflow-visible">
-            <StatusButtonsBar 
-              currentStatus={profile.status} 
-              onStatusChange={onStatusChange}
-              variant="compact" 
-            />
-          </div>
-        )}
       </motion.div>
 
       <div className="flex flex-col flex-1 overflow-hidden bg-gradient-to-r from-white/90 to-palette-soft-blue/30 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md">
