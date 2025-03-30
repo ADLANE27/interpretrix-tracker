@@ -18,14 +18,27 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Set a data attribute to help identify we're in messages tab
-    document.body.setAttribute('data-in-messages-tab', 'true');
+    // Set data attribute to signal we're in messages tab, but not in chat
+    document.body.removeAttribute('data-in-chat');
     
     return () => {
-      document.body.removeAttribute('data-in-messages-tab');
+      // Clean up both attributes on unmount
       document.body.removeAttribute('data-in-chat');
     };
   }, []);
+
+  // Update data-in-chat attribute when a channel is selected on mobile
+  useEffect(() => {
+    if (isMobile && selectedChannelId) {
+      document.body.setAttribute('data-in-chat', 'true');
+    } else {
+      document.body.removeAttribute('data-in-chat');
+    }
+    
+    return () => {
+      document.body.removeAttribute('data-in-chat');
+    };
+  }, [selectedChannelId, isMobile]);
 
   const handleClearFilters = () => {
     setFilters({});
@@ -65,7 +78,6 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             onClearFilters={handleClearFilters}
             onBackToChannels={() => setSelectedChannelId(null)}
             profile={profile}
-            // Pass onStatusChange but we won't display status buttons in the chat UI
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
           />
