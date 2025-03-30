@@ -19,13 +19,11 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
-  const [isInMessagesTab, setIsInMessagesTab] = useState(false);
   
-  // Use an effect to update the states whenever data attributes change
+  // Use an effect to update the state whenever the data attribute changes
   useEffect(() => {
     const updateStates = () => {
       setIsInChatTab(document.body.hasAttribute('data-in-chat'));
-      setIsInMessagesTab(document.body.hasAttribute('data-in-messages-tab'));
     };
 
     // Initial check
@@ -34,9 +32,7 @@ export const DashboardHeader = ({
     // Set up a MutationObserver to watch for changes to the attributes
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && 
-            (mutation.attributeName === 'data-in-chat' || 
-             mutation.attributeName === 'data-in-messages-tab')) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-in-chat') {
           updateStates();
         }
       });
@@ -50,10 +46,9 @@ export const DashboardHeader = ({
   }, []);
   
   // Show status buttons in header except when in chat tab on portrait mode
-  // Now also checks if we're in messages tab, which is handled separately
   const showStatusButtons = !isMobile || 
                           (isMobile && orientation === "landscape") || 
-                          (isMobile && !isInChatTab && !isInMessagesTab);
+                          (isMobile && !isInChatTab);
 
   return (
     <motion.header 
