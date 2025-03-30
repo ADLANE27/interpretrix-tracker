@@ -194,14 +194,6 @@ export const InterpreterChat = ({
   }, [channelId, markMentionsAsRead]);
 
   useEffect(() => {
-    document.body.setAttribute('data-in-chat', 'active');
-    
-    return () => {
-      document.body.removeAttribute('data-in-chat');
-    };
-  }, []);
-
-  useEffect(() => {
     if (messageContainerRef.current && autoScrollEnabled) {
       const container = messageContainerRef.current;
       
