@@ -1,4 +1,3 @@
-
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
 import { MessagingTab } from "../MessagingTab";
@@ -35,7 +34,13 @@ export const DashboardContent = ({
       case "missions":
         return <MissionsTab />;
       case "messages":
-        return <MessagingTab profile={profile} onStatusChange={onStatusChange} onMenuClick={onMenuClick} />;
+        return (
+          <MessagingTab 
+            profile={profile} 
+            onStatusChange={onStatusChange} 
+            onMenuClick={onMenuClick} 
+          />
+        );
       case "profile":
         return (
           <InterpreterProfile 

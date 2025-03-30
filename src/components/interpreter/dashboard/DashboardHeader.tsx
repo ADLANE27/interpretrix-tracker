@@ -49,11 +49,11 @@ export const DashboardHeader = ({
     };
   }, []);
   
-  // Show status buttons in header except when in chat tab on portrait mode
-  // Now also checks if we're in messages tab, which is handled separately
+  // Always show status buttons in header except when in chat tab on portrait mobile mode
+  // Remove the condition for messages tab to ensure status buttons are always visible in the header
   const showStatusButtons = !isMobile || 
                           (isMobile && orientation === "landscape") || 
-                          (isMobile && !isInChatTab && !isInMessagesTab);
+                          (isMobile && !isInChatTab);
 
   return (
     <motion.header 

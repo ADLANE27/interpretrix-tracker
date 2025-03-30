@@ -65,6 +65,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             onClearFilters={handleClearFilters}
             onBackToChannels={() => setSelectedChannelId(null)}
             profile={profile}
+            // Pass onStatusChange but we won't display status buttons in the chat UI
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
           />
