@@ -65,7 +65,7 @@ export const DashboardContent = ({
             className="w-full h-full flex flex-col"
           >
             <div className={`
-              ${isMobile ? 'p-2 sm:p-3' : 'p-4 md:p-6'} 
+              ${isMobile ? 'p-2 sm:p-3 pb-16' : 'p-4 md:p-6'} 
               flex-1 overflow-hidden
               rounded-xl
             `}>

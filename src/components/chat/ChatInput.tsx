@@ -12,6 +12,7 @@ import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { useMessageMentions } from "@/hooks/chat/useMessageMentions"; 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatInputProps {
   message: string;
@@ -24,7 +25,7 @@ interface ChatInputProps {
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
   style?: React.CSSProperties;
-  className?: string; // Added className prop
+  className?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -45,6 +46,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [cursorPosition, setCursorPosition] = useState<number>(0);
   const { formatMessage } = useMessageFormatter();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const { 
     mentionSuggestionsVisible,
@@ -122,7 +124,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [inputRef]);
 
   return (
-    <div className={cn("p-3 bg-white dark:bg-gray-900", className)} style={style}>
+    <div className={cn("p-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm", className)} style={style}>
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
           <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
@@ -193,7 +195,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               </PopoverTrigger>
               <PopoverContent 
                 className="w-auto p-0" 
-                side="top" 
+                side={isMobile ? "top" : "top"} 
                 align="end"
               >
                 <Picker

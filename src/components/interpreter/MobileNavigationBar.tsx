@@ -22,7 +22,7 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
   onMenuClick
 }) => {
   const isMobile = useIsMobile();
-  const { totalUnreadCount } = useUnreadMentions(); // Use totalUnreadCount instead of totalUnreadMentionsCount
+  const { totalUnreadCount } = useUnreadMentions(); 
   
   if (!isMobile) return null;
   

@@ -30,7 +30,6 @@ interface InterpreterChatProps {
   profile?: Profile | null;
   onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
   onMenuClick?: () => void;
-  messageListHeight?: string;
 }
 
 export const InterpreterChat = ({ 
@@ -41,8 +40,7 @@ export const InterpreterChat = ({
   onBackToChannels,
   profile,
   onStatusChange,
-  onMenuClick,
-  messageListHeight = "calc(100vh - 320px)" // Default adjusted to account for header, footer, and status bar
+  onMenuClick
 }: InterpreterChatProps) => {
   const { data: channel, isLoading: isLoadingChannel } = useQuery({
     queryKey: ['channel', channelId],
@@ -67,16 +65,10 @@ export const InterpreterChat = ({
   const orientation = useOrientation();
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
-  const [chatMembers, setChatMembers] = useState([
-    { id: 'current', name: 'Mes messages' },
-    { id: 'threads', name: 'Mes fils de discussion' },
-  ]);
-
   const {
     messages,
     isLoading,
     isSubscribed,
-    subscriptionStatus,
     sendMessage,
     deleteMessage,
     currentUserId,
@@ -215,27 +207,6 @@ export const InterpreterChat = ({
     }
   }, [messages, autoScrollEnabled]);
 
-  useEffect(() => {
-    const uniqueMembers = new Map();
-    
-    if (currentUserId) {
-      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
-      uniqueMembers.set('threads', { id: 'threads', name: 'Mes fils de discussion' });
-    }
-
-    messages.forEach(msg => {
-      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
-        uniqueMembers.set(msg.sender.id, {
-          id: msg.sender.id,
-          name: msg.sender.name,
-          avatarUrl: msg.sender.avatarUrl
-        });
-      }
-    });
-
-    setChatMembers(Array.from(uniqueMembers.values()));
-  }, [messages, currentUserId]);
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -269,25 +240,6 @@ export const InterpreterChat = ({
     });
   };
 
-  const triggerMention = () => {
-    if (!inputRef.current) return;
-    
-    const cursorPos = inputRef.current.selectionStart || 0;
-    const textBeforeCursor = message.substring(0, cursorPos);
-    const textAfterCursor = message.substring(cursorPos);
-    
-    const newMessage = textBeforeCursor + '@' + textAfterCursor;
-    setMessage(newMessage);
-    
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        const newPos = cursorPos + 1;
-        inputRef.current.setSelectionRange(newPos, newPos);
-      }
-    }, 0);
-  };
-
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     
@@ -305,7 +257,9 @@ export const InterpreterChat = ({
 
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
   
-  const adjustedMessageListHeight = "calc(100vh - 240px)";
+  const messageListHeight = isMobile 
+    ? "calc(100vh - 220px)" // Reduced height on mobile to make room for input and nav
+    : "calc(100vh - 180px)";
   
   return (
     <div className="flex flex-col h-full">
@@ -369,7 +323,7 @@ export const InterpreterChat = ({
           id="messages-container" 
           data-channel-id={channelId}
           onScroll={handleScroll}
-          style={{ height: adjustedMessageListHeight }}
+          style={{ height: messageListHeight }}
         >
           {isLoading ? (
             <div className="absolute inset-0 bg-gradient-to-br from-white/70 to-palette-soft-blue/30 dark:from-gray-800/70 dark:to-palette-ocean-blue/20 backdrop-blur-md flex items-center justify-center">
@@ -416,7 +370,7 @@ export const InterpreterChat = ({
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
-          className="bg-transparent"
+          className="bg-transparent mb-16 safe-area-bottom"
         />
       </div>
     </div>

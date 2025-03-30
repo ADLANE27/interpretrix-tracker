@@ -31,10 +31,6 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
     setFilters({});
   };
 
-  // Fixed height for message list to ensure status bar is always visible
-  // This will be consistent across the application
-  const messageListHeight = "calc(100vh - 240px)";
-
   return (
     <motion.div 
       className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
@@ -71,7 +67,6 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
-            messageListHeight={messageListHeight}
           />
         </motion.div>
       )}
