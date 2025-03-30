@@ -30,7 +30,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   // Update data-in-chat attribute when a channel is selected on mobile
   useEffect(() => {
     if (isMobile && selectedChannelId) {
-      document.body.setAttribute('data-in-chat', 'true');
+      document.body.setAttribute('data-in-chat', 'active');
     } else {
       document.body.removeAttribute('data-in-chat');
     }

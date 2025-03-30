@@ -19,11 +19,13 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
+  const [isInActiveChat, setIsInActiveChat] = useState(false);
   
   // Use an effect to update the state whenever data attribute changes
   useEffect(() => {
     const updateStates = () => {
       setIsInChatTab(document.body.hasAttribute('data-in-chat'));
+      setIsInActiveChat(document.body.getAttribute('data-in-chat') === 'active');
     };
 
     // Initial check
@@ -46,10 +48,10 @@ export const DashboardHeader = ({
     };
   }, []);
   
-  // Show status buttons in header except when in chat tab on portrait mobile mode
+  // Show status buttons in header except when in active chat on portrait mobile mode
   const showStatusButtons = !isMobile || 
                           (isMobile && orientation === "landscape") || 
-                          (isMobile && !isInChatTab);
+                          (isMobile && !isInActiveChat);
 
   return (
     <motion.header 

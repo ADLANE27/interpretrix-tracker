@@ -64,6 +64,14 @@ export const InterpreterChat = ({
   const orientation = useOrientation();
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
+  useEffect(() => {
+    document.body.setAttribute('data-in-chat', 'active');
+    
+    return () => {
+      document.body.removeAttribute('data-in-chat');
+    };
+  }, []);
+
   const {
     messages,
     isLoading,
@@ -186,7 +194,7 @@ export const InterpreterChat = ({
   }, [channelId, markMentionsAsRead]);
 
   useEffect(() => {
-    document.body.setAttribute('data-in-chat', 'true');
+    document.body.setAttribute('data-in-chat', 'active');
     
     return () => {
       document.body.removeAttribute('data-in-chat');
@@ -254,8 +262,6 @@ export const InterpreterChat = ({
     }
   };
 
-  const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
-  
   const messageListHeight = isMobile 
     ? "calc(100vh - 220px)" // Reduced height on mobile to make room for input and nav
     : "calc(100vh - 180px)";
