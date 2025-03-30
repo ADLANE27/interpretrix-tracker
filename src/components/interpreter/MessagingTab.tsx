@@ -5,7 +5,6 @@ import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Profile } from "@/types/profile";
 import { motion } from "framer-motion";
-import { StatusButtonsBar } from "./StatusButtonsBar";
 
 interface MessagingTabProps {
   profile?: Profile | null;
@@ -19,7 +18,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Only set the data-in-messages-tab attribute, but don't hide status buttons
+    // Set a data attribute to help identify we're in messages tab
     document.body.setAttribute('data-in-messages-tab', 'true');
     
     return () => {
@@ -34,56 +33,43 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
 
   return (
     <motion.div 
-      className="flex flex-col h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
+      className="flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-white/80 to-palette-soft-blue/40 dark:from-gray-800/90 dark:to-palette-ocean-blue/20 backdrop-blur-md shadow-lg border border-white/10 dark:border-gray-700/30"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Mobile status buttons bar when in a channel */}
-      {isMobile && selectedChannelId && (
-        <div className="p-2 border-b border-white/20 dark:border-gray-700/30">
-          <StatusButtonsBar 
-            currentStatus={profile?.status} 
-            onStatusChange={onStatusChange}
-            variant="compact" 
+      {(!selectedChannelId || !isMobile) && (
+        <motion.div 
+          className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <InterpreterChannelList 
+            onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />
-        </div>
+        </motion.div>
       )}
-      
-      <div className="flex flex-1 overflow-hidden">
-        {(!selectedChannelId || !isMobile) && (
-          <motion.div 
-            className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-72 lg:w-80 border-r border-white/20 dark:border-gray-700/30 h-full overflow-hidden rounded-l-xl`}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            <InterpreterChannelList 
-              onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
-            />
-          </motion.div>
-        )}
 
-        {selectedChannelId && (
-          <motion.div 
-            className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full rounded-r-xl flex flex-col`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <InterpreterChat 
-              channelId={selectedChannelId} 
-              filters={filters} 
-              onFiltersChange={setFilters} 
-              onClearFilters={handleClearFilters}
-              onBackToChannels={() => setSelectedChannelId(null)}
-              profile={profile}
-              onStatusChange={onStatusChange}
-              onMenuClick={onMenuClick}
-            />
-          </motion.div>
-        )}
-      </div>
+      {selectedChannelId && (
+        <motion.div 
+          className={`${isMobile ? 'w-full' : 'flex-1'} overflow-hidden h-full rounded-r-xl`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <InterpreterChat 
+            channelId={selectedChannelId} 
+            filters={filters} 
+            onFiltersChange={setFilters} 
+            onClearFilters={handleClearFilters}
+            onBackToChannels={() => setSelectedChannelId(null)}
+            profile={profile}
+            onStatusChange={onStatusChange}
+            onMenuClick={onMenuClick}
+          />
+        </motion.div>
+      )}
     </motion.div>
   );
 };
