@@ -66,8 +66,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       console.log('[Sidebar] Received unread mentions update event:', count);
       if (count > realtimeUnreadCount) {
         setHasNewNotification(true);
-        // Reset the animation after 3 seconds
-        setTimeout(() => setHasNewNotification(false), 3000);
+        // Reset the animation after 5 seconds
+        setTimeout(() => setHasNewNotification(false), 5000);
       }
       setRealtimeUnreadCount(count);
     };
@@ -82,6 +82,15 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   useEffect(() => {
     console.log('[Sidebar] Refreshing mentions on mount');
     refreshMentions();
+    
+    // Set up a periodic refresh at regular intervals to ensure badges stay updated
+    const refreshInterval = setInterval(() => {
+      refreshMentions();
+    }, 60000); // Refresh every minute
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, [refreshMentions]);
 
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
@@ -141,7 +140,7 @@ export const useUnreadMentions = () => {
         total: mentionsWithNames.length + unreadDMCount
       });
 
-      // Emit the event with the total count
+      // Emit the event with the total count to update UI components
       eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, mentionsWithNames.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
@@ -301,7 +300,7 @@ export const useUnreadMentions = () => {
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [fetchUnreadMentions, userId]);
+  }, [fetchUnreadMentions, userId, unreadDirectMessages]);
 
   return { 
     unreadMentions, 
