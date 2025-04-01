@@ -174,8 +174,6 @@ export const InterpreterChat = ({
                 body: "Quelqu'un vous a mentionné dans un message",
                 tag: 'chat-mention',
               });
-              
-              markMentionsAsRead();
             }
           }
         )
@@ -185,13 +183,13 @@ export const InterpreterChat = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [channelId, currentUserId, toast, markMentionsAsRead, showNotification]);
+  }, [channelId, currentUserId, toast, showNotification]);
 
   useEffect(() => {
     if (channelId) {
-      markMentionsAsRead();
+      console.log('[InterpreterChat] Channel loaded, mentions will be marked as read with delay');
     }
-  }, [channelId, markMentionsAsRead]);
+  }, [channelId]);
 
   useEffect(() => {
     if (messageContainerRef.current && autoScrollEnabled) {

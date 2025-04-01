@@ -18,27 +18,25 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Set data attribute to signal we're in messages tab, but not in chat
-    document.body.removeAttribute('data-in-chat');
-    
-    return () => {
-      // Clean up both attributes on unmount
-      document.body.removeAttribute('data-in-chat');
-    };
-  }, []);
-
-  // Update data-in-chat attribute when a channel is selected on mobile
-  useEffect(() => {
-    if (isMobile && selectedChannelId) {
-      document.body.setAttribute('data-in-chat', 'active');
-    } else {
+    // When in messages tab but not in a specific chat
+    if (!selectedChannelId) {
       document.body.removeAttribute('data-in-chat');
     }
     
     return () => {
+      // Clean up attribute when component unmounts
       document.body.removeAttribute('data-in-chat');
     };
-  }, [selectedChannelId, isMobile]);
+  }, [selectedChannelId]);
+
+  // Update data-in-chat attribute when a channel is selected
+  useEffect(() => {
+    if (selectedChannelId) {
+      document.body.setAttribute('data-in-chat', 'active');
+    } else {
+      document.body.removeAttribute('data-in-chat');
+    }
+  }, [selectedChannelId]);
 
   const handleClearFilters = () => {
     setFilters({});
