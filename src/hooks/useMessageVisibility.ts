@@ -20,8 +20,8 @@ export const useMessageVisibility = (channelId: string) => {
 
       console.log('[MessageVisibility] Delaying mention read status update...');
       
-      // Extend the delay to 6 seconds to ensure the notification badge is visible long enough
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      // Extend the delay to 10 seconds to ensure the notification badge is visible long enough
+      await new Promise(resolve => setTimeout(resolve, 10000));
 
       // Fetch current unread mentions count before we update
       const { data: mentionsBeforeUpdate, error: countError } = await supabase
@@ -100,7 +100,7 @@ export const useMessageVisibility = (channelId: string) => {
       if (!user) return;
 
       // Increase delay for individual message mentions as well
-      await new Promise(resolve => setTimeout(resolve, 6000));
+      await new Promise(resolve => setTimeout(resolve, 10000));
 
       // Get current mention count before update
       const { data: allMentionsBefore } = await supabase
