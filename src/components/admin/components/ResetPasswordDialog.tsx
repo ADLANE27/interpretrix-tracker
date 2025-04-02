@@ -67,7 +67,10 @@ export const ResetPasswordDialog = ({
     try {
       setIsSubmitting(true);
 
-      const { error } = await supabase.functions.invoke('admin-reset-password', {
+      // Log request details (without sensitive data)
+      console.log('Sending reset password request for user:', userId);
+      
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
         body: { 
           user_id: userId,
           email: userEmail,
@@ -76,7 +79,12 @@ export const ResetPasswordDialog = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+      
+      console.log('Reset password response:', data);
 
       toast({
         title: "Mot de passe réinitialisé",
@@ -87,9 +95,11 @@ export const ResetPasswordDialog = ({
       setConfirmPassword("");
       onClose();
     } catch (error: any) {
+      console.error('Reset password error details:', error);
+      
       toast({
         title: "Erreur",
-        description: `Impossible de réinitialiser le mot de passe: ${error.message}`,
+        description: `Impossible de réinitialiser le mot de passe: ${error.message || "Erreur inconnue"}`,
         variant: "destructive",
       });
     } finally {
