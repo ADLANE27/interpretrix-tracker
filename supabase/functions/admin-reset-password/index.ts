@@ -28,20 +28,13 @@ interface ResetPasswordRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Admin reset password function called');
-    
     // Get the request body containing the user ID and new password
-    const requestBody = await req.json();
-    console.log('Request received with body:', { ...requestBody, new_password: '[REDACTED]' });
-    
-    const { user_id, email, new_password, user_name }: ResetPasswordRequest = requestBody;
-    
+    const { user_id, email, new_password, user_name }: ResetPasswordRequest = await req.json();
     console.log('Admin reset password for:', { email, user_id });
 
     // Ensure we have all required data
@@ -52,19 +45,15 @@ serve(async (req) => {
     // Verify the requesting user is an admin (via JWT)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Missing or invalid authorization header');
       throw new Error('Missing or invalid authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user: adminUser }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user: adminUser } } = await supabase.auth.getUser(token);
 
-    if (userError || !adminUser) {
-      console.error('Unauthorized - invalid admin token:', userError);
+    if (!adminUser) {
       throw new Error('Unauthorized - invalid admin token');
     }
-
-    console.log('Admin user verified:', adminUser.id);
 
     // Check if the user making the request has admin role
     const { data: adminRole, error: roleCheckError } = await supabase
@@ -75,11 +64,8 @@ serve(async (req) => {
       .single();
 
     if (roleCheckError || !adminRole) {
-      console.error('Unauthorized - not an admin user:', roleCheckError);
       throw new Error('Unauthorized - not an admin user');
     }
-
-    console.log('Admin role confirmed, proceeding with password update');
 
     // Update the user's password
     const { error: updateError } = await supabase.auth.admin.updateUserById(
@@ -88,11 +74,8 @@ serve(async (req) => {
     );
 
     if (updateError) {
-      console.error('Error updating password:', updateError);
       throw updateError;
     }
-
-    console.log('Password updated successfully');
 
     // For interpreter users, set password_changed flag to true
     const { data: userRole } = await supabase
@@ -102,7 +85,6 @@ serve(async (req) => {
       .single();
 
     if (userRole && userRole.role === 'interpreter') {
-      console.log('Setting password_changed flag for interpreter');
       const { error: profileError } = await supabase
         .from('interpreter_profiles')
         .update({ password_changed: true })
@@ -115,8 +97,6 @@ serve(async (req) => {
 
     // Send notification email to the user
     try {
-      console.log('Sending notification email to:', email);
-      
       const emailContent = `
         <h1>Réinitialisation de mot de passe Interpretix</h1>
         
