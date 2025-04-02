@@ -86,7 +86,7 @@ export const InterpreterChat = ({
     hasMoreMessages
   } = useChat(channelId);
 
-  const { showNotification, requestPermission } = useBrowserNotification();
+  const { showNotification, requestPermission, settings } = useBrowserNotification();
 
   const filteredMessages = useCallback(() => {
     let filtered = messages;
@@ -144,8 +144,11 @@ export const InterpreterChat = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    requestPermission();
-  }, [requestPermission]);
+    // Request notification permissions when entering the chat
+    if (settings.enabled && permission !== 'granted') {
+      requestPermission();
+    }
+  }, [requestPermission, settings, permission]);
 
   useEffect(() => {
     if (channelId) {
@@ -164,15 +167,59 @@ export const InterpreterChat = ({
             if (payload.new.mentioned_user_id === currentUserId) {
               await playNotificationSound();
               
+              // Get channel info for better notification context
+              const { data: channelData } = await supabase
+                .from('chat_channels')
+                .select('name')
+                .eq('id', channelId)
+                .single();
+                
+              const channelName = channelData?.name || 'un canal';
+              
+              // Get message information
+              const { data: messageData } = await supabase
+                .from('chat_messages')
+                .select('id, content, sender_id')
+                .eq('id', payload.new.message_id)
+                .single();
+                
+              if (!messageData) return;
+              
+              // Get sender information
+              const { data: senderData } = await supabase
+                .rpc('get_message_sender_details', {
+                  sender_id: messageData.sender_id
+                });
+                
+              const sender = senderData?.[0];
+              if (!sender) return;
+              
+              // Build message preview
+              const messagePreview = messageData.content.substring(0, 50) + 
+                (messageData.content.length > 50 ? '...' : '');
+              
               toast({
                 title: "💬 Nouvelle mention",
-                description: "Quelqu'un vous a mentionné dans un message",
+                description: `${sender.name} vous a mentionné dans ${channelName}`,
                 duration: 5000,
               });
 
+              // Build message URL for direct navigation
+              const baseUrl = userRole === 'admin' ? '/admin/messages' : '/interpreter/messages';
+              const messageUrl = `${baseUrl}?channel=${channelId}&message=${messageData.id}`;
+
+              // Enhanced notification with contextual information
               showNotification("Nouvelle mention", {
-                body: "Quelqu'un vous a mentionné dans un message",
-                tag: 'chat-mention',
+                body: `${sender.name} vous a mentionné dans ${channelName}: "${messagePreview}"`,
+                tag: `mention-${messageData.id}`,
+                requireInteraction: true,
+                data: {
+                  url: messageUrl,
+                  messageId: messageData.id,
+                  channelId: channelId,
+                  senderId: messageData.sender_id,
+                  type: 'mention'
+                }
               });
             }
           }
@@ -183,7 +230,7 @@ export const InterpreterChat = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [channelId, currentUserId, toast, showNotification]);
+  }, [channelId, currentUserId, toast, showNotification, settings, userRole]);
 
   useEffect(() => {
     if (channelId) {

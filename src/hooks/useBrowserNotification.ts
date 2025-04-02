@@ -1,10 +1,43 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// Define notification options interface for better type safety
+export interface EnhancedNotificationOptions extends NotificationOptions {
+  requireInteraction?: boolean;
+  silent?: boolean;
+  data?: {
+    url?: string;
+    messageId?: string;
+    channelId?: string;
+    senderId?: string;
+    type?: 'message' | 'mention' | 'reply';
+  };
+}
+
 export const useBrowserNotification = (test = false) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [settings, setSettings] = useState({
+    enabled: true,
+    // Default settings
+    notifications: {
+      mentions: true,
+      replies: true,
+      directMessages: true,
+      groupMessages: false,
+    }
+  });
 
   useEffect(() => {
+    // Load settings from localStorage
+    try {
+      const savedSettings = localStorage.getItem('notification_settings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+    }
+
     if ('Notification' in window) {
       setPermission(Notification.permission);
     }
@@ -17,6 +50,15 @@ export const useBrowserNotification = (test = false) => {
       });
     }
   }, [test]);
+
+  const saveSettings = useCallback((newSettings: typeof settings) => {
+    setSettings(newSettings);
+    try {
+      localStorage.setItem('notification_settings', JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving notification settings:', error);
+    }
+  }, []);
 
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
@@ -34,22 +76,42 @@ export const useBrowserNotification = (test = false) => {
     }
   }, []);
 
-  const showNotification = useCallback((title: string, options?: NotificationOptions) => {
+  const showNotification = useCallback((title: string, options?: EnhancedNotificationOptions) => {
     if (!('Notification' in window)) {
       console.log('This browser does not support notifications');
-      return;
+      return null;
     }
 
     if (permission !== 'granted') {
       console.log('Notification permission not granted');
-      return;
+      return null;
+    }
+
+    if (!settings.enabled) {
+      console.log('Notifications are disabled in user settings');
+      return null;
     }
 
     try {
-      const notification = new Notification(title, {
+      // Default to require interaction for better visibility on mobile/tablet
+      const notificationOptions: EnhancedNotificationOptions = {
         icon: '/icon.svg',
+        requireInteraction: true, // Make notifications persist until interaction
         ...options
-      });
+      };
+
+      // Check if this notification type is enabled in settings
+      const notificationType = options?.data?.type || 'message';
+      if (
+        (notificationType === 'mention' && !settings.notifications.mentions) ||
+        (notificationType === 'reply' && !settings.notifications.replies) ||
+        (notificationType === 'message' && !settings.notifications.directMessages)
+      ) {
+        console.log(`${notificationType} notifications are disabled in user settings`);
+        return null;
+      }
+
+      const notification = new Notification(title, notificationOptions);
 
       notification.onclick = () => {
         window.focus();
@@ -58,14 +120,37 @@ export const useBrowserNotification = (test = false) => {
         }
         notification.close();
       };
+
+      return notification;
     } catch (error) {
       console.error('Error showing notification:', error);
+      return null;
     }
-  }, [permission]);
+  }, [permission, settings]);
+
+  const toggleNotifications = useCallback((enabled: boolean) => {
+    saveSettings({
+      ...settings,
+      enabled
+    });
+  }, [settings, saveSettings]);
+
+  const updateNotificationSettings = useCallback((newSettings: typeof settings.notifications) => {
+    saveSettings({
+      ...settings,
+      notifications: {
+        ...settings.notifications,
+        ...newSettings
+      }
+    });
+  }, [settings, saveSettings]);
 
   return {
     permission,
+    settings,
     requestPermission,
-    showNotification
+    showNotification,
+    toggleNotifications,
+    updateNotificationSettings
   };
 };
