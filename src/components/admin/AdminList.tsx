@@ -22,7 +22,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 
 interface AdminData {
   id: string;
@@ -43,8 +42,6 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
-  const [userToResetPassword, setUserToResetPassword] = useState<AdminData | null>(null);
 
   const filteredAdmins = admins.filter((admin) => {
     const searchTerm = searchQuery.toLowerCase().trim();
@@ -56,16 +53,6 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
       admin.email.toLowerCase().includes(searchTerm)
     );
   });
-
-  const handleOpenResetPasswordDialog = (admin: AdminData) => {
-    setUserToResetPassword(admin);
-    setIsResetPasswordDialogOpen(true);
-  };
-
-  const handleCloseResetPasswordDialog = () => {
-    setUserToResetPassword(null);
-    setIsResetPasswordDialogOpen(false);
-  };
 
   return (
     <Card>
@@ -132,7 +119,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => handleOpenResetPasswordDialog(admin)}
+                          onClick={() => onResetPassword(admin.id)}
                         >
                           <Key className="h-4 w-4" />
                         </Button>
@@ -180,16 +167,6 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {userToResetPassword && (
-        <ResetPasswordDialog
-          isOpen={isResetPasswordDialogOpen}
-          onClose={handleCloseResetPasswordDialog}
-          userId={userToResetPassword.id}
-          userEmail={userToResetPassword.email}
-          userName={`${userToResetPassword.first_name} ${userToResetPassword.last_name}`}
-        />
-      )}
     </Card>
   );
 };
