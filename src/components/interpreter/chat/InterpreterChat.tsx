@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -63,6 +64,7 @@ export const InterpreterChat = ({
   const isMobile = useIsMobile();
   const orientation = useOrientation();
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [userRole, setUserRole] = useState<'admin' | 'interpreter' | null>(null);
   
   useEffect(() => {
     document.body.setAttribute('data-in-chat', 'active');
@@ -86,7 +88,7 @@ export const InterpreterChat = ({
     hasMoreMessages
   } = useChat(channelId);
 
-  const { showNotification, requestPermission, settings } = useBrowserNotification();
+  const { showNotification, requestPermission, settings, permission } = useBrowserNotification();
 
   const filteredMessages = useCallback(() => {
     let filtered = messages;
@@ -149,6 +151,30 @@ export const InterpreterChat = ({
       requestPermission();
     }
   }, [requestPermission, settings, permission]);
+
+  // Add effect to determine user role
+  useEffect(() => {
+    const determineUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          setUserRole(data.role as 'admin' | 'interpreter');
+        }
+      } catch (error) {
+        console.error('[InterpreterChat] Error determining user role:', error);
+      }
+    };
+    
+    determineUserRole();
+  }, []);
 
   useEffect(() => {
     if (channelId) {
@@ -299,6 +325,19 @@ export const InterpreterChat = ({
     }
   };
 
+  useEffect(() => {
+    if (messageContainerRef.current && autoScrollEnabled) {
+      const container = messageContainerRef.current;
+      
+      setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
+    }
+  }, [messages, autoScrollEnabled]);
+
   const messageListHeight = isMobile 
     ? "calc(100vh - 220px)" // Reduced height on mobile to make room for input and nav
     : "calc(100vh - 180px)";
@@ -408,3 +447,4 @@ export const InterpreterChat = ({
     </div>
   );
 };
+
