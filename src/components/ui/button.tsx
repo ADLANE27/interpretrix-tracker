@@ -10,13 +10,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "relative bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue text-white hover:from-palette-magenta-pink hover:to-palette-vivid-purple shadow-md hover:shadow-lg before:absolute before:inset-0 before:bg-white before:opacity-0 before:transition-opacity hover:before:opacity-10 overflow-hidden",
+        default: "bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue text-white hover:from-palette-magenta-pink hover:to-palette-vivid-purple shadow-md hover:shadow-lg",
         destructive:
-          "relative bg-gradient-to-r from-red-500 to-rose-500 text-destructive-foreground hover:from-red-600 hover:to-rose-600 shadow-md before:absolute before:inset-0 before:bg-white before:opacity-0 before:transition-opacity hover:before:opacity-10 overflow-hidden",
+          "bg-gradient-to-r from-red-500 to-rose-500 text-destructive-foreground hover:from-red-600 hover:to-rose-600 shadow-md",
         outline:
           "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "relative bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink text-white hover:from-palette-magenta-pink hover:to-palette-bright-orange shadow-md before:absolute before:inset-0 before:bg-white before:opacity-0 before:transition-opacity hover:before:opacity-10 overflow-hidden",
+          "bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink text-white hover:from-palette-magenta-pink hover:to-palette-bright-orange shadow-md",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
