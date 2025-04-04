@@ -1,10 +1,11 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Home, Building } from 'lucide-react';
-import { isPast, addMinutes, parseISO } from 'date-fns';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { isPast, isAfter, addMinutes, parseISO, isWithinInterval } from 'date-fns';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_MISSION_STATUS_UPDATE } from '@/lib/events';
 
 interface UseInterpreterCardProps {
   id: string;
@@ -64,6 +65,39 @@ export const useInterpreterCard = (
     didMountRef.current = true;
   }, [initialStatus, status, interpreter.name]);
 
+  // Listen for mission status updates to re-evaluate mission state
+  useEffect(() => {
+    const handleMissionStatusUpdate = () => {
+      // Re-evaluate mission status
+      checkMissionStatus();
+    };
+    
+    eventEmitter.on(EVENT_MISSION_STATUS_UPDATE, handleMissionStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_MISSION_STATUS_UPDATE, handleMissionStatusUpdate);
+    };
+  }, [interpreter.next_mission_start, interpreter.next_mission_duration]);
+
+  // Function to check if a mission is currently in progress or upcoming
+  const checkMissionStatus = useCallback(() => {
+    if (!interpreter.next_mission_start || !interpreter.next_mission_duration) {
+      return false;
+    }
+    
+    const now = new Date();
+    const missionStartDate = parseISO(interpreter.next_mission_start);
+    const missionEndDate = addMinutes(missionStartDate, interpreter.next_mission_duration);
+    
+    // Check if mission is in progress
+    if (isWithinInterval(now, { start: missionStartDate, end: missionEndDate })) {
+      return true;
+    }
+    
+    // Check if mission is upcoming
+    return isAfter(missionStartDate, now);
+  }, [interpreter.next_mission_start, interpreter.next_mission_duration]);
+
   const handleStatusChange = useCallback(async (newStatus: Profile['status']) => {
     console.log(`[InterpreterCard] Status change requested for ${interpreter.name} to ${newStatus}`);
     
@@ -117,11 +151,8 @@ export const useInterpreterCard = (
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  const hasFutureMission = interpreter.next_mission_start && 
-    !isPast(addMinutes(
-      parseISO(interpreter.next_mission_start), 
-      interpreter.next_mission_duration || 0
-    ));
+  // Check if the mission is current or in the future
+  const hasMission = interpreter.next_mission_start && checkMissionStatus();
 
   return {
     status,
@@ -135,7 +166,7 @@ export const useInterpreterCard = (
     showTarif5min,
     showTarif15min,
     showAnyTarif,
-    hasFutureMission,
+    hasFutureMission: hasMission,
     isConnected
   };
 };
