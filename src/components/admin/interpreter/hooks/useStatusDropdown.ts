@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
@@ -5,6 +6,8 @@ import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { realtimeService } from "@/services/realtime";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { v4 as uuidv4 } from 'uuid';
+
+const STATUS_UPDATE_DEBOUNCE_TIME = 300; // ms
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -19,6 +22,8 @@ export function useStatusDropdown(
   const { toast } = useToast();
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryAttemptsRef = useRef(0);
+  const lastEventIdRef = useRef<string | null>(null);
+  const lastStatusUpdateRef = useRef<number>(0);
   
   const {
     status: hookStatus,
@@ -35,6 +40,14 @@ export function useStatusDropdown(
     },
     onStatusChange: (newStatus) => {
       console.log(`[useStatusDropdown] Status from hook updated to ${newStatus} for ${interpreterId}`);
+      
+      // Prevent updates if we've just sent one (avoid feedback loops)
+      const now = Date.now();
+      if (now - lastStatusUpdateRef.current < STATUS_UPDATE_DEBOUNCE_TIME) {
+        console.log(`[useStatusDropdown] Ignoring status update during debounce period`);
+        return;
+      }
+      
       setLocalStatus(newStatus);
     }
   });
@@ -47,7 +60,28 @@ export function useStatusDropdown(
       timestamp?: number,
       uuid?: string
     }) => {
-      if (data.interpreterId === interpreterId && data.status !== localStatus) {
+      if (data.interpreterId !== interpreterId) return;
+      
+      // Prevent duplicate event processing
+      if (data.uuid && data.uuid === lastEventIdRef.current) {
+        console.log(`[useStatusDropdown] Duplicate event detected and ignored`);
+        return;
+      }
+      
+      // Store the event uuid to prevent reprocessing
+      if (data.uuid) {
+        lastEventIdRef.current = data.uuid;
+      }
+      
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastStatusUpdateRef.current;
+      
+      if (timeSinceLastUpdate < STATUS_UPDATE_DEBOUNCE_TIME) {
+        console.log(`[useStatusDropdown] Ignoring status update during debounce period`);
+        return;
+      }
+      
+      if (data.status !== localStatus) {
         console.log(`[useStatusDropdown] Received status update event for ${interpreterId}: ${data.status}`);
         setLocalStatus(data.status);
       }
@@ -88,17 +122,24 @@ export function useStatusDropdown(
       // Update local state immediately for responsive UI
       setLocalStatus(pendingStatus);
       
+      // Update timestamp to prevent feedback loops
+      lastStatusUpdateRef.current = Date.now();
+      
       // Call parent callback if provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
+      
+      // Generate a unique id for this update
+      const updateId = uuidv4();
+      lastEventIdRef.current = updateId;
       
       // Broadcast status change for immediate UI updates across components
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: pendingStatus,
         timestamp: Date.now(),
-        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+        uuid: updateId // Add unique ID to prevent event deduplication issues
       });
       
       const success = await updateStatus(pendingStatus);

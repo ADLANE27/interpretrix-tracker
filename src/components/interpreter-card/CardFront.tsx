@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -64,6 +64,8 @@ export const CardFront: React.FC<CardFrontProps> = ({
   flipCard
 }) => {
   const badgeRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<Profile['status']>(status);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
   const nameParts = interpreter.name.split(' ');
   const lastName = nameParts.shift() || '';
   const firstName = nameParts.join(' ');
@@ -72,16 +74,25 @@ export const CardFront: React.FC<CardFrontProps> = ({
   const showAnyTarif = showTarif5min || showTarif15min;
   
   useEffect(() => {
-    if (badgeRef.current) {
-      badgeRef.current.classList.add('pulse-animation');
+    if (statusRef.current !== status) {
+      console.log(`[CardFront] Status changed from ${statusRef.current} to ${status}`);
+      statusRef.current = status;
       
-      const timeout = setTimeout(() => {
-        if (badgeRef.current) {
-          badgeRef.current.classList.remove('pulse-animation');
-        }
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
+      if (badgeRef.current) {
+        badgeRef.current.classList.remove('pulse-animation');
+        void badgeRef.current.offsetWidth;
+        badgeRef.current.classList.add('pulse-animation');
+        setShouldAnimate(true);
+        
+        const timeout = setTimeout(() => {
+          if (badgeRef.current) {
+            badgeRef.current.classList.remove('pulse-animation');
+          }
+          setShouldAnimate(false);
+        }, 750);
+        
+        return () => clearTimeout(timeout);
+      }
     }
   }, [status]);
 

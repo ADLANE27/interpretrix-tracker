@@ -33,6 +33,7 @@ export const useInterpreterCard = (
   const [isFlipped, setIsFlipped] = useState(false);
   const prevStatusRef = useRef<Profile['status']>(initialStatus);
   const didMountRef = useRef(false);
+  const lastEventIdRef = useRef<string | null>(null);
   
   const handleStatusChangeCallback = useCallback((newStatus: Profile['status']) => {
     console.log(`[InterpreterCard] Status changed to: ${newStatus} for ${interpreterId}`);
@@ -64,6 +65,41 @@ export const useInterpreterCard = (
     
     didMountRef.current = true;
   }, [initialStatus, status, interpreter.name]);
+  
+  // Listen for direct status update events
+  useEffect(() => {
+    const handleDirectStatusUpdate = (data: {
+      interpreterId: string;
+      status: Profile['status'];
+      timestamp?: number;
+      uuid?: string;
+    }) => {
+      if (data.interpreterId !== interpreterId) return;
+      
+      // Prevent duplicate event processing
+      if (data.uuid && data.uuid === lastEventIdRef.current) {
+        console.log(`[InterpreterCard] Duplicate event detected and ignored`);
+        return;
+      }
+      
+      // Store the event uuid to prevent reprocessing
+      if (data.uuid) {
+        lastEventIdRef.current = data.uuid;
+      }
+      
+      if (data.status !== status) {
+        console.log(`[InterpreterCard] Received direct status update for ${interpreterId}: ${data.status}`);
+        setStatus(data.status);
+        prevStatusRef.current = data.status;
+      }
+    };
+    
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleDirectStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleDirectStatusUpdate);
+    };
+  }, [interpreterId, status]);
 
   // Listen for mission status updates to re-evaluate mission state
   useEffect(() => {
