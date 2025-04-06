@@ -1,9 +1,0 @@
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Import status animation styles */
-@import '../styles/statusAnimations.css';
-
-/* ... keep existing code */

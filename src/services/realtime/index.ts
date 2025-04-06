@@ -1,8 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
 import { EventDebouncer } from './eventDebouncer';
 import { ConnectionMonitor } from './connectionMonitor';
+import { SubscriptionRegistry } from './registry/subscriptionRegistry';
 import { Profile } from '@/types/profile';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -12,10 +14,9 @@ class RealtimeService {
   private eventDebouncer: EventDebouncer;
   private connectionMonitor: ConnectionMonitor | null = null;
   private initialized: boolean = false;
-  private lastBroadcastedStatus: Map<string, {status: string, timestamp: number, source?: string}> = new Map();
 
   constructor() {
-    this.eventDebouncer = new EventDebouncer(3000); // Increased debounce time to 3 seconds
+    this.eventDebouncer = new EventDebouncer();
   }
 
   public isInitialized(): boolean {
@@ -100,7 +101,12 @@ class RealtimeService {
         console.log(`[RealtimeService] Status changed to ${newStatus} for interpreter ${interpreterId}`);
         
         // Global immediate broadcast for UI updates
-        this.broadcastStatusUpdate(interpreterId, newStatus, 'supabase-subscription', true);
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+          interpreterId, 
+          status: newStatus,
+          timestamp: Date.now(),
+          uuid: uuidv4() // Add unique ID to prevent event deduplication issues
+        });
       }
     );
     
@@ -113,32 +119,8 @@ class RealtimeService {
   /**
    * Update an interpreter's status directly (optimistic update)
    */
-  public broadcastStatusUpdate(interpreterId: string, status: Profile['status'], source?: string, fromDb: boolean = false): void {
-    console.log(`[RealtimeService] Broadcasting status update for ${interpreterId}: ${status} from ${source || 'unknown'}`);
-    
-    // Check if we've recently broadcasted the same status to avoid duplicate broadcasts
-    const now = Date.now();
-    const lastBroadcasted = this.lastBroadcastedStatus.get(interpreterId);
-    
-    // If this update is from database and there's a recent optimistic update with same status, don't re-broadcast
-    if (fromDb && lastBroadcasted && 
-        lastBroadcasted.status === status && 
-        now - lastBroadcasted.timestamp < 5000) { 
-      console.log(`[RealtimeService] Skipping duplicate DB broadcast for ${interpreterId} status ${status}`);
-      return;
-    }
-    
-    // If this is an optimistic update, check for duplicates from same source
-    if (!fromDb && lastBroadcasted && 
-        lastBroadcasted.status === status && 
-        lastBroadcasted.source === source &&
-        now - lastBroadcasted.timestamp < 3000) {
-      console.log(`[RealtimeService] Skipping duplicate optimistic broadcast for ${interpreterId} from ${source}`);
-      return;
-    }
-    
-    // Update tracking
-    this.lastBroadcastedStatus.set(interpreterId, { status, timestamp: now, source });
+  public broadcastStatusUpdate(interpreterId: string, status: Profile['status']): void {
+    console.log(`[RealtimeService] Broadcasting status update for ${interpreterId}: ${status}`);
     
     // Generate a unique ID for this update to prevent duplicate processing
     const updateId = uuidv4();
@@ -148,14 +130,26 @@ class RealtimeService {
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status,
-        timestamp: now,
-        uuid: updateId,
-        source: source || `realtime-service-${interpreterId}`,
-        fromDb: fromDb
+        timestamp: Date.now(),
+        uuid: updateId 
       });
     }, 0);
+    
+    // Send a second broadcast after a short delay to ensure it propagates
+    // This helps in cases where components might have missed the first event
+    setTimeout(() => {
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status,
+        timestamp: Date.now(),
+        uuid: `${updateId}-followup`
+      });
+    }, 100);
   }
 
+  /**
+   * Subscribe to table changes
+   */
   public subscribeToTable(
     table: string,
     event: 'INSERT' | 'UPDATE' | 'DELETE' | '*',

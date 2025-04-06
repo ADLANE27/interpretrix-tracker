@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -7,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Profile } from '@/types/profile';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 type Status = Profile['status'];
 
@@ -28,8 +26,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const animatedStatusRef = useRef<Status | null>(null);
 
   const effectiveInterpreterId = interpreterId || userId;
 
@@ -42,51 +38,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     initialStatus: currentStatus,
     onStatusChange: (newStatus) => {
       console.log('[StatusButtonsBar] Status updated via realtime:', newStatus);
-      // Trigger animation when status changes
-      if (newStatus !== animatedStatusRef.current) {
-        setIsAnimating(true);
-        animatedStatusRef.current = newStatus;
-        setTimeout(() => {
-          setIsAnimating(false);
-        }, 750);
-      }
     }
   });
-
-  // Listen directly to status update events to ensure we catch all changes
-  useEffect(() => {
-    const handleStatusUpdate = (data: {
-      interpreterId: string;
-      status: Status;
-    }) => {
-      if (data.interpreterId === effectiveInterpreterId && data.status !== animatedStatusRef.current) {
-        console.log(`[StatusButtonsBar] Direct status event received: ${data.status}`);
-        // Trigger animation for this status
-        setIsAnimating(true);
-        animatedStatusRef.current = data.status;
-        setTimeout(() => {
-          setIsAnimating(false);
-        }, 750);
-      }
-    };
-
-    if (effectiveInterpreterId) {
-      eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-    }
-
-    return () => {
-      if (effectiveInterpreterId) {
-        eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      }
-    };
-  }, [effectiveInterpreterId]);
-
-  useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
-      // Handle external status updates
-      console.log(`[StatusButtonsBar] Prop status changed: ${currentStatus}`);
-    }
-  }, [currentStatus, localStatus]);
 
   useEffect(() => {
     if (!interpreterId) {
@@ -153,11 +106,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     
     try {
       console.log(`[StatusButtonsBar] Updating status to ${newStatus}...`);
-      
-      // Trigger animation
-      setIsAnimating(true);
-      animatedStatusRef.current = newStatus;
-      
       const success = await updateStatus(newStatus);
       
       if (!success) {
@@ -182,12 +130,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
         variant: "destructive",
       });
-      setIsAnimating(false);
     } finally {
       setIsUpdating(false);
-      setTimeout(() => {
-        setIsAnimating(false);
-      }, 750);
     }
   };
 
@@ -225,14 +169,14 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
               "py-2 flex-1 justify-center",
               variant === 'compact' ? "px-2 min-w-12" : "px-3 min-w-20",
               isActive 
-                ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg ${isAnimating && isActive ? 'pulse-animation' : ''}` 
+                ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
               "backdrop-blur-sm",
               isUpdating || !isConnected || !effectiveInterpreterId ? "opacity-70 cursor-not-allowed" : ""
             )}
             onClick={() => handleStatusChange(statusKey)}
             whileTap={{ scale: 0.95 }}
-            animate={isActive && isAnimating ? { scale: [1, 1.03, 1] } : {}}
+            animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
             disabled={isUpdating || !isConnected || !effectiveInterpreterId}
           >

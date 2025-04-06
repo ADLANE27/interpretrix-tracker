@@ -5,7 +5,6 @@ import { useOrientation } from "@/hooks/use-orientation";
 import { StatusButtonsBar } from "../StatusButtonsBar";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { realtimeService } from '@/services/realtimeService';
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -21,15 +20,6 @@ export const DashboardHeader = ({
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
   const [isInActiveChat, setIsInActiveChat] = useState(false);
-  
-  // Initialize realtime service for the interpreter dashboard
-  useEffect(() => {
-    if (profile?.id) {
-      console.log('[DashboardHeader] Ensuring interpreter status subscription is active');
-      // Make sure we have a subscription for this interpreter
-      realtimeService.subscribeToInterpreterStatus(profile.id);
-    }
-  }, [profile?.id]);
   
   // Use an effect to update the state whenever data attribute changes
   useEffect(() => {
@@ -70,12 +60,11 @@ export const DashboardHeader = ({
     >
       <div className="h-[56px] md:h-16 flex items-center justify-between">
         <div className="flex-1 mr-4">
-          {showStatusButtons && profile && (
+          {showStatusButtons && (
             <StatusButtonsBar 
-              currentStatus={profile.status} 
+              currentStatus={profile?.status} 
               onStatusChange={onStatusChange}
               variant={isMobile ? 'compact' : 'default'} 
-              interpreterId={profile.id}
             />
           )}
         </div>

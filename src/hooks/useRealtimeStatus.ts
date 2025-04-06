@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { realtimeService } from '@/services/realtime';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE, shouldProcessEvent } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { Profile } from '@/types/profile';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,8 +30,6 @@ export const useRealtimeStatus = ({
   const onStatusChangeRef = useRef(onStatusChange);
   const onConnectionStateChangeRef = useRef(onConnectionStateChange);
   const lastEventIdRef = useRef<string | null>(null);
-  const processedStatusesRef = useRef<{[status: string]: number}>({});
-  const updateSourceRef = useRef<string | null>(null);
   
   // Update refs when props change
   useEffect(() => {
@@ -77,39 +75,19 @@ export const useRealtimeStatus = ({
     interpreterId: string, 
     status: Profile['status'],
     timestamp?: number,
-    uuid?: string,
-    source?: string
+    uuid?: string
   }) => {
     if (!interpreterId || data.interpreterId !== interpreterId) return;
     
-    // Skip processing if this event came from our own source
-    if (data.source && updateSourceRef.current === data.source) {
-      console.log(`[useRealtimeStatus] Ignoring own update from source: ${data.source}`);
-      return;
-    }
-
-    // Check if this is a duplicate event based on expanded criteria
-    if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, data.status, data.uuid)) {
-      console.log(`[useRealtimeStatus] Skipping duplicate or processed status event for ${interpreterId}`);
+    // Prevent duplicate processing of the same event
+    if (data.uuid && data.uuid === lastEventIdRef.current) {
       return;
     }
     
-    // Prevent duplicate processing of the same status value in a short time window
-    const now = Date.now();
-    const lastProcessedTime = processedStatusesRef.current[data.status] || 0;
-    if (now - lastProcessedTime < 2500) { // Increased to 2.5 seconds debounce for same status
-      console.log(`[useRealtimeStatus] Debouncing same status update: ${data.status}`);
-      return;
+    // Update last event ID if provided
+    if (data.uuid) {
+      lastEventIdRef.current = data.uuid;
     }
-    
-    // Log source of status update for debugging
-    if (data.source) {
-      console.log(`[useRealtimeStatus] Status update from source: ${data.source}`);
-    }
-    
-    // Update tracking
-    processedStatusesRef.current[data.status] = now;
-    lastEventIdRef.current = data.uuid || null;
     
     if (data.status !== statusRef.current) {
       console.log(`[useRealtimeStatus] Received status update for ${interpreterId}: ${data.status}`);
@@ -200,20 +178,13 @@ export const useRealtimeStatus = ({
     try {
       console.log(`[useRealtimeStatus] Updating status to ${newStatus} for ${interpreterId}`);
       
-      // Create a unique source identifier for this update
-      const sourceId = `status-update-${interpreterId}-${Date.now()}`;
-      updateSourceRef.current = sourceId;
-      
-      // Track this status update to avoid double-processing
-      processedStatusesRef.current[newStatus] = Date.now();
-      
       // Optimistically update UI immediately
       setStatus(newStatus);
       statusRef.current = newStatus;
       setLastUpdateTime(new Date());
       
       // Broadcast status change immediately for other components
-      realtimeService.broadcastStatusUpdate(interpreterId, newStatus, sourceId);
+      realtimeService.broadcastStatusUpdate(interpreterId, newStatus);
       
       // If not connected, store the pending update
       if (!isConnected) {
@@ -231,11 +202,6 @@ export const useRealtimeStatus = ({
         console.error('[useRealtimeStatus] Error updating status:', error);
         return false;
       }
-      
-      // Clear the source ID after a delay to allow for future updates
-      setTimeout(() => {
-        updateSourceRef.current = null;
-      }, 5000);
       
       return true;
     } catch (error) {
