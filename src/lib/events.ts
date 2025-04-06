@@ -15,16 +15,16 @@ export const eventEmitter = new CustomEventEmitter();
 // Status updates need more listeners due to the number of interpreter cards
 eventEmitter.setMaxListeners(100);
 
-// Time window for deduping events (in ms) - increased from 500ms to 1500ms
-export const EVENT_DEDUPE_WINDOW = 1500;
+// Time window for deduping events (in ms) - increased from 1500ms to 3000ms
+export const EVENT_DEDUPE_WINDOW = 3000;
 
 // Store processed event IDs to avoid duplicate handling
 // Changed from Map to a more complex structure to track both UUID and status
-const processedEvents = new Map<string, {timestamp: number, status?: string, uuid?: string}>();
+const processedEvents = new Map<string, {timestamp: number, status?: string, uuid?: string, source?: string}>();
 
 // Helper to check if an event should be processed (to prevent duplicates)
-// Enhanced to check both event ID and status value
-export const shouldProcessEvent = (eventId: string, eventType: string, status?: string, uuid?: string): boolean => {
+// Enhanced to check both event ID and status value and source
+export const shouldProcessEvent = (eventId: string, eventType: string, status?: string, uuid?: string, source?: string): boolean => {
   const key = `${eventType}-${eventId}`;
   const now = Date.now();
   const lastProcessed = processedEvents.get(key);
@@ -37,6 +37,12 @@ export const shouldProcessEvent = (eventId: string, eventType: string, status?: 
       return false;
     }
     
+    // If source matches and we're within the dedupe window, it's likely a duplicate
+    if (source && lastProcessed.source === source && now - lastProcessed.timestamp < EVENT_DEDUPE_WINDOW) {
+      console.log(`[Events] Duplicate from same source detected: ${source}`);
+      return false;
+    }
+    
     // If status matches and we're in the debounce window, treat as duplicate
     if (status && lastProcessed.status === status && now - lastProcessed.timestamp < EVENT_DEDUPE_WINDOW) {
       console.log(`[Events] Duplicate status update detected: ${status}`);
@@ -44,7 +50,7 @@ export const shouldProcessEvent = (eventId: string, eventType: string, status?: 
     }
     
     // Otherwise, if we're in the normal debounce window, don't process
-    if (now - lastProcessed.timestamp < EVENT_DEDUPE_WINDOW) {
+    if (now - lastProcessed.timestamp < EVENT_DEDUPE_WINDOW / 2) {  // Use shorter window for general deduplication
       return false;
     }
   }
@@ -53,14 +59,15 @@ export const shouldProcessEvent = (eventId: string, eventType: string, status?: 
   processedEvents.set(key, {
     timestamp: now,
     status,
-    uuid
+    uuid,
+    source
   });
   
   // Clean up old entries every 100 events
   if (processedEvents.size > 500) {
     const keysToDelete: string[] = [];
     processedEvents.forEach((data, eventKey) => {
-      if (now - data.timestamp > 10000) { // 10 seconds retention (increased from 5s)
+      if (now - data.timestamp > 30000) { // 30 seconds retention (increased from 10s)
         keysToDelete.push(eventKey);
       }
     });

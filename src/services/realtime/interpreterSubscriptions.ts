@@ -36,8 +36,11 @@ export function createInterpreterStatusSubscription(
           return;
         }
         
+        // Generate a unique ID for this update to prevent duplicate processing
+        const uuid = uuidv4();
+        
         // Check if this event should be processed
-        if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, payload.new.status)) {
+        if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, payload.new.status, uuid, 'supabase-db')) {
           console.log(`[RealtimeService] Skipping processed status update for ${interpreterId}`);
           return;
         }
@@ -50,13 +53,13 @@ export function createInterpreterStatusSubscription(
         
         // Broadcast the event for other components
         // Add source identifier to track origin of this update
-        const uuid = uuidv4();
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
           interpreterId,
           status: payload.new.status,
           timestamp: now,
           uuid,
-          source: `supabase-subscription-${interpreterId}`
+          source: `supabase-subscription-${interpreterId}`,
+          fromDb: true
         });
       }
     })

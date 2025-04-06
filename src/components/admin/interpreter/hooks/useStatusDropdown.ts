@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
@@ -6,7 +7,7 @@ import { realtimeService } from "@/services/realtime";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, shouldProcessEvent } from '@/lib/events';
 import { v4 as uuidv4 } from 'uuid';
 
-const STATUS_UPDATE_DEBOUNCE_TIME = 800; // Increased from 300ms to 800ms
+const STATUS_UPDATE_DEBOUNCE_TIME = 1200; // Increased from 800ms to 1.2s
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -18,13 +19,14 @@ export function useStatusDropdown(
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isAnimating, setAnimating] = useState(false);
   const { toast } = useToast();
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryAttemptsRef = useRef(0);
   const lastEventIdRef = useRef<string | null>(null);
   const lastStatusUpdateRef = useRef<number>(0);
   const toastShownForStatusRef = useRef<{[key: string]: boolean}>({});
-  const [animating, setAnimating] = useState(false);
+  const updateSourceRef = useRef<string | null>(null);
   
   const {
     status: hookStatus,
@@ -42,19 +44,7 @@ export function useStatusDropdown(
     onStatusChange: (newStatus) => {
       console.log(`[useStatusDropdown] Status from hook updated to ${newStatus} for ${interpreterId}`);
       
-      // Prevent updates if we've just sent one (avoid feedback loops)
-      const now = Date.now();
-      if (now - lastStatusUpdateRef.current < STATUS_UPDATE_DEBOUNCE_TIME) {
-        console.log(`[useStatusDropdown] Ignoring status update during debounce period`);
-        return;
-      }
-      
-      // Check if this is a duplicate or already handled status update
-      if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, newStatus)) {
-        console.log(`[useStatusDropdown] Skipping duplicate status update for ${interpreterId}: ${newStatus}`);
-        return;
-      }
-      
+      // This callback is only for status changes from the hook, not our dropdown UI
       // Set animating state first for visual feedback
       setAnimating(true);
       setTimeout(() => setAnimating(false), 800);
@@ -71,13 +61,23 @@ export function useStatusDropdown(
       status: Status,
       timestamp?: number,
       uuid?: string,
-      source?: string
+      source?: string,
+      fromDb?: boolean
     }) => {
       if (data.interpreterId !== interpreterId) return;
       
-      // Prevent processing our own triggered events to avoid loops
-      if (data.source === 'dropdown-' + interpreterId) {
-        console.log(`[useStatusDropdown] Ignoring self-triggered event`);
+      // Skip processing if this is our own event
+      if (data.source && updateSourceRef.current === data.source) {
+        console.log(`[useStatusDropdown] Ignoring self-triggered event: ${data.source}`);
+        return;
+      }
+      
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastStatusUpdateRef.current;
+      
+      // Only apply short debounce window for non-DB events to prevent UI flicker
+      if (!data.fromDb && timeSinceLastUpdate < STATUS_UPDATE_DEBOUNCE_TIME) {
+        console.log(`[useStatusDropdown] Ignoring non-DB update during debounce period`);
         return;
       }
       
@@ -92,16 +92,8 @@ export function useStatusDropdown(
         lastEventIdRef.current = data.uuid;
       }
       
-      const now = Date.now();
-      const timeSinceLastUpdate = now - lastStatusUpdateRef.current;
-      
-      if (timeSinceLastUpdate < STATUS_UPDATE_DEBOUNCE_TIME) {
-        console.log(`[useStatusDropdown] Ignoring status update during debounce period`);
-        return;
-      }
-      
       // Check if this is a duplicate status update
-      if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, data.status, data.uuid)) {
+      if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, data.status, data.uuid, data.source)) {
         console.log(`[useStatusDropdown] Skipping duplicate status event for ${interpreterId}: ${data.status}`);
         return;
       }
@@ -117,7 +109,7 @@ export function useStatusDropdown(
         
         // Only show toast for status updates from external sources (not from this dropdown)
         // and only once per status to avoid toast spam
-        if (!data.source && !toastShownForStatusRef.current[data.status]) {
+        if (!data.source?.includes(`dropdown-${interpreterId}`) && !toastShownForStatusRef.current[data.status]) {
           toast({
             title: "Statut mis à jour",
             description: `Le statut a été mis à jour en "${data.status}"`,
@@ -166,7 +158,10 @@ export function useStatusDropdown(
       
       // Set animating state for visual feedback
       setAnimating(true);
-      setTimeout(() => setAnimating(false), 800);
+      
+      // Create a unique source ID for this update
+      const uniqueSourceId = `dropdown-${interpreterId}-${Date.now()}`;
+      updateSourceRef.current = uniqueSourceId;
       
       // Update local state immediately for responsive UI
       setLocalStatus(pendingStatus);
@@ -188,14 +183,13 @@ export function useStatusDropdown(
       
       // Broadcast status change for immediate UI updates across components
       // Add source identifier to prevent event loops
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-        interpreterId,
-        status: pendingStatus,
-        timestamp: Date.now(),
-        uuid: updateId, // Add unique ID to prevent event deduplication issues
-        source: 'dropdown-' + interpreterId // Track this dropdown as the source
-      });
+      realtimeService.broadcastStatusUpdate(
+        interpreterId, 
+        pendingStatus, 
+        uniqueSourceId
+      );
       
+      // Update the server
       const success = await updateStatus(pendingStatus);
       
       if (!success) {
@@ -207,12 +201,22 @@ export function useStatusDropdown(
         description: `Le statut a été changé en "${pendingStatus}"`,
       });
       
+      // Reset animation after a delay
+      setTimeout(() => {
+        setAnimating(false);
+      }, 800);
+      
       // Reset toast tracking after a delay
       setTimeout(() => {
         if (toastShownForStatusRef.current[pendingStatus]) {
           toastShownForStatusRef.current[pendingStatus] = false;
         }
       }, 10000);
+      
+      // Reset the source ID after a delay to allow for future updates
+      setTimeout(() => {
+        updateSourceRef.current = null;
+      }, 5000);
     } catch (error: any) {
       console.error('[StatusDropdown] Error:', error);
       
@@ -221,6 +225,8 @@ export function useStatusDropdown(
         description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
         variant: "destructive",
       });
+      
+      setAnimating(false);
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);
@@ -259,7 +265,7 @@ export function useStatusDropdown(
     isConfirmDialogOpen,
     isUpdating,
     isConnected,
-    isAnimating: animating,
+    isAnimating,
     handleStatusSelect,
     handleConfirm,
     handleCancel,

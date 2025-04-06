@@ -31,6 +31,7 @@ export const useRealtimeStatus = ({
   const onConnectionStateChangeRef = useRef(onConnectionStateChange);
   const lastEventIdRef = useRef<string | null>(null);
   const processedStatusesRef = useRef<{[status: string]: number}>({});
+  const updateSourceRef = useRef<string | null>(null);
   
   // Update refs when props change
   useEffect(() => {
@@ -81,6 +82,12 @@ export const useRealtimeStatus = ({
   }) => {
     if (!interpreterId || data.interpreterId !== interpreterId) return;
     
+    // Skip processing if this event came from our own source
+    if (data.source && updateSourceRef.current === data.source) {
+      console.log(`[useRealtimeStatus] Ignoring own update from source: ${data.source}`);
+      return;
+    }
+
     // Check if this is a duplicate event based on expanded criteria
     if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, data.status, data.uuid)) {
       console.log(`[useRealtimeStatus] Skipping duplicate or processed status event for ${interpreterId}`);
@@ -90,7 +97,7 @@ export const useRealtimeStatus = ({
     // Prevent duplicate processing of the same status value in a short time window
     const now = Date.now();
     const lastProcessedTime = processedStatusesRef.current[data.status] || 0;
-    if (now - lastProcessedTime < 1500) { // 1.5 second debounce for same status
+    if (now - lastProcessedTime < 2500) { // Increased to 2.5 seconds debounce for same status
       console.log(`[useRealtimeStatus] Debouncing same status update: ${data.status}`);
       return;
     }
@@ -193,6 +200,10 @@ export const useRealtimeStatus = ({
     try {
       console.log(`[useRealtimeStatus] Updating status to ${newStatus} for ${interpreterId}`);
       
+      // Create a unique source identifier for this update
+      const sourceId = `status-update-${interpreterId}-${Date.now()}`;
+      updateSourceRef.current = sourceId;
+      
       // Track this status update to avoid double-processing
       processedStatusesRef.current[newStatus] = Date.now();
       
@@ -202,7 +213,7 @@ export const useRealtimeStatus = ({
       setLastUpdateTime(new Date());
       
       // Broadcast status change immediately for other components
-      realtimeService.broadcastStatusUpdate(interpreterId, newStatus, `realtimeStatus-${interpreterId}`);
+      realtimeService.broadcastStatusUpdate(interpreterId, newStatus, sourceId);
       
       // If not connected, store the pending update
       if (!isConnected) {
@@ -220,6 +231,11 @@ export const useRealtimeStatus = ({
         console.error('[useRealtimeStatus] Error updating status:', error);
         return false;
       }
+      
+      // Clear the source ID after a delay to allow for future updates
+      setTimeout(() => {
+        updateSourceRef.current = null;
+      }, 5000);
       
       return true;
     } catch (error) {
