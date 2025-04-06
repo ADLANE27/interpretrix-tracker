@@ -1,10 +1,11 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, shouldProcessEvent } from '@/lib/events';
 import { EventDebouncer } from './eventDebouncer';
 import { SubscriptionStatus, createSubscriptionStatus } from './types';
 import { Profile } from '@/types/profile';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Creates a subscription to an interpreter's status changes
@@ -30,20 +31,32 @@ export function createInterpreterStatusSubscription(
         const eventKey = `status-${interpreterId}-${payload.new.status}`;
         const now = Date.now();
         
-        if (!eventDebouncer.shouldProcessEvent(eventKey, now)) {
+        if (!eventDebouncer.shouldProcessEvent(eventKey, now, payload.new.status)) {
+          console.log(`[RealtimeService] Deduplicated status update for ${interpreterId}`);
           return;
         }
         
-        console.log(`[RealtimeService] Status update for ${interpreterId}: ${payload.new.status}`);
+        // Check if this event should be processed
+        if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, payload.new.status)) {
+          console.log(`[RealtimeService] Skipping processed status update for ${interpreterId}`);
+          return;
+        }
+        
+        console.log(`[RealtimeService] Status update from DB for ${interpreterId}: ${payload.new.status}`);
         
         if (onStatusChange) {
           onStatusChange(payload.new.status as Profile['status']);
         }
         
         // Broadcast the event for other components
+        // Add source identifier to track origin of this update
+        const uuid = uuidv4();
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
           interpreterId,
-          status: payload.new.status
+          status: payload.new.status,
+          timestamp: now,
+          uuid,
+          source: `supabase-subscription-${interpreterId}`
         });
       }
     })

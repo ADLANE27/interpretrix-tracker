@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { createInterpreterStatusSubscription } from './interpreterSubscriptions';
@@ -14,9 +13,10 @@ class RealtimeService {
   private eventDebouncer: EventDebouncer;
   private connectionMonitor: ConnectionMonitor | null = null;
   private initialized: boolean = false;
+  private lastBroadcastedStatus: Map<string, {status: string, timestamp: number}> = new Map();
 
   constructor() {
-    this.eventDebouncer = new EventDebouncer();
+    this.eventDebouncer = new EventDebouncer(1500); // Increased debounce time to 1.5 seconds
   }
 
   public isInitialized(): boolean {
@@ -119,8 +119,22 @@ class RealtimeService {
   /**
    * Update an interpreter's status directly (optimistic update)
    */
-  public broadcastStatusUpdate(interpreterId: string, status: Profile['status']): void {
+  public broadcastStatusUpdate(interpreterId: string, status: Profile['status'], source?: string): void {
     console.log(`[RealtimeService] Broadcasting status update for ${interpreterId}: ${status}`);
+    
+    // Check if we've recently broadcasted the same status to avoid duplicate broadcasts
+    const now = Date.now();
+    const lastBroadcasted = this.lastBroadcastedStatus.get(interpreterId);
+    
+    if (lastBroadcasted && 
+        lastBroadcasted.status === status && 
+        now - lastBroadcasted.timestamp < 1500) { // 1.5 seconds debounce
+      console.log(`[RealtimeService] Skipping duplicate broadcast for ${interpreterId}`);
+      return;
+    }
+    
+    // Update tracking
+    this.lastBroadcastedStatus.set(interpreterId, { status, timestamp: now });
     
     // Generate a unique ID for this update to prevent duplicate processing
     const updateId = uuidv4();
@@ -130,21 +144,13 @@ class RealtimeService {
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status,
-        timestamp: Date.now(),
-        uuid: updateId 
+        timestamp: now,
+        uuid: updateId,
+        source: source || `realtime-service-${interpreterId}`
       });
     }, 0);
     
-    // Send a second broadcast after a short delay to ensure it propagates
-    // This helps in cases where components might have missed the first event
-    setTimeout(() => {
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
-        interpreterId,
-        status,
-        timestamp: Date.now(),
-        uuid: `${updateId}-followup`
-      });
-    }, 100);
+    // We're removing the second broadcast to reduce duplicate events
   }
 
   /**

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Status, StatusConfigItem } from "./types/status-types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,6 +29,20 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   const StatusIcon = statusConfig.icon;
   const displayLabel = isMobile ? statusConfig.mobileLabel : statusConfig.label;
   
+  // Local animation state to control animation timing
+  const [localAnimating, setLocalAnimating] = useState(false);
+  
+  // Handle animation state changes
+  useEffect(() => {
+    if (isAnimating && !localAnimating) {
+      setLocalAnimating(true);
+      const timer = setTimeout(() => {
+        setLocalAnimating(false);
+      }, 750); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [isAnimating, localAnimating]);
+  
   // Handle click with error prevention
   const handleClick = (e: React.MouseEvent) => {
     if (disabled || !isConnected) return;
@@ -41,7 +55,7 @@ export const StatusTrigger: React.FC<StatusTriggerProps> = ({
   };
   
   // Add visual indicator for connection status and animation
-  const animationClass = isAnimating ? 'status-change-animation' : '';
+  const animationClass = localAnimating ? 'status-change-animation' : '';
   const connectionStyles = !isConnected 
     ? "opacity-70 cursor-not-allowed" 
     : disabled 

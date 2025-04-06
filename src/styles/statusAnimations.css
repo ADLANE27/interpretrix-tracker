@@ -20,4 +20,5 @@
 
 .status-change-animation {
   animation: pulse-status 0.75s ease-in-out;
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }

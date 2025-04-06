@@ -1,13 +1,12 @@
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Status } from "../types/status-types";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { realtimeService } from "@/services/realtime";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE, shouldProcessEvent } from '@/lib/events';
 import { v4 as uuidv4 } from 'uuid';
 
-const STATUS_UPDATE_DEBOUNCE_TIME = 300; // ms
+const STATUS_UPDATE_DEBOUNCE_TIME = 800; // Increased from 300ms to 800ms
 
 export function useStatusDropdown(
   interpreterId: string,
@@ -24,6 +23,8 @@ export function useStatusDropdown(
   const retryAttemptsRef = useRef(0);
   const lastEventIdRef = useRef<string | null>(null);
   const lastStatusUpdateRef = useRef<number>(0);
+  const toastShownForStatusRef = useRef<{[key: string]: boolean}>({});
+  const [animating, setAnimating] = useState(false);
   
   const {
     status: hookStatus,
@@ -48,6 +49,17 @@ export function useStatusDropdown(
         return;
       }
       
+      // Check if this is a duplicate or already handled status update
+      if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, newStatus)) {
+        console.log(`[useStatusDropdown] Skipping duplicate status update for ${interpreterId}: ${newStatus}`);
+        return;
+      }
+      
+      // Set animating state first for visual feedback
+      setAnimating(true);
+      setTimeout(() => setAnimating(false), 800);
+      
+      // Update local status
       setLocalStatus(newStatus);
     }
   });
@@ -58,9 +70,16 @@ export function useStatusDropdown(
       interpreterId: string,
       status: Status,
       timestamp?: number,
-      uuid?: string
+      uuid?: string,
+      source?: string
     }) => {
       if (data.interpreterId !== interpreterId) return;
+      
+      // Prevent processing our own triggered events to avoid loops
+      if (data.source === 'dropdown-' + interpreterId) {
+        console.log(`[useStatusDropdown] Ignoring self-triggered event`);
+        return;
+      }
       
       // Prevent duplicate event processing
       if (data.uuid && data.uuid === lastEventIdRef.current) {
@@ -81,9 +100,35 @@ export function useStatusDropdown(
         return;
       }
       
+      // Check if this is a duplicate status update
+      if (!shouldProcessEvent(interpreterId, EVENT_INTERPRETER_STATUS_UPDATE, data.status, data.uuid)) {
+        console.log(`[useStatusDropdown] Skipping duplicate status event for ${interpreterId}: ${data.status}`);
+        return;
+      }
+      
       if (data.status !== localStatus) {
         console.log(`[useStatusDropdown] Received status update event for ${interpreterId}: ${data.status}`);
+        
+        // Set animating state for visual feedback
+        setAnimating(true);
+        setTimeout(() => setAnimating(false), 800);
+        
         setLocalStatus(data.status);
+        
+        // Only show toast for status updates from external sources (not from this dropdown)
+        // and only once per status to avoid toast spam
+        if (!data.source && !toastShownForStatusRef.current[data.status]) {
+          toast({
+            title: "Statut mis à jour",
+            description: `Le statut a été mis à jour en "${data.status}"`,
+          });
+          toastShownForStatusRef.current[data.status] = true;
+          
+          // Reset toast tracking after a delay
+          setTimeout(() => {
+            toastShownForStatusRef.current[data.status] = false;
+          }, 10000);
+        }
       }
     };
     
@@ -92,7 +137,7 @@ export function useStatusDropdown(
     return () => {
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     };
-  }, [interpreterId, localStatus]);
+  }, [interpreterId, localStatus, toast]);
 
   // Keep local status in sync with current status prop
   useEffect(() => {
@@ -119,6 +164,10 @@ export function useStatusDropdown(
       setIsUpdating(true);
       console.log(`[StatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      // Set animating state for visual feedback
+      setAnimating(true);
+      setTimeout(() => setAnimating(false), 800);
+      
       // Update local state immediately for responsive UI
       setLocalStatus(pendingStatus);
       
@@ -134,12 +183,17 @@ export function useStatusDropdown(
       const updateId = uuidv4();
       lastEventIdRef.current = updateId;
       
+      // Reset toast tracking for this status since we're actively changing it
+      toastShownForStatusRef.current[pendingStatus] = true;
+      
       // Broadcast status change for immediate UI updates across components
+      // Add source identifier to prevent event loops
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: pendingStatus,
         timestamp: Date.now(),
-        uuid: updateId // Add unique ID to prevent event deduplication issues
+        uuid: updateId, // Add unique ID to prevent event deduplication issues
+        source: 'dropdown-' + interpreterId // Track this dropdown as the source
       });
       
       const success = await updateStatus(pendingStatus);
@@ -152,6 +206,13 @@ export function useStatusDropdown(
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${pendingStatus}"`,
       });
+      
+      // Reset toast tracking after a delay
+      setTimeout(() => {
+        if (toastShownForStatusRef.current[pendingStatus]) {
+          toastShownForStatusRef.current[pendingStatus] = false;
+        }
+      }, 10000);
     } catch (error: any) {
       console.error('[StatusDropdown] Error:', error);
       
@@ -198,6 +259,7 @@ export function useStatusDropdown(
     isConfirmDialogOpen,
     isUpdating,
     isConnected,
+    isAnimating: animating,
     handleStatusSelect,
     handleConfirm,
     handleCancel,

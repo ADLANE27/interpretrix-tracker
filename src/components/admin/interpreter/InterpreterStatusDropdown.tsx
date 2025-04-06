@@ -38,6 +38,7 @@ export const InterpreterStatusDropdown = ({
     isConfirmDialogOpen,
     isUpdating,
     isConnected,
+    isAnimating,
     handleStatusSelect,
     handleConfirm,
     handleCancel,
@@ -45,7 +46,6 @@ export const InterpreterStatusDropdown = ({
   } = useStatusDropdown(interpreterId, currentStatus, onStatusChange);
 
   const [hasConnectionError, setHasConnectionError] = useState(false);
-  const [animating, setAnimating] = useState(false);
   
   // Track ongoing connection issues
   useEffect(() => {
@@ -60,19 +60,6 @@ export const InterpreterStatusDropdown = ({
       setHasConnectionError(false);
     }
   }, [isConnected]);
-  
-  // Animation handler for status changes
-  useEffect(() => {
-    if (animating) return;
-    
-    // Trigger animation on status change
-    setAnimating(true);
-    const timer = setTimeout(() => {
-      setAnimating(false);
-    }, 750); // Animation duration
-    
-    return () => clearTimeout(timer);
-  }, [localStatus]);
   
   // Force a connection retry if needed
   const handleForceRetry = () => {
@@ -97,7 +84,7 @@ export const InterpreterStatusDropdown = ({
                         disabled={!isConnected || isUpdating}
                         isConnected={isConnected}
                         onClick={handleForceRetry}
-                        isAnimating={animating}
+                        isAnimating={isAnimating}
                       />
                       <span className="absolute -top-1 -right-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -122,7 +109,7 @@ export const InterpreterStatusDropdown = ({
                 className={className}
                 disabled={!isConnected || isUpdating}
                 isConnected={isConnected}
-                isAnimating={animating}
+                isAnimating={isAnimating}
               />
             )}
           </div>
