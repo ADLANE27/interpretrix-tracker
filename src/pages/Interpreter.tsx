@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/profile';
-import InterpreterDashboard from '@/components/interpreter/InterpreterDashboard';
 import { realtimeService } from '@/services/realtimeService';
+import { InterpreterDashboard } from '@/components/InterpreterDashboard';
 
 const Interpreter = () => {
   const navigate = useNavigate();
@@ -30,19 +30,37 @@ const Interpreter = () => {
         }
 
         // Fetch interpreter profile
-        const { data: profile, error } = await supabase
+        const { data: profileData, error } = await supabase
           .from('interpreter_profiles')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        if (error || !profile) {
+        if (error || !profileData) {
           console.error('[Interpreter] Error fetching profile:', error);
           navigate('/login');
           return;
         }
 
-        setProfile(profile);
+        // Transform languages from string[] to the required format
+        const transformedLanguages = (profileData.languages || []).map((lang: string) => {
+          const parts = lang.split('→').map(part => part.trim());
+          return { 
+            source: parts[0] || '', 
+            target: parts[1] || '' 
+          };
+        });
+
+        // Create a properly typed profile object
+        const formattedProfile: Profile = {
+          ...profileData,
+          languages: transformedLanguages,
+          // Ensure other properties match the Profile type
+          status: profileData.status as Profile['status'] || 'available',
+          work_location: profileData.work_location as any || 'on_site'
+        };
+
+        setProfile(formattedProfile);
       } catch (error) {
         console.error('[Interpreter] Error during auth check:', error);
         navigate('/login');
