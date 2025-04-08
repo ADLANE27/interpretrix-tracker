@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 import { CompanyType } from "@/types/privateReservation";
 import { useTableSubscription } from "@/hooks/useTableSubscription";
+import { parseISO } from "date-fns";
 
 interface CalendarMission {
   mission_id: string;
@@ -101,7 +102,7 @@ export const AdminMissionsCalendar = () => {
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
           if (!mission.scheduled_start_time) return false;
-          const missionDate = new Date(mission.scheduled_start_time);
+          const missionDate = parseISO(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
       }
@@ -109,8 +110,9 @@ export const AdminMissionsCalendar = () => {
       default: // month
         return missions.filter(mission => {
           if (!mission.scheduled_start_time) return false;
-          const missionDate = new Date(mission.scheduled_start_time);
-          return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
+          const missionDate = parseISO(mission.scheduled_start_time);
+          return startOfDay(missionDate).toISOString().split('T')[0] === 
+                 startOfDay(selectedDate).toISOString().split('T')[0];
         });
     }
   };

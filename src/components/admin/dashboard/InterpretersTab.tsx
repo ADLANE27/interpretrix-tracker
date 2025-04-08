@@ -248,8 +248,31 @@ export const InterpretersTab: React.FC = () => {
           };
         }
         const now = new Date();
+        
+        // Convertir 'now' en chaîne de date UTC pour la comparaison
+        const nowDateString = now.toISOString().split('T')[0];
 
-        const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
+        // Filtrer pour ne prendre que les réservations d'aujourd'hui et à venir
+        const todaysReservations = interpreter.private_reservations?.filter(reservation => {
+          if (!reservation?.start_time) return false;
+          
+          // Extraire la date de début sans heure
+          const reservationDate = reservation.start_time.split('T')[0];
+          
+          // Inclure seulement les réservations pour aujourd'hui et qui sont programmées
+          return reservationDate === nowDateString && reservation.status === 'scheduled';
+        });
+        
+        // Trier les réservations par heure de début
+        todaysReservations?.sort((a, b) => {
+          if (!a.start_time || !b.start_time) return 0;
+          return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+        });
+        
+        // Prendre la première réservation à venir comme prochaine mission
+        const nextReservation = todaysReservations && todaysReservations.length > 0 
+          ? todaysReservations[0] 
+          : null;
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         
@@ -293,25 +316,32 @@ export const InterpretersTab: React.FC = () => {
 
   const fetchTodayMissions = async () => {
     try {
+      // Créer des dates pour aujourd'hui sans conversion de fuseau horaire
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const todayStart = today.toISOString();
-      const tomorrowStart = tomorrow.toISOString();
-      console.log("[InterpretersTab] Fetching today's missions", todayStart, tomorrowStart);
+      const todayDateString = today.toISOString().split('T')[0];
+      const todayStart = `${todayDateString}T00:00:00`;
+      const todayEnd = `${todayDateString}T23:59:59`;
+      
+      console.log("[InterpretersTab] Fetching today's missions", todayStart, todayEnd);
 
       const {
         data: scheduledMissions,
         error: scheduledError
-      } = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
+      } = await supabase.from("interpretation_missions").select("id")
+        .eq("mission_type", "scheduled")
+        .gte("scheduled_start_time", todayStart)
+        .lt("scheduled_start_time", todayEnd);
       if (scheduledError) throw scheduledError;
 
       const {
         data: privateReservations,
         error: reservationsError
-      } = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
+      } = await supabase.from("private_reservations").select("id")
+        .eq("status", "scheduled")
+        .gte("start_time", todayStart)
+        .lt("start_time", todayEnd);
       if (reservationsError) throw reservationsError;
+      
       const scheduledCount = scheduledMissions?.length || 0;
       const reservationsCount = privateReservations?.length || 0;
       const totalMissionsToday = scheduledCount + reservationsCount;

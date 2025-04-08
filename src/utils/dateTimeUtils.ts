@@ -30,7 +30,7 @@ export const formatDateDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
   
   try {
-    // Parse without timezone conversion
+    // Parse the ISO string directly without timezone adjustments
     const date = parseISO(dateString);
     return format(date, 'EEEE d MMMM yyyy', { locale: fr });
   } catch (error) {

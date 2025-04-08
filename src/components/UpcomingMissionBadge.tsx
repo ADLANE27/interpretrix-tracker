@@ -1,3 +1,4 @@
+
 import { Clock } from "lucide-react";
 import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -55,8 +56,9 @@ export const UpcomingMissionBadge = ({
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
     
+    // Utiliser directement le format de date correct sans conversion de fuseau horaire
     const missionDate = useShortDateFormat 
-      ? format(parseISO(startTime), 'dd/MM/yyyy')
+      ? format(missionStartDate, 'dd/MM/yyyy')
       : formatDateDisplay(startTime);
 
     switch (status) {

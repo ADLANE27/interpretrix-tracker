@@ -84,10 +84,12 @@ export const useReservations = ({
       }
 
       if (startDateFilter) {
+        // Utiliser le début du jour en UTC sans conversion
         query = query.gte('start_time', `${startDateFilter}T00:00:00`);
       }
 
       if (endDateFilter) {
+        // Utiliser la fin du jour en UTC sans conversion
         query = query.lte('start_time', `${endDateFilter}T23:59:59`);
       }
 
