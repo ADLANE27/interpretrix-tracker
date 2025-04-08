@@ -1,12 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED, EVENT_NOTIFICATION_SETTINGS_UPDATED } from '@/lib/events';
+import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/notificationSound';
 import { AtSign, MessageSquare, Reply } from 'lucide-react';
-import { useBrowserNotification, EnhancedNotificationOptions } from '@/hooks/useBrowserNotification';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 
 const NOTIFICATION_TRANSLATIONS = {
   newMessage: {
@@ -38,36 +38,13 @@ const NOTIFICATION_TRANSLATIONS = {
 export const useGlobalNotification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { permission, requestPermission, showNotification, settings } = useBrowserNotification();
-  const [userRole, setUserRole] = useState<'admin' | 'interpreter' | null>(null);
+  const { permission, requestPermission, showNotification } = useBrowserNotification();
 
   useEffect(() => {
-    // Request permission automatically when the hook is used
+    // Demander la permission dès le chargement du composant
     if (permission !== 'granted') {
       requestPermission();
     }
-    
-    // Determine user role for proper redirection
-    const checkUserRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (data) {
-          setUserRole(data.role as 'admin' | 'interpreter');
-        }
-      } catch (error) {
-        console.error('[useGlobalNotification] Error determining user role:', error);
-      }
-    };
-    
-    checkUserRole();
     
     console.log('[GlobalNotification] Setting up global notification listeners');
     
@@ -119,17 +96,11 @@ export const useGlobalNotification = () => {
         console.log('[GlobalNotification] Is reply to user message:', isReplyToUserMessage);
         
         let title, description, icon, channelName = channelData?.name || 'un canal';
-        let notificationType: 'message' | 'mention' | 'reply' = 'message';
-        
-        // Determine redirect path based on user role
-        const redirectPath = userRole === 'admin' ? '/admin/messages' : '/interpreter/messages';
-        const messageUrl = `${redirectPath}?channel=${data.channelId}&message=${data.message.id}`;
         
         if (hasMention) {
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
           description = `${sender.name} vous a mentionné dans ${channelName}`;
           icon = AtSign;
-          notificationType = 'mention';
           console.log('[GlobalNotification] Using mention notification in French:', {
             title,
             description
@@ -138,7 +109,6 @@ export const useGlobalNotification = () => {
           title = NOTIFICATION_TRANSLATIONS.threadReplyNotice.fr;
           description = `${sender.name} a répondu à votre message dans ${channelName}`;
           icon = Reply;
-          notificationType = 'reply';
           console.log('[GlobalNotification] Using thread reply notification in French:', {
             title,
             description
@@ -155,6 +125,16 @@ export const useGlobalNotification = () => {
           
           console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
           
+          // Déterminer le chemin de redirection en fonction du rôle de l'utilisateur
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userData.user.id)
+            .single();
+            
+          const userRole = roleData?.role;
+          const redirectPath = userRole === 'admin' ? '/admin/messages' : '/interpreter/messages';
+          
           // Afficher une notification toast dans l'application
           toast({
             title: title,
@@ -163,7 +143,7 @@ export const useGlobalNotification = () => {
             action: (
               <button 
                 className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1.5"
-                onClick={() => navigate(messageUrl)}
+                onClick={() => navigate(redirectPath)}
               >
                 {icon && React.createElement(icon, { className: "w-3 h-3" })}
                 {NOTIFICATION_TRANSLATIONS.viewButton.fr}
@@ -174,22 +154,15 @@ export const useGlobalNotification = () => {
           
           // Envoyer également une notification du navigateur si l'utilisateur a accordé la permission
           if (permission === 'granted') {
-            const notificationOptions: EnhancedNotificationOptions = {
+            showNotification(title, {
               body: description,
               tag: `message-${data.message.id}`,
               icon: '/icon.svg',
-              badge: '/icon.svg',
-              requireInteraction: true, // Make sure notification persists on mobile/tablet
               data: {
-                url: messageUrl,
-                messageId: data.message.id,
-                channelId: data.channelId,
-                senderId: data.message.sender_id,
-                type: notificationType
-              }
-            };
-            
-            showNotification(title, notificationOptions);
+                url: redirectPath
+              },
+              requireInteraction: true
+            });
           }
         }
       } catch (error) {
@@ -204,7 +177,7 @@ export const useGlobalNotification = () => {
       console.log('[GlobalNotification] Cleaning up global notification listeners');
       eventEmitter.off(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     };
-  }, [toast, navigate, permission, requestPermission, showNotification, settings, userRole]);
+  }, [toast, navigate, permission, requestPermission, showNotification]);
   
   return null;
 };

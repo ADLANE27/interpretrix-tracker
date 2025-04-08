@@ -1025,7 +1025,9 @@ export type Database = {
     }
     Functions: {
       batch_get_message_sender_details: {
-        Args: { p_sender_ids: string[] }
+        Args: {
+          p_sender_ids: string[]
+        }
         Returns: {
           id: string
           name: string
@@ -1033,7 +1035,9 @@ export type Database = {
         }[]
       }
       bytea_to_text: {
-        Args: { data: string }
+        Args: {
+          data: string
+        }
         Returns: string
       }
       check_interpreter_availability: {
@@ -1046,15 +1050,22 @@ export type Database = {
         Returns: boolean
       }
       check_user_is_admin: {
-        Args: { user_id: string }
+        Args: {
+          user_id: string
+        }
         Returns: boolean
       }
       enable_realtime_for_table: {
-        Args: { table_name: string }
+        Args: {
+          table_name: string
+        }
         Returns: Json
       }
       get_available_channel_users: {
-        Args: { channel_id: string; search_query: string }
+        Args: {
+          channel_id: string
+          search_query: string
+        }
         Returns: {
           user_id: string
           email: string
@@ -1064,7 +1075,10 @@ export type Database = {
         }[]
       }
       get_channel_interpreters_by_language: {
-        Args: { p_channel_id: string; p_target_language: string }
+        Args: {
+          p_channel_id: string
+          p_target_language: string
+        }
         Returns: {
           user_id: string
           email: string
@@ -1074,7 +1088,9 @@ export type Database = {
         }[]
       }
       get_channel_members: {
-        Args: { channel_id: string }
+        Args: {
+          channel_id: string
+        }
         Returns: {
           user_id: string
           email: string
@@ -1085,13 +1101,17 @@ export type Database = {
         }[]
       }
       get_channel_target_languages: {
-        Args: { channel_id: string }
+        Args: {
+          channel_id: string
+        }
         Returns: {
           target_language: string
         }[]
       }
       get_channels_with_display_names: {
-        Args: { current_user_id: string }
+        Args: {
+          current_user_id: string
+        }
         Returns: {
           id: string
           display_name: string
@@ -1103,15 +1123,21 @@ export type Database = {
         }[]
       }
       get_employment_status_label: {
-        Args: { status: Database["public"]["Enums"]["employment_status"] }
+        Args: {
+          status: Database["public"]["Enums"]["employment_status"]
+        }
         Returns: string
       }
       get_full_name_from_metadata: {
-        Args: { metadata: Json }
+        Args: {
+          metadata: Json
+        }
         Returns: string
       }
       get_interpreter_with_status: {
-        Args: { p_interpreter_id: string }
+        Args: {
+          p_interpreter_id: string
+        }
         Returns: {
           id: string
           email: string
@@ -1125,7 +1151,9 @@ export type Database = {
         }[]
       }
       get_message_sender_details: {
-        Args: { sender_id: string }
+        Args: {
+          sender_id: string
+        }
         Returns: {
           id: string
           name: string
@@ -1133,7 +1161,10 @@ export type Database = {
         }[]
       }
       get_or_create_direct_channel: {
-        Args: { user1_id: string; user2_id: string }
+        Args: {
+          user1_id: string
+          user2_id: string
+        }
         Returns: string
       }
       get_user_active_role: {
@@ -1141,11 +1172,17 @@ export type Database = {
         Returns: string
       }
       handle_mission_acceptance: {
-        Args: { p_mission_id: string; p_interpreter_id: string }
+        Args: {
+          p_mission_id: string
+          p_interpreter_id: string
+        }
         Returns: undefined
       }
       handle_mission_decline: {
-        Args: { p_mission_id: string; p_interpreter_id: string }
+        Args: {
+          p_mission_id: string
+          p_interpreter_id: string
+        }
         Returns: undefined
       }
       has_role: {
@@ -1156,25 +1193,51 @@ export type Database = {
         Returns: boolean
       }
       http: {
-        Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
+        Args: {
+          request: Database["public"]["CompositeTypes"]["http_request"]
+        }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
-      http_delete: {
-        Args:
-          | { uri: string }
-          | { uri: string; content: string; content_type: string }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
-      http_get: {
-        Args: { uri: string } | { uri: string; data: Json }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
+      http_delete:
+        | {
+            Args: {
+              uri: string
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
+        | {
+            Args: {
+              uri: string
+              content: string
+              content_type: string
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
+      http_get:
+        | {
+            Args: {
+              uri: string
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
+        | {
+            Args: {
+              uri: string
+              data: Json
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
       http_head: {
-        Args: { uri: string }
+        Args: {
+          uri: string
+        }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_header: {
-        Args: { field: string; value: string }
+        Args: {
+          field: string
+          value: string
+        }
         Returns: Database["public"]["CompositeTypes"]["http_header"]
       }
       http_list_curlopt: {
@@ -1185,18 +1248,48 @@ export type Database = {
         }[]
       }
       http_patch: {
-        Args: { uri: string; content: string; content_type: string }
+        Args: {
+          uri: string
+          content: string
+          content_type: string
+        }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
-      http_post: {
-        Args:
-          | { uri: string; content: string; content_type: string }
-          | { uri: string; data: Json }
-          | { url: string; headers?: Json; body?: Json; timeout_ms?: number }
-        Returns: Database["public"]["CompositeTypes"]["http_response"]
-      }
+      http_post:
+        | {
+            Args: {
+              uri: string
+              content: string
+              content_type: string
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
+        | {
+            Args: {
+              uri: string
+              data: Json
+            }
+            Returns: Database["public"]["CompositeTypes"]["http_response"]
+          }
+        | {
+            Args: {
+              url: string
+              headers?: Json
+              body?: Json
+              timeout_ms?: number
+            }
+            Returns: {
+              status: number
+              content: string
+              error: string
+            }[]
+          }
       http_put: {
-        Args: { uri: string; content: string; content_type: string }
+        Args: {
+          uri: string
+          content: string
+          content_type: string
+        }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
       }
       http_reset_curlopt: {
@@ -1204,7 +1297,10 @@ export type Database = {
         Returns: boolean
       }
       http_set_curlopt: {
-        Args: { curlopt: string; value: string }
+        Args: {
+          curlopt: string
+          value: string
+        }
         Returns: boolean
       }
       is_admin: {
@@ -1212,11 +1308,15 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_self: {
-        Args: { user_id: string }
+        Args: {
+          user_id: string
+        }
         Returns: boolean
       }
       is_table_realtime_enabled: {
-        Args: { table_name: string }
+        Args: {
+          table_name: string
+        }
         Returns: boolean
       }
       migrate_interpreter_languages: {
@@ -1224,33 +1324,63 @@ export type Database = {
         Returns: undefined
       }
       rename_storage_object: {
-        Args: { bucket_name: string; old_path: string; new_path: string }
+        Args: {
+          bucket_name: string
+          old_path: string
+          new_path: string
+        }
         Returns: undefined
       }
       standardize_language_pair: {
-        Args: { lang_pair: string }
+        Args: {
+          lang_pair: string
+        }
         Returns: string
       }
       text_to_bytea: {
-        Args: { data: string }
+        Args: {
+          data: string
+        }
         Returns: string
       }
       unaccent: {
-        Args: { "": string }
+        Args: {
+          "": string
+        }
         Returns: string
       }
       unaccent_init: {
-        Args: { "": unknown }
+        Args: {
+          "": unknown
+        }
         Returns: unknown
       }
       update_interpreter_status: {
-        Args: { p_interpreter_id: string; p_status: string }
+        Args: {
+          p_interpreter_id: string
+          p_status: string
+        }
         Returns: undefined
       }
-      urlencode: {
-        Args: { string: string } | { string: string } | { data: Json }
-        Returns: string
-      }
+      urlencode:
+        | {
+            Args: {
+              data: Json
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              string: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              string: string
+            }
+            Returns: string
+          }
     }
     Enums: {
       company_type: "AFTcom" | "AFTrad"
@@ -1301,29 +1431,27 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type PublicSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  PublicTableNameOrOptions extends
+    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
     | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+        PublicSchema["Views"])
+    ? (PublicSchema["Tables"] &
+        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1331,22 +1459,20 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -1354,22 +1480,20 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
+  PublicTableNameOrOptions extends
+    | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -1377,23 +1501,21 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
+  PublicEnumNameOrOptions extends
+    | keyof PublicSchema["Enums"]
     | { schema: keyof Database },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
+    | keyof PublicSchema["CompositeTypes"]
     | { schema: keyof Database },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof Database
@@ -1402,40 +1524,6 @@ export type CompositeTypes<
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
   ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
-export const Constants = {
-  public: {
-    Enums: {
-      company_type: ["AFTcom", "AFTrad"],
-      employment_status: [
-        "salaried_aft",
-        "salaried_aftcom",
-        "salaried_planet",
-        "self_employed",
-        "permanent_interpreter",
-        "permanent_interpreter_aftcom",
-      ],
-      interpreter_specialization: [
-        "medical",
-        "legal",
-        "technical",
-        "conference",
-        "business",
-        "education",
-        "social_services",
-        "immigration",
-        "mental_health",
-        "financial",
-        "diplomatic",
-      ],
-      notification_subscription_status: ["active", "unsubscribed", "blocked"],
-      private_reservation_status: ["scheduled", "completed", "cancelled"],
-      setting_type: ["user_management_password"],
-      subscription_status: ["active", "expired", "error"],
-      user_role: ["admin", "interpreter"],
-    },
-  },
-} as const

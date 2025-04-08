@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -64,7 +63,6 @@ export const InterpreterChat = ({
   const isMobile = useIsMobile();
   const orientation = useOrientation();
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
-  const [userRole, setUserRole] = useState<'admin' | 'interpreter' | null>(null);
   
   useEffect(() => {
     document.body.setAttribute('data-in-chat', 'active');
@@ -88,7 +86,7 @@ export const InterpreterChat = ({
     hasMoreMessages
   } = useChat(channelId);
 
-  const { showNotification, requestPermission, settings, permission } = useBrowserNotification();
+  const { showNotification, requestPermission } = useBrowserNotification();
 
   const filteredMessages = useCallback(() => {
     let filtered = messages;
@@ -146,35 +144,8 @@ export const InterpreterChat = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    // Request notification permissions when entering the chat
-    if (settings.enabled && permission !== 'granted') {
-      requestPermission();
-    }
-  }, [requestPermission, settings, permission]);
-
-  // Add effect to determine user role
-  useEffect(() => {
-    const determineUserRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        const { data } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (data) {
-          setUserRole(data.role as 'admin' | 'interpreter');
-        }
-      } catch (error) {
-        console.error('[InterpreterChat] Error determining user role:', error);
-      }
-    };
-    
-    determineUserRole();
-  }, []);
+    requestPermission();
+  }, [requestPermission]);
 
   useEffect(() => {
     if (channelId) {
@@ -193,59 +164,15 @@ export const InterpreterChat = ({
             if (payload.new.mentioned_user_id === currentUserId) {
               await playNotificationSound();
               
-              // Get channel info for better notification context
-              const { data: channelData } = await supabase
-                .from('chat_channels')
-                .select('name')
-                .eq('id', channelId)
-                .single();
-                
-              const channelName = channelData?.name || 'un canal';
-              
-              // Get message information
-              const { data: messageData } = await supabase
-                .from('chat_messages')
-                .select('id, content, sender_id')
-                .eq('id', payload.new.message_id)
-                .single();
-                
-              if (!messageData) return;
-              
-              // Get sender information
-              const { data: senderData } = await supabase
-                .rpc('get_message_sender_details', {
-                  sender_id: messageData.sender_id
-                });
-                
-              const sender = senderData?.[0];
-              if (!sender) return;
-              
-              // Build message preview
-              const messagePreview = messageData.content.substring(0, 50) + 
-                (messageData.content.length > 50 ? '...' : '');
-              
               toast({
                 title: "💬 Nouvelle mention",
-                description: `${sender.name} vous a mentionné dans ${channelName}`,
+                description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
               });
 
-              // Build message URL for direct navigation
-              const baseUrl = userRole === 'admin' ? '/admin/messages' : '/interpreter/messages';
-              const messageUrl = `${baseUrl}?channel=${channelId}&message=${messageData.id}`;
-
-              // Enhanced notification with contextual information
               showNotification("Nouvelle mention", {
-                body: `${sender.name} vous a mentionné dans ${channelName}: "${messagePreview}"`,
-                tag: `mention-${messageData.id}`,
-                requireInteraction: true,
-                data: {
-                  url: messageUrl,
-                  messageId: messageData.id,
-                  channelId: channelId,
-                  senderId: messageData.sender_id,
-                  type: 'mention'
-                }
+                body: "Quelqu'un vous a mentionné dans un message",
+                tag: 'chat-mention',
               });
             }
           }
@@ -256,7 +183,7 @@ export const InterpreterChat = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [channelId, currentUserId, toast, showNotification, settings, userRole]);
+  }, [channelId, currentUserId, toast, showNotification]);
 
   useEffect(() => {
     if (channelId) {
@@ -324,19 +251,6 @@ export const InterpreterChat = ({
       loadMoreMessages();
     }
   };
-
-  useEffect(() => {
-    if (messageContainerRef.current && autoScrollEnabled) {
-      const container = messageContainerRef.current;
-      
-      setTimeout(() => {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 100);
-    }
-  }, [messages, autoScrollEnabled]);
 
   const messageListHeight = isMobile 
     ? "calc(100vh - 220px)" // Reduced height on mobile to make room for input and nav
@@ -447,4 +361,3 @@ export const InterpreterChat = ({
     </div>
   );
 };
-

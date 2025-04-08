@@ -5,7 +5,6 @@ import { InterpreterListItem } from "@/components/admin/interpreter/InterpreterL
 import { Profile } from "@/types/profile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { EmploymentStatus } from "@/utils/employmentStatus";
-import { MissionInfo } from "@/components/interpreter-card/useInterpreterCard";
 
 interface Interpreter {
   id: string;
@@ -17,7 +16,8 @@ interface Interpreter {
   phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
-  missions: MissionInfo[];
+  next_mission_start: string | null;
+  next_mission_duration: number | null;
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
@@ -32,6 +32,8 @@ interface Interpreter {
     end_afternoon?: string;
   } | null;
   work_location?: WorkLocation | null;
+  next_mission_source_language?: string | null;
+  next_mission_target_language?: string | null;
 }
 
 interface InterpretersListProps {
@@ -62,7 +64,8 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
               employment_status: interpreter.employment_status,
               languages: interpreter.languages,
               phone_number: interpreter.phone_number,
-              missions: interpreter.missions,
+              next_mission_start: interpreter.next_mission_start,
+              next_mission_duration: interpreter.next_mission_duration,
               booth_number: interpreter.booth_number,
               private_phone: interpreter.private_phone,
               professional_phone: interpreter.professional_phone,
@@ -91,7 +94,10 @@ export const InterpretersList: React.FC<InterpretersListProps> = ({
               tarif_15min: interpreter.tarif_15min || null,
               tarif_5min: interpreter.tarif_5min || null,
               phone_number: interpreter.phone_number,
-              missions: interpreter.missions,
+              next_mission_start: interpreter.next_mission_start,
+              next_mission_duration: interpreter.next_mission_duration,
+              next_mission_source_language: interpreter.next_mission_source_language,
+              next_mission_target_language: interpreter.next_mission_target_language,
               booth_number: interpreter.booth_number,
               private_phone: interpreter.private_phone,
               professional_phone: interpreter.professional_phone,

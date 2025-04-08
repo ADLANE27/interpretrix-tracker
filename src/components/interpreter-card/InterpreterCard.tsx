@@ -5,7 +5,7 @@ import { EmploymentStatus } from '@/utils/employmentStatus';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { CardFront } from './CardFront';
 import { CardBack } from './CardBack';
-import { useInterpreterCard, MissionInfo } from './useInterpreterCard';
+import { useInterpreterCard } from './useInterpreterCard';
 
 export interface InterpreterCardProps {
   interpreter: {
@@ -17,7 +17,10 @@ export interface InterpreterCardProps {
     tarif_15min: number | null;
     tarif_5min: number | null;
     phone_number: string | null;
-    missions: MissionInfo[];
+    next_mission_start: string | null;
+    next_mission_duration: number | null;
+    next_mission_source_language?: string | null;
+    next_mission_target_language?: string | null;
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
@@ -45,7 +48,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     locationConfig,
     showTarif5min,
     showTarif15min,
-    todaysMissions
+    hasFutureMission
   } = useInterpreterCard(interpreter, onStatusChange);
 
   return (
@@ -60,7 +63,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         locationConfig={locationConfig}
         showTarif5min={showTarif5min}
         showTarif15min={showTarif15min}
-        todaysMissions={todaysMissions}
+        hasFutureMission={hasFutureMission}
         flipCard={flipCard}
       />
 

@@ -1,25 +1,18 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Home, Building } from 'lucide-react';
-import { isPast, isToday, addMinutes, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { isPast, addMinutes, parseISO } from 'date-fns';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
-
-export interface MissionInfo {
-  start_time: string;
-  duration: number;
-  source_language?: string | null;
-  target_language?: string | null;
-}
 
 interface UseInterpreterCardProps {
   id: string;
   name: string;
   status: Profile['status'];
   languages: string[];
-  missions: MissionInfo[];
+  next_mission_start: string | null;
+  next_mission_duration: number | null;
   phone_number: string | null;
   landline_phone?: string | null;
   private_phone?: string | null;
@@ -34,7 +27,7 @@ export const useInterpreterCard = (
   interpreter: UseInterpreterCardProps,
   onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void
 ) => {
-  const { id: interpreterId, status: initialStatus, missions } = interpreter;
+  const { id: interpreterId, status: initialStatus } = interpreter;
   const [status, setStatus] = useState<Profile['status']>(initialStatus);
   const [isFlipped, setIsFlipped] = useState(false);
   const prevStatusRef = useRef<Profile['status']>(initialStatus);
@@ -124,22 +117,11 @@ export const useInterpreterCard = (
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  // Filter today's missions - including future, in-progress, and ended missions from today
-  const todaysMissions = missions.filter(mission => {
-    const missionDate = parseISO(mission.start_time);
-    return isToday(missionDate);
-  });
-
-  // Sort today's missions by start time
-  const sortedMissions = [...todaysMissions].sort((a, b) => {
-    return parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime();
-  });
-
-  // Check if there are any future missions (upcoming or in progress)
-  const hasActiveMissions = missions.some(mission => {
-    const missionEndDate = addMinutes(parseISO(mission.start_time), mission.duration);
-    return !isPast(missionEndDate);
-  });
+  const hasFutureMission = interpreter.next_mission_start && 
+    !isPast(addMinutes(
+      parseISO(interpreter.next_mission_start), 
+      interpreter.next_mission_duration || 0
+    ));
 
   return {
     status,
@@ -153,8 +135,7 @@ export const useInterpreterCard = (
     showTarif5min,
     showTarif15min,
     showAnyTarif,
-    hasActiveMissions,
-    todaysMissions: sortedMissions,
+    hasFutureMission,
     isConnected
   };
 };

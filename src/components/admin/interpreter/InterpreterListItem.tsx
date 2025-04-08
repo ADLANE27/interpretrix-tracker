@@ -1,6 +1,5 @@
-
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe, Home, Building, Phone, PhoneCall, Clock, Calendar } from "lucide-react";
+import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
@@ -10,8 +9,6 @@ import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
-import { MissionInfo } from "@/components/interpreter-card/useInterpreterCard";
-import { isToday, parseISO } from "date-fns";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -20,7 +17,8 @@ interface InterpreterListItemProps {
     status: Profile['status'];
     employment_status: EmploymentStatus;
     languages: string[];
-    missions: MissionInfo[];
+    next_mission_start?: string | null;
+    next_mission_duration?: number | null;
     work_location?: WorkLocation;
     phone_number?: string | null;
     booth_number?: string | null;
@@ -65,19 +63,6 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
       setLocalStatus(newStatus);
     }
   });
-
-  // Filter today's missions
-  const todaysMissions = interpreter.missions.filter(mission => 
-    isToday(parseISO(mission.start_time))
-  );
-
-  // Sort missions by start time
-  const sortedMissions = [...todaysMissions].sort((a, b) => 
-    parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime()
-  );
-
-  // Get the first mission for display in the list view
-  const firstMission = sortedMissions.length > 0 ? sortedMissions[0] : null;
 
   useEffect(() => {
     console.log(`[InterpreterListItem] Setting up status listener for ${interpreter.id}`);
@@ -205,21 +190,12 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               <span>{workLocationLabels[workLocation]}</span>
             </div>
 
-            {todaysMissions.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="text-[14px] text-blue-600 font-medium">{todaysMissions.length} mission(s) aujourd'hui</span>
-                {firstMission && (
-                  <UpcomingMissionBadge
-                    startTime={firstMission.start_time}
-                    estimatedDuration={firstMission.duration}
-                    sourceLang={firstMission.source_language}
-                    targetLang={firstMission.target_language}
-                    useShortDateFormat={true}
-                    className="text-[14px]"
-                  />
-                )}
-              </div>
+            {interpreter.next_mission_start && (
+              <UpcomingMissionBadge
+                startTime={interpreter.next_mission_start}
+                estimatedDuration={interpreter.next_mission_duration || 0}
+                className="text-[14px]"
+              />
             )}
             
             {hasAnyPhoneNumber && (
