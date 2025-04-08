@@ -12,6 +12,8 @@ import { InterpretersList } from "./InterpretersList";
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { useTableSubscription } from "@/hooks/useTableSubscription";
 import { v4 as uuidv4 } from 'uuid';
+import { MissionInfo } from "@/components/interpreter-card/useInterpreterCard";
+import { startOfDay, endOfDay } from "date-fns";
 
 interface WorkHours {
   start_morning?: string;
@@ -30,10 +32,7 @@ interface Interpreter {
   phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
-  next_mission_start: string | null;
-  next_mission_duration: number | null;
-  next_mission_source_language?: string | null;
-  next_mission_target_language?: string | null;
+  missions: MissionInfo[];
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
@@ -43,6 +42,7 @@ interface Interpreter {
   work_hours?: WorkHours | null;
   connection_status?: Profile['status'];
   work_location?: WorkLocation | null;
+  landline_phone?: string | null;
 }
 
 export const InterpretersTab: React.FC = () => {
@@ -218,25 +218,53 @@ export const InterpretersTab: React.FC = () => {
   const fetchInterpreters = async () => {
     try {
       console.log("[InterpretersTab] Fetching interpreters data");
-      const {
-        data,
-        error
-      } = await supabase.from("interpreter_profiles").select(`
-          *,
-          private_reservations!left(
-            id,
-            start_time,
-            end_time,
-            duration_minutes,
-            source_language,
-            target_language,
-            status
-          )
-        `);
-      if (error) throw error;
       
-      const uniqueInterpreters = Array.from(new Map((data || []).map(item => [item.id, item])).values());
-      const mappedInterpreters: Interpreter[] = uniqueInterpreters.map(interpreter => {
+      // Get the date range for today
+      const today = new Date();
+      const todayStart = startOfDay(today).toISOString();
+      const todayEnd = endOfDay(today).toISOString();
+      
+      // Fetch interpreter profiles
+      const {
+        data: profilesData,
+        error: profilesError
+      } = await supabase.from("interpreter_profiles").select("*");
+      
+      if (profilesError) throw profilesError;
+      
+      // Fetch all reservations for today
+      const {
+        data: reservationsData,
+        error: reservationsError
+      } = await supabase
+        .from("private_reservations")
+        .select("*")
+        .gte("start_time", todayStart)
+        .lte("start_time", todayEnd)
+        .eq("status", "scheduled");
+      
+      if (reservationsError) throw reservationsError;
+      
+      console.log(`[InterpretersTab] Fetched ${reservationsData?.length || 0} reservations for today`);
+      
+      // Group reservations by interpreter
+      const reservationsByInterpreter = (reservationsData || []).reduce((acc, reservation) => {
+        if (!acc[reservation.interpreter_id]) {
+          acc[reservation.interpreter_id] = [];
+        }
+        
+        acc[reservation.interpreter_id].push({
+          start_time: reservation.start_time,
+          duration: reservation.duration_minutes,
+          source_language: reservation.source_language,
+          target_language: reservation.target_language
+        });
+        
+        return acc;
+      }, {} as Record<string, MissionInfo[]>);
+      
+      // Map interpreter profiles with their missions
+      const mappedInterpreters: Interpreter[] = (profilesData || []).map(interpreter => {
         let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, any>;
@@ -247,9 +275,9 @@ export const InterpretersTab: React.FC = () => {
             end_afternoon: hours.end_afternoon || ''
           };
         }
-        const now = new Date();
-
-        const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
+        
+        // Get missions for this interpreter
+        const missions = reservationsByInterpreter[interpreter.id] || [];
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         
@@ -263,24 +291,26 @@ export const InterpretersTab: React.FC = () => {
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
           phone_number: interpreter.phone_number,
           birth_country: interpreter.birth_country,
-          next_mission_start: nextReservation?.start_time || null,
-          next_mission_duration: nextReservation?.duration_minutes || null,
-          next_mission_source_language: nextReservation?.source_language || null,
-          next_mission_target_language: nextReservation?.target_language || null,
+          missions: missions,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: null,
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
+          landline_phone: interpreter.landline_phone || null,
           work_hours: workHours,
           work_location: workLocation
         };
       });
+      
       setInterpreters(mappedInterpreters);
       console.log("[InterpretersTab] Interpreters data updated:", mappedInterpreters.length, "records");
 
-      fetchTodayMissions();
+      // Count total missions for today
+      const totalMissionsToday = reservationsData?.length || 0;
+      setTodayMissionsCount(totalMissionsToday);
+      
     } catch (error) {
       console.error("[InterpretersTab] Error fetching interpreters:", error);
       toast({
@@ -294,33 +324,27 @@ export const InterpretersTab: React.FC = () => {
   const fetchTodayMissions = async () => {
     try {
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const todayStart = today.toISOString();
-      const tomorrowStart = tomorrow.toISOString();
-      console.log("[InterpretersTab] Fetching today's missions", todayStart, tomorrowStart);
-
-      const {
-        data: scheduledMissions,
-        error: scheduledError
-      } = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
-      if (scheduledError) throw scheduledError;
+      const todayStart = startOfDay(today).toISOString();
+      const todayEnd = endOfDay(today).toISOString();
+      
+      console.log("[InterpretersTab] Fetching today's missions", todayStart, todayEnd);
 
       const {
         data: privateReservations,
         error: reservationsError
-      } = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
+      } = await supabase
+        .from("private_reservations")
+        .select("id")
+        .eq("status", "scheduled")
+        .gte("start_time", todayStart)
+        .lte("start_time", todayEnd);
+        
       if (reservationsError) throw reservationsError;
-      const scheduledCount = scheduledMissions?.length || 0;
+      
       const reservationsCount = privateReservations?.length || 0;
-      const totalMissionsToday = scheduledCount + reservationsCount;
-      console.log("[InterpretersTab] Today's missions count:", {
-        scheduledMissions: scheduledCount,
-        privateReservations: reservationsCount,
-        total: totalMissionsToday
-      });
-      setTodayMissionsCount(totalMissionsToday);
+      console.log("[InterpretersTab] Today's missions count:", reservationsCount);
+      
+      setTodayMissionsCount(reservationsCount);
     } catch (error) {
       console.error("[InterpretersTab] Error fetching today's missions:", error);
     }

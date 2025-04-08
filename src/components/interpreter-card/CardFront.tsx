@@ -1,13 +1,15 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Phone, Clock, User, PhoneCall, RotateCw } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall, RotateCw, Calendar } from 'lucide-react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { InterpreterStatusDropdown } from '../admin/interpreter/InterpreterStatusDropdown';
 import { UpcomingMissionBadge } from '../UpcomingMissionBadge';
 import { employmentStatusLabels } from '@/utils/employmentStatus';
+import { MissionInfo } from './useInterpreterCard';
 
 interface CardFrontProps {
   interpreter: {
@@ -16,10 +18,6 @@ interface CardFrontProps {
     employment_status: string;
     status: Profile['status'];
     phone_number: string | null;
-    next_mission_start: string | null;
-    next_mission_duration: number | null;
-    next_mission_source_language?: string | null;
-    next_mission_target_language?: string | null;
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
@@ -46,7 +44,7 @@ interface CardFrontProps {
   };
   showTarif5min: boolean;
   showTarif15min: boolean;
-  hasFutureMission: boolean;
+  todaysMissions: MissionInfo[];
   flipCard: () => void;
 }
 
@@ -60,7 +58,7 @@ export const CardFront: React.FC<CardFrontProps> = ({
   locationConfig,
   showTarif5min,
   showTarif15min,
-  hasFutureMission,
+  todaysMissions,
   flipCard
 }) => {
   const badgeRef = useRef<HTMLDivElement>(null);
@@ -199,16 +197,25 @@ export const CardFront: React.FC<CardFrontProps> = ({
           </div>
         )}
 
-        {hasFutureMission && interpreter.next_mission_start && (
-          <div className="mb-1">
-            <UpcomingMissionBadge
-              startTime={interpreter.next_mission_start}
-              estimatedDuration={interpreter.next_mission_duration || 0}
-              sourceLang={interpreter.next_mission_source_language}
-              targetLang={interpreter.next_mission_target_language}
-              useShortDateFormat={true}
-              className="bg-red-500 text-white text-[14px]"
-            />
+        {todaysMissions.length > 0 && (
+          <div className="mb-2">
+            <div className="flex items-center gap-1 mb-1">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-600">Missions aujourd'hui ({todaysMissions.length})</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              {todaysMissions.map((mission, index) => (
+                <UpcomingMissionBadge
+                  key={`${mission.start_time}-${index}`}
+                  startTime={mission.start_time}
+                  estimatedDuration={mission.duration}
+                  sourceLang={mission.source_language}
+                  targetLang={mission.target_language}
+                  useShortDateFormat={true}
+                  className="text-[14px]"
+                />
+              ))}
+            </div>
           </div>
         )}
 

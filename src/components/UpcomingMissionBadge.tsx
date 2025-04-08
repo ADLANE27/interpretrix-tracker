@@ -1,5 +1,6 @@
+
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
@@ -13,7 +14,7 @@ interface UpcomingMissionBadgeProps {
   sourceLang?: string | null;
   targetLang?: string | null;
   useShortDateFormat?: boolean;
-  className?: string; // Add this prop to allow custom styling
+  className?: string;
 }
 
 export const UpcomingMissionBadge = ({ 
@@ -22,7 +23,7 @@ export const UpcomingMissionBadge = ({
   sourceLang,
   targetLang,
   useShortDateFormat = false,
-  className // Add this parameter
+  className
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
@@ -64,7 +65,7 @@ export const UpcomingMissionBadge = ({
         return {
           text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const,
-          flashingClass: "animate-pulse bg-red-500 text-white"
+          flashingClass: ""
         };
       case "in-progress":
         const remainingTime = formatDistanceToNow(missionEndDate, { 
@@ -72,19 +73,19 @@ export const UpcomingMissionBadge = ({
           addSuffix: true 
         });
         return {
-          text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
+          text: `Se termine ${remainingTime} ${timeRange}${languageInfo}`,
           variant: "destructive" as const,
           flashingClass: "animate-pulse bg-red-500 text-white"
         };
       case "ending-soon":
         return {
-          text: `Dernières minutes ${missionDate} ${timeRange}${languageInfo}`,
+          text: `Dernières minutes ${timeRange}${languageInfo}`,
           variant: "destructive" as const,
           flashingClass: "animate-pulse bg-red-500 text-white"
         };
       case "ended":
         return {
-          text: `Mission terminée ${missionDate} ${timeRange}${languageInfo}`,
+          text: `Mission terminée ${timeRange}${languageInfo}`,
           variant: "outline" as const,
           flashingClass: ""
         };
@@ -100,7 +101,7 @@ export const UpcomingMissionBadge = ({
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
         missionStatus !== "ended" && status.flashingClass,
-        className // Add custom className with optional override
+        className
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />
