@@ -1,3 +1,4 @@
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Home, Building, Phone, PhoneCall, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -9,6 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeStatus } from "@/hooks/useRealtimeStatus";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
+import { isAfter, addMinutes, parseISO } from 'date-fns';
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -142,6 +144,14 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     interpreter.professional_phone || 
     interpreter.booth_number;
 
+  // Check if the mission is still active (not ended yet)
+  const hasActiveMission = interpreter.next_mission_start && 
+    interpreter.next_mission_duration && 
+    !isAfter(
+      new Date(),
+      addMinutes(parseISO(interpreter.next_mission_start), interpreter.next_mission_duration)
+    );
+
   return (
     <Card className={`hover-elevate gradient-border ${!isConnected ? 'opacity-75' : ''}`} key={`${interpreter.id}-${localStatus}`}>
       <CardContent className="p-3">
@@ -190,7 +200,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
               <span>{workLocationLabels[workLocation]}</span>
             </div>
 
-            {interpreter.next_mission_start && (
+            {hasActiveMission && interpreter.next_mission_start && (
               <UpcomingMissionBadge
                 startTime={interpreter.next_mission_start}
                 estimatedDuration={interpreter.next_mission_duration || 0}

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -46,7 +47,7 @@ interface CardFrontProps {
   };
   showTarif5min: boolean;
   showTarif15min: boolean;
-  hasFutureMission: boolean;
+  hasActiveMission: boolean; // Changed from hasFutureMission to hasActiveMission
   flipCard: () => void;
 }
 
@@ -60,7 +61,7 @@ export const CardFront: React.FC<CardFrontProps> = ({
   locationConfig,
   showTarif5min,
   showTarif15min,
-  hasFutureMission,
+  hasActiveMission, // Changed from hasFutureMission to hasActiveMission
   flipCard
 }) => {
   const badgeRef = useRef<HTMLDivElement>(null);
@@ -199,7 +200,7 @@ export const CardFront: React.FC<CardFrontProps> = ({
           </div>
         )}
 
-        {hasFutureMission && interpreter.next_mission_start && (
+        {hasActiveMission && interpreter.next_mission_start && (
           <div className="mb-1">
             <UpcomingMissionBadge
               startTime={interpreter.next_mission_start}

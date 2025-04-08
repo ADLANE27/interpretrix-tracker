@@ -14,7 +14,7 @@ interface UpcomingMissionBadgeProps {
   sourceLang?: string | null;
   targetLang?: string | null;
   useShortDateFormat?: boolean;
-  className?: string; // Add this prop to allow custom styling
+  className?: string;
 }
 
 export const UpcomingMissionBadge = ({ 
@@ -39,11 +39,13 @@ export const UpcomingMissionBadge = ({
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    if (isBefore(now, missionStartDate)) {
-      return "upcoming";
-    } else if (isAfter(now, missionEndDate)) {
+    // Only consider a mission "ended" when it's actually past the end time
+    if (isAfter(now, missionEndDate)) {
       return "ended";
+    } else if (isBefore(now, missionStartDate)) {
+      return "upcoming";
     } else {
+      // Mission is currently in progress
       const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
       return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
@@ -105,7 +107,7 @@ export const UpcomingMissionBadge = ({
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
         missionStatus !== "ended" && status.flashingClass,
-        className // Add custom className with optional override
+        className
       )}
     >
       <Clock className="h-3 w-3 shrink-0" />

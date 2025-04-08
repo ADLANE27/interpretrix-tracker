@@ -48,7 +48,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
     locationConfig,
     showTarif5min,
     showTarif15min,
-    hasFutureMission
+    hasActiveMission // Changed from hasFutureMission to hasActiveMission
   } = useInterpreterCard(interpreter, onStatusChange);
 
   return (
@@ -63,7 +63,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatus
         locationConfig={locationConfig}
         showTarif5min={showTarif5min}
         showTarif15min={showTarif15min}
-        hasFutureMission={hasFutureMission}
+        hasActiveMission={hasActiveMission} // Changed from hasFutureMission to hasActiveMission
         flipCard={flipCard}
       />
 

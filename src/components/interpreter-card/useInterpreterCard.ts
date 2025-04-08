@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Profile } from '@/types/profile';
 import { WorkLocation } from '@/utils/workLocationStatus';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Home, Building } from 'lucide-react';
-import { isPast, addMinutes, parseISO } from 'date-fns';
+import { isPast, addMinutes, parseISO, isAfter } from 'date-fns';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 interface UseInterpreterCardProps {
@@ -117,11 +118,13 @@ export const useInterpreterCard = (
   const showTarif15min = interpreter.tarif_15min !== null && interpreter.tarif_15min > 0;
   const showAnyTarif = showTarif5min || showTarif15min;
 
-  const hasFutureMission = interpreter.next_mission_start && 
-    !isPast(addMinutes(
-      parseISO(interpreter.next_mission_start), 
-      interpreter.next_mission_duration || 0
-    ));
+  // Check if the mission is still active (not ended yet)
+  const hasActiveMission = interpreter.next_mission_start && 
+    interpreter.next_mission_duration && 
+    !isAfter(
+      new Date(),
+      addMinutes(parseISO(interpreter.next_mission_start), interpreter.next_mission_duration)
+    );
 
   return {
     status,
@@ -135,7 +138,7 @@ export const useInterpreterCard = (
     showTarif5min,
     showTarif15min,
     showAnyTarif,
-    hasFutureMission,
+    hasActiveMission,
     isConnected
   };
 };
