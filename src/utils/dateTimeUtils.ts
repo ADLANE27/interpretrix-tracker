@@ -30,8 +30,13 @@ export const formatDateDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
   
   try {
-    // Parse the ISO string directly without timezone adjustments
-    const date = parseISO(dateString);
+    // Extract date part directly from ISO string
+    const datePart = dateString.split('T')[0];
+    
+    // Create a date object directly from the date part with a fixed time
+    // This avoids timezone shift issues
+    const date = new Date(`${datePart}T00:00:00`);
+    
     return format(date, 'EEEE d MMMM yyyy', { locale: fr });
   } catch (error) {
     console.error('[dateTimeUtils] Error formatting date display:', error);
@@ -46,7 +51,13 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
   try {
     // Extract original time directly from string
     const originalTime = formatTimeString(dateString);
-    const date = parseISO(dateString);
+    
+    // Extract date part directly from ISO string
+    const datePart = dateString.split('T')[0];
+    
+    // Create a date object directly from the date part with a fixed time
+    const date = new Date(`${datePart}T00:00:00`);
+    
     const formattedDate = format(date, 'EEEE d MMMM yyyy', { locale: fr });
     return `${formattedDate} à ${originalTime}`;
   } catch (error) {

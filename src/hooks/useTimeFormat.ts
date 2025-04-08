@@ -13,8 +13,11 @@ export const useTimeFormat = () => {
     if (!dateString) return '';
     
     try {
-      // Simple direct parsing without timezone conversion
-      const date = parseISO(dateString);
+      // Extract date part without timezone considerations
+      const datePart = dateString.split('T')[0];
+      
+      // Create a date object directly from the date part without timezone shifts
+      const date = new Date(`${datePart}T00:00:00`);
       return format(date, formatStr, { locale: fr });
     } catch (error) {
       console.error('[useTimeFormat] Error formatting date:', error);

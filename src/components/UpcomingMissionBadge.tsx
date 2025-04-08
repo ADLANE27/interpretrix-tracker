@@ -23,7 +23,7 @@ export const UpcomingMissionBadge = ({
   sourceLang,
   targetLang,
   useShortDateFormat = false,
-  className // Add this parameter
+  className
 }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
@@ -56,9 +56,12 @@ export const UpcomingMissionBadge = ({
     const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
     const timeRange = `${startHour}-${endHour}`;
     
-    // Utiliser directement le format de date correct sans conversion de fuseau horaire
+    // Extract date directly from the ISO string without any timezone handling
+    const missionDateStr = startTime.split('T')[0]; // Gets YYYY-MM-DD
+    
+    // Format the date string directly using format
     const missionDate = useShortDateFormat 
-      ? format(missionStartDate, 'dd/MM/yyyy')
+      ? format(new Date(`${missionDateStr}T00:00:00`), 'dd/MM/yyyy')
       : formatDateDisplay(startTime);
 
     switch (status) {
