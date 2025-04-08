@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,10 +9,9 @@ import { StatisticsCards } from "@/components/admin/dashboard/StatisticsCards";
 import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
-import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE, EVENT_INTERPRETER_STATUS_UPDATE, EVENT_MISSION_STATUS_UPDATE } from '@/lib/events';
+import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 import { useTableSubscription } from "@/hooks/useTableSubscription";
 import { v4 as uuidv4 } from 'uuid';
-import { isWithinInterval, parseISO, addMinutes } from 'date-fns';
 
 interface WorkHours {
   start_morning?: string;
@@ -60,6 +60,7 @@ export const InterpretersTab: React.FC = () => {
   const [isConnected, setIsConnected] = useState(true);
   const { toast } = useToast();
   
+  // Listen for connection status changes
   useEffect(() => {
     const handleConnectionStatusChange = (connected: boolean) => {
       setIsConnected(connected);
@@ -75,6 +76,7 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
+  // Direct subscription to interpreter status updates
   useEffect(() => {
     console.log('[InterpretersTab] Setting up direct interpreter status update listener');
     
@@ -102,6 +104,7 @@ export const InterpretersTab: React.FC = () => {
     };
   }, []);
 
+  // Subscribe to reservation changes using the centralized hook
   useTableSubscription(
     'private_reservations',
     '*',
@@ -110,30 +113,14 @@ export const InterpretersTab: React.FC = () => {
       console.log('[InterpretersTab] Reservation update detected');
       fetchInterpreters();
       fetchTodayMissions();
-      
-      eventEmitter.emit(EVENT_MISSION_STATUS_UPDATE, {
-        timestamp: Date.now(),
-        uuid: uuidv4()
-      });
     }
   );
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      eventEmitter.emit(EVENT_MISSION_STATUS_UPDATE, {
-        timestamp: Date.now(),
-        uuid: uuidv4()
-      });
-      fetchInterpreters();
-    }, 60000);
-    
-    return () => clearInterval(intervalId);
-  }, []);
 
   const handleInterpreterStatusChange = async (interpreterId: string, newStatus: Profile['status']) => {
     try {
       console.log(`[InterpretersTab] Status change requested for ${interpreterId} to ${newStatus}`);
       
+      // Update our local state immediately for better UX
       setInterpreters(current => 
         current.map(interpreter => 
           interpreter.id === interpreterId 
@@ -142,11 +129,12 @@ export const InterpretersTab: React.FC = () => {
         )
       );
 
+      // Emit event for better sync across components
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
         interpreterId,
         status: newStatus,
         timestamp: Date.now(),
-        uuid: uuidv4()
+        uuid: uuidv4() // Add unique ID to prevent event deduplication issues
       });
 
       const interpreter = interpreters.find(i => i.id === interpreterId);
@@ -157,6 +145,7 @@ export const InterpretersTab: React.FC = () => {
         });
       }
       
+      // Update in database
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: newStatus
@@ -174,14 +163,16 @@ export const InterpretersTab: React.FC = () => {
         variant: "destructive"
       });
       
+      // Fetch interpreters again to ensure our state is in sync with the database
       fetchInterpreters();
     }
   };
-
+  
+  // Direct subscription to interpreter profile changes for immediate UI updates
   useTableSubscription(
     'interpreter_profiles',
     'UPDATE',
-    null,
+    null, // Use null to catch all updates without filtering
     (payload) => {
       if (payload.new && payload.old && payload.new.status !== payload.old.status) {
         const interpreterId = payload.new.id;
@@ -197,6 +188,7 @@ export const InterpretersTab: React.FC = () => {
           )
         );
         
+        // Broadcast to ensure all components have the latest status
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
           interpreterId: interpreterId,
           status: newStatus,
@@ -244,8 +236,6 @@ export const InterpretersTab: React.FC = () => {
       if (error) throw error;
       
       const uniqueInterpreters = Array.from(new Map((data || []).map(item => [item.id, item])).values());
-      const now = new Date();
-      
       const mappedInterpreters: Interpreter[] = uniqueInterpreters.map(interpreter => {
         let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
@@ -257,24 +247,9 @@ export const InterpretersTab: React.FC = () => {
             end_afternoon: hours.end_afternoon || ''
           };
         }
+        const now = new Date();
 
-        let activeReservation = interpreter.private_reservations?.find(reservation => 
-          reservation?.status === 'scheduled' && 
-          reservation?.start_time && 
-          reservation?.end_time && 
-          isWithinInterval(now, {
-            start: parseISO(reservation.start_time),
-            end: parseISO(reservation.end_time)
-          })
-        );
-        
-        if (!activeReservation) {
-          activeReservation = interpreter.private_reservations?.find(reservation => 
-            reservation?.status === 'scheduled' && 
-            reservation?.start_time && 
-            parseISO(reservation.start_time) > now
-          );
-        }
+        const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
         
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         
@@ -288,10 +263,10 @@ export const InterpretersTab: React.FC = () => {
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
           phone_number: interpreter.phone_number,
           birth_country: interpreter.birth_country,
-          next_mission_start: activeReservation?.start_time || null,
-          next_mission_duration: activeReservation?.duration_minutes || null,
-          next_mission_source_language: activeReservation?.source_language || null,
-          next_mission_target_language: activeReservation?.target_language || null,
+          next_mission_start: nextReservation?.start_time || null,
+          next_mission_duration: nextReservation?.duration_minutes || null,
+          next_mission_source_language: nextReservation?.source_language || null,
+          next_mission_target_language: nextReservation?.target_language || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: null,

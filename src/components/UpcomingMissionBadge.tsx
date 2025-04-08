@@ -1,14 +1,11 @@
-
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO, isWithinInterval } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { formatTimeString, formatDateDisplay } from "@/utils/dateTimeUtils";
 import { format } from "date-fns";
-import { EVENT_MISSION_STATUS_UPDATE } from "@/lib/events";
-import { eventEmitter } from "@/lib/events";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -36,28 +33,12 @@ export const UpcomingMissionBadge = ({
 
     return () => clearInterval(interval);
   }, []);
-  
-  // Listen for mission status updates
-  useEffect(() => {
-    const handleMissionStatusUpdate = () => {
-      setNow(new Date());
-    };
-    
-    eventEmitter.on(EVENT_MISSION_STATUS_UPDATE, handleMissionStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_MISSION_STATUS_UPDATE, handleMissionStatusUpdate);
-    };
-  }, []);
 
   const missionStartDate = parseISO(startTime);
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    // Check if the mission is currently in progress
-    if (isWithinInterval(now, { start: missionStartDate, end: missionEndDate })) {
-      return "in-progress";
-    } else if (isBefore(now, missionStartDate)) {
+    if (isBefore(now, missionStartDate)) {
       return "upcoming";
     } else if (isAfter(now, missionEndDate)) {
       return "ended";
@@ -91,7 +72,7 @@ export const UpcomingMissionBadge = ({
           addSuffix: true 
         });
         return {
-          text: `En cours, fin ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
+          text: `Se termine ${remainingTime} ${missionDate} ${timeRange}${languageInfo}`,
           variant: "destructive" as const,
           flashingClass: "animate-pulse bg-red-500 text-white"
         };
