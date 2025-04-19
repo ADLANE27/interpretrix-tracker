@@ -7,6 +7,7 @@ import { ConnectionMonitor } from './connectionMonitor';
 import { SubscriptionRegistry } from './registry/subscriptionRegistry';
 import { Profile } from '@/types/profile';
 import { v4 as uuidv4 } from 'uuid';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 // Global registry to track active subscriptions to prevent duplicates
 const subscriptionsRegistry = new Map<string, { count: number, cleanup: () => void }>();
@@ -169,14 +170,16 @@ class RealtimeService {
           schema: 'public',
           table: table,
           filter: filter || undefined
-        }, (payload) => {
+        }, (payload: RealtimePostgresChangesPayload<any>) => {
           // Use the debouncer to prevent duplicate event processing
           const now = Date.now();
-          const eventId = `${table}-${event}-${
-            (payload.new as any)?.id || 
-            (payload.old as any)?.id || 
-            now
-          }`;
+          
+          // Access the data based on the event type - payload may have different shapes
+          const recordId = payload.eventType === 'DELETE' 
+            ? (payload.old as any)?.id 
+            : (payload.new as any)?.id;
+            
+          const eventId = `${table}-${event}-${recordId || now}`;
           
           if (this.eventDebouncer.shouldProcessEvent(eventId, now)) {
             callback(payload);

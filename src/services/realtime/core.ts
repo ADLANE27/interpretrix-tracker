@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 import { subscriptionRegistry } from './registry/subscriptionRegistry';
@@ -84,11 +85,13 @@ class RealtimeService {
    * Handle connection status change
    */
   private handleConnectionStatusChange(connected: boolean): void {
-    // Debounce connection status changes to prevent UI flickering
+    // Use the debouncer to prevent UI flickering
+    const id = 'connection-status';
+    
     connectionStatusDebouncer.debounce(() => {
       console.log(`[RealtimeService] Connection status changed: ${connected ? 'connected' : 'disconnected'}`);
       eventEmitter.emit(EVENT_CONNECTION_STATUS_CHANGE, connected);
-    }, 'connection-status', CONNECTION_STATUS_DEBOUNCE_TIME);
+    }, id, CONNECTION_STATUS_DEBOUNCE_TIME);
   }
   
   /**

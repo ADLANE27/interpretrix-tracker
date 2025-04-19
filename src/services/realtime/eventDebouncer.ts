@@ -1,3 +1,4 @@
+
 /**
  * A utility class to prevent duplicate event processing
  */
@@ -6,6 +7,7 @@ export class EventDebouncer {
   private debounceInterval: number = 300; // ms
   private cleanupInterval: number | null = null;
   private maxEvents: number = 1000;
+  private pendingDebounces: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(debounceInterval = 300, maxEvents = 1000) {
     this.debounceInterval = debounceInterval;
@@ -43,6 +45,30 @@ export class EventDebouncer {
   }
 
   /**
+   * Execute a function after a delay, canceling any pending execution with the same ID
+   */
+  public debounce(
+    callback: () => void, 
+    id: string, 
+    delay: number = this.debounceInterval
+  ): void {
+    // Clear any existing timeout with this ID
+    if (this.pendingDebounces.has(id)) {
+      clearTimeout(this.pendingDebounces.get(id)!);
+      this.pendingDebounces.delete(id);
+    }
+    
+    // Set a new timeout
+    const timeoutId = setTimeout(() => {
+      callback();
+      this.pendingDebounces.delete(id);
+    }, delay);
+    
+    // Store the timeout ID
+    this.pendingDebounces.set(id, timeoutId);
+  }
+
+  /**
    * Cleans up events older than the debounce interval
    */
   private cleanup(now?: number): void {
@@ -77,6 +103,12 @@ export class EventDebouncer {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+    
+    // Clear all pending debounces
+    for (const timeoutId of this.pendingDebounces.values()) {
+      clearTimeout(timeoutId);
+    }
+    this.pendingDebounces.clear();
     this.processedEvents.clear();
   }
 }
