@@ -1,26 +1,28 @@
 
 /**
  * A simple event emitter implementation for browser environments
+ * Optimized for performance with deduplication and rate limiting
  */
 export class CustomEventEmitter {
-  private events: Record<string, Function[]> = {};
+  private events: Map<string, Set<Function>> = new Map();
   private maxListeners: number = 10;
   private duplicateWarnings: Set<string> = new Set();
+  private emitTimestamps: Map<string, number> = new Map();
+  private rateLimit: number = 50; // Milliseconds to throttle frequent events
 
   /**
    * Register an event listener
    */
   on(event: string, listener: Function): void {
-    if (!this.events[event]) {
-      this.events[event] = [];
+    if (!this.events.has(event)) {
+      this.events.set(event, new Set());
     }
 
-    // Check for duplicate listeners to avoid memory leaks
-    const isDuplicate = this.events[event].some(existingListener => 
-      existingListener.toString() === listener.toString()
-    );
+    const listeners = this.events.get(event)!;
     
-    if (isDuplicate) {
+    // Check for duplicate listeners to avoid memory leaks
+    // Use Set for O(1) lookups and automatic deduplication
+    if (listeners.has(listener)) {
       const warningKey = `${event}-${listener.toString().substring(0, 50)}`;
       if (!this.duplicateWarnings.has(warningKey)) {
         console.warn(
@@ -32,50 +34,64 @@ export class CustomEventEmitter {
     }
     
     // Check if we're exceeding maxListeners and provide a warning
-    if (this.events[event].length >= this.maxListeners) {
+    if (listeners.size >= this.maxListeners) {
       console.warn(
-        `[CustomEventEmitter] Possible memory leak detected. ${this.events[event].length + 1} listeners added for event: ${event}. Current limit is ${this.maxListeners}.`
+        `[CustomEventEmitter] Possible memory leak detected. ${listeners.size + 1} listeners added for event: ${event}. Current limit is ${this.maxListeners}.`
       );
     }
     
-    this.events[event].push(listener);
-    
-    if (event === 'interpreter-status-update') {
-      console.log(`[CustomEventEmitter] New listener registered for interpreter status updates. Total: ${this.events[event].length}`);
-    }
+    listeners.add(listener);
   }
 
   /**
    * Remove an event listener
    */
   off(event: string, listener: Function): void {
-    if (!this.events[event]) return;
+    if (!this.events.has(event)) return;
     
-    const initialLength = this.events[event].length;
-    this.events[event] = this.events[event].filter(l => l !== listener);
+    const listeners = this.events.get(event)!;
+    listeners.delete(listener);
     
-    if (event === 'interpreter-status-update' && this.events[event].length !== initialLength) {
-      console.log(`[CustomEventEmitter] Listener removed from interpreter status updates. Remaining: ${this.events[event].length}`);
+    // Clean up empty listener sets
+    if (listeners.size === 0) {
+      this.events.delete(event);
     }
   }
 
   /**
    * Emit an event with optional arguments
+   * Returns true if the event had listeners, false otherwise
    */
   emit(event: string, ...args: any[]): boolean {
-    const listeners = this.events[event];
-    if (!listeners || listeners.length === 0) return false;
+    if (!this.events.has(event)) return false;
     
-    if (event === 'interpreter-status-update') {
-      console.log(`[CustomEventEmitter] Emitting interpreter status update to ${listeners.length} listeners`);
+    const listeners = this.events.get(event)!;
+    if (listeners.size === 0) return false;
+    
+    // Rate limiting for high-frequency events
+    const now = Date.now();
+    const lastEmit = this.emitTimestamps.get(event) || 0;
+    
+    // Skip emissions that are too close together for non-critical events
+    if (now - lastEmit < this.rateLimit && 
+        (event.includes('status') || event.includes('update'))) {
+      return true; // Return true so caller thinks it worked
     }
     
-    for (const listener of listeners) {
-      try {
-        listener(...args);
-      } catch (error) {
-        console.error(`Error in event listener for ${event}:`, error);
+    this.emitTimestamps.set(event, now);
+    
+    try {
+      // Use Array.from to avoid issues with listeners removing themselves during iteration
+      const listenerArray = Array.from(listeners);
+      for (const listener of listenerArray) {
+        try {
+          listener(...args);
+        } catch (error) {
+          console.error(`Error in event listener for ${event}:`, error);
+        }
       }
+    } catch (e) {
+      console.error(`Error emitting event ${event}:`, e);
     }
     
     return true;
@@ -92,7 +108,7 @@ export class CustomEventEmitter {
    * Get the current number of listeners for an event
    */
   listenerCount(event: string): number {
-    return this.events[event]?.length || 0;
+    return this.events.get(event)?.size || 0;
   }
   
   /**
@@ -100,21 +116,22 @@ export class CustomEventEmitter {
    */
   removeAllListeners(event?: string): void {
     if (event) {
-      if (this.events[event]?.length > 0) {
-        console.log(`[CustomEventEmitter] Removing all ${this.events[event].length} listeners for event: ${event}`);
-      }
-      this.events[event] = [];
+      this.events.delete(event);
     } else {
-      // Log cleanup of important events
-      if (this.events['interpreter-status-update']?.length > 0) {
-        console.log(`[CustomEventEmitter] Removing all ${this.events['interpreter-status-update'].length} listeners for interpreter status updates in global cleanup`);
-      }
-      this.events = {};
+      this.events.clear();
     }
     
     // Clear the warnings cache on full cleanup
     if (!event) {
       this.duplicateWarnings.clear();
+      this.emitTimestamps.clear();
     }
+  }
+  
+  /**
+   * Set rate limit for event emissions (milliseconds)
+   */
+  setRateLimit(ms: number): void {
+    this.rateLimit = ms;
   }
 }

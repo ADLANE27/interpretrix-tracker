@@ -1,50 +1,82 @@
-
 /**
- * Utility class to debounce events and manage cooldowns
+ * A utility class to prevent duplicate event processing
  */
 export class EventDebouncer {
-  private eventTimestamps: Map<string, number> = new Map();
-  private cooldownPeriod: number;
+  private processedEvents: Map<string, number> = new Map();
+  private debounceInterval: number = 300; // ms
+  private cleanupInterval: number | null = null;
+  private maxEvents: number = 1000;
 
-  constructor(cooldownPeriod = 500) {
-    this.cooldownPeriod = cooldownPeriod;
+  constructor(debounceInterval = 300, maxEvents = 1000) {
+    this.debounceInterval = debounceInterval;
+    this.maxEvents = maxEvents;
+    
+    // Set up cleanup to prevent memory leaks
+    this.startCleanupInterval();
   }
 
   /**
-   * Check if an event should be processed based on cooldown
+   * Determines if an event should be processed based on its ID and timestamp
    */
-  public shouldProcessEvent(eventId: string, timestamp: number): boolean {
-    const lastTimestamp = this.eventTimestamps.get(eventId);
+  public shouldProcessEvent(eventId: string, timestamp?: number): boolean {
+    const now = timestamp || Date.now();
     
-    if (!lastTimestamp || (timestamp - lastTimestamp > this.cooldownPeriod)) {
-      this.eventTimestamps.set(eventId, timestamp);
-      return true;
+    // Check if we've seen this event recently
+    if (this.processedEvents.has(eventId)) {
+      const lastProcessed = this.processedEvents.get(eventId)!;
+      
+      // If it was processed within the debounce interval, skip it
+      if (now - lastProcessed < this.debounceInterval) {
+        return false;
+      }
     }
     
-    return false;
+    // Record this event
+    this.processedEvents.set(eventId, now);
+    
+    // If we're tracking too many events, clean up old ones
+    if (this.processedEvents.size > this.maxEvents) {
+      this.cleanup(now);
+    }
+    
+    return true;
   }
 
   /**
-   * Execute a function after debounce period
+   * Cleans up events older than the debounce interval
    */
-  public debounce(
-    fn: Function, 
-    id: string, 
-    wait: number = this.cooldownPeriod
-  ): void {
-    const timestamp = Date.now();
-    const lastExecution = this.eventTimestamps.get(id) || 0;
+  private cleanup(now?: number): void {
+    const currentTime = now || Date.now();
+    const expiryTime = currentTime - this.debounceInterval;
     
-    if (timestamp - lastExecution > wait) {
-      fn();
-      this.eventTimestamps.set(id, timestamp);
+    // Delete events older than the debounce interval
+    for (const [eventId, timestamp] of this.processedEvents.entries()) {
+      if (timestamp < expiryTime) {
+        this.processedEvents.delete(eventId);
+      }
     }
   }
 
   /**
-   * Clear all stored timestamps
+   * Starts the automatic cleanup interval
    */
-  public reset(): void {
-    this.eventTimestamps.clear();
+  private startCleanupInterval(): void {
+    if (this.cleanupInterval === null) {
+      // Run cleanup every minute to keep memory usage low
+      this.cleanupInterval = window.setInterval(() => {
+        this.cleanup();
+      }, 60000);
+    }
+  }
+
+  /**
+   * Stops the automatic cleanup interval
+   */
+  public dispose(): void {
+    if (this.cleanupInterval !== null) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.processedEvents.clear();
   }
 }

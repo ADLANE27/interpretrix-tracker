@@ -1,4 +1,5 @@
 
+import React, { memo } from "react";
 import { Clock } from "lucide-react";
 import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -17,7 +18,7 @@ interface UpcomingMissionBadgeProps {
   className?: string;
 }
 
-export const UpcomingMissionBadge = ({ 
+export const UpcomingMissionBadge = memo(({ 
   startTime, 
   estimatedDuration,
   sourceLang,
@@ -71,7 +72,7 @@ export const UpcomingMissionBadge = ({
         return {
           text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const,
-          flashingClass: "animate-pulse bg-red-500 text-white"
+          flashingClass: ""
         };
       case "in-progress":
         const remainingTime = formatDistanceToNow(missionEndDate, { 
@@ -106,7 +107,7 @@ export const UpcomingMissionBadge = ({
       variant={status.variant} 
       className={cn(
         "gap-1.5 text-xs whitespace-normal text-wrap max-w-full transition-colors",
-        missionStatus !== "ended" && status.flashingClass,
+        missionStatus !== "ended" && missionStatus !== "upcoming" && status.flashingClass,
         className
       )}
     >
@@ -114,4 +115,6 @@ export const UpcomingMissionBadge = ({
       <span>{status.text}</span>
     </Badge>
   );
-};
+});
+
+UpcomingMissionBadge.displayName = 'UpcomingMissionBadge';

@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { realtimeService } from '@/services/realtime';
 import { eventEmitter, EVENT_CONNECTION_STATUS_CHANGE } from '@/lib/events';
 
@@ -7,6 +6,7 @@ interface UseTableSubscriptionOptions {
   enabled?: boolean;
   onError?: (error: any) => void;
   onConnectionChange?: (connected: boolean) => void; 
+  debounceTime?: number;
 }
 
 /**
@@ -19,15 +19,53 @@ export function useTableSubscription(
   callback: (payload: any) => void,
   options: UseTableSubscriptionOptions = {}
 ) {
-  const { enabled = true, onError, onConnectionChange } = options;
+  const { enabled = true, onError, onConnectionChange, debounceTime = 100 } = options;
   const [isConnected, setIsConnected] = useState(true);
   const callbackRef = useRef(callback);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const processedEventsRef = useRef<Set<string>>(new Set());
+  
+  // Generate a stable subscription key
+  const subscriptionKey = useMemo(() => 
+    `${table}:${event}${filter ? `:${filter}` : ''}`, 
+    [table, event, filter]
+  );
   
   // Keep callback reference updated
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
+  
+  // Debounced callback to prevent duplicate processing
+  const debouncedCallback = useCallback((payload: any) => {
+    // Create a unique ID for this event
+    const eventId = `${payload.eventType}-${
+      payload.eventType === 'DELETE' ? 
+      (payload.old as any)?.id : 
+      (payload.new as any)?.id
+    }-${payload.commit_timestamp || Date.now()}`;
+    
+    // Skip if we've already processed this event
+    if (processedEventsRef.current.has(eventId)) {
+      return;
+    }
+    
+    // Add to processed events
+    processedEventsRef.current.add(eventId);
+    
+    // Limit size of processed events set
+    if (processedEventsRef.current.size > 100) {
+      const eventsArray = Array.from(processedEventsRef.current);
+      processedEventsRef.current = new Set(eventsArray.slice(-50));
+    }
+    
+    try {
+      callbackRef.current(payload);
+    } catch (error) {
+      console.error(`[useTableSubscription] Error processing ${event} event for ${table}:`, error);
+      if (onError) onError(error);
+    }
+  }, [event, table, onError]);
   
   // Track connection status
   useEffect(() => {
@@ -49,22 +87,13 @@ export function useTableSubscription(
   useEffect(() => {
     if (!enabled) return;
     
-    const handlePayload = (payload: any) => {
-      try {
-        callbackRef.current(payload);
-      } catch (error) {
-        console.error(`[useTableSubscription] Error processing ${event} event for ${table}:`, error);
-        if (onError) onError(error);
-      }
-    };
-    
     // Make sure the service is initialized first
     if (!realtimeService.isInitialized()) {
       realtimeService.init();
     }
     
     // Create subscription through realtime service
-    const cleanup = realtimeService.subscribeToTable(table, event, filter, handlePayload);
+    const cleanup = realtimeService.subscribeToTable(table, event, filter, debouncedCallback);
     cleanupRef.current = cleanup;
     
     return () => {
@@ -73,7 +102,7 @@ export function useTableSubscription(
         cleanupRef.current = null;
       }
     };
-  }, [enabled, table, event, filter, onError]);
+  }, [enabled, table, event, filter, debouncedCallback, subscriptionKey]);
   
   // Expose reconnect functionality
   const refresh = useCallback(() => {
@@ -82,9 +111,9 @@ export function useTableSubscription(
       cleanupRef.current = null;
     }
     
-    const cleanup = realtimeService.subscribeToTable(table, event, filter, callbackRef.current);
+    const cleanup = realtimeService.subscribeToTable(table, event, filter, debouncedCallback);
     cleanupRef.current = cleanup;
-  }, [table, event, filter]);
+  }, [table, event, filter, debouncedCallback]);
   
   return { 
     isConnected,
