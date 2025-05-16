@@ -129,11 +129,42 @@
   scrollbar-width: none;
 }
 
+/* Frosted glass effect */
+.frosted-glass {
+  @apply backdrop-blur-md bg-white/70 dark:bg-gray-800/70 border border-white/20 dark:border-gray-700/20;
+}
+
+.admin-glass {
+  @apply backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border border-yellow-500/20 dark:border-yellow-600/10 shadow-lg;
+}
+
+.interpreter-glass {
+  @apply backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border border-blue-500/20 dark:border-blue-600/10 shadow-lg;
+}
+
 .gradient-border {
   --border-width: 2px;
   border: var(--border-width) solid transparent;
   background-image: linear-gradient(var(--background), var(--background)),
     linear-gradient(135deg, #861fcf, #007cf0, #00dfd8, #ffba49, #861fcf);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.admin-gradient-border {
+  --border-width: 2px;
+  border: var(--border-width) solid transparent;
+  background-image: linear-gradient(var(--background), var(--background)),
+    linear-gradient(135deg, #f59e0b, #d97706, #fbbf24, #f59e0b);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.interpreter-gradient-border {
+  --border-width: 2px;
+  border: var(--border-width) solid transparent;
+  background-image: linear-gradient(var(--background), var(--background)),
+    linear-gradient(135deg, #1EAEDB, #0ea5e9, #38bdf8, #1EAEDB);
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
@@ -144,11 +175,23 @@
 
 .hover-elevate:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .text-gradient-primary {
   background: linear-gradient(to right, #0EA5E9, #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-admin {
+  background: linear-gradient(to right, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-interpreter {
+  background: linear-gradient(to right, #1EAEDB, #0284c7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -164,6 +207,44 @@
 
 .glass-input {
   @apply bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-gray-200/70 dark:border-gray-700/70 focus:ring-1 focus:ring-primary/30;
+}
+
+/* Floating animation for background elements */
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(2deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+.floating {
+  animation: float 6s ease-in-out infinite;
+}
+
+.floating-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.floating-fast {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Pattern background */
+.bg-grid-black {
+  background-image: linear-gradient(#000 1px, transparent 1px),
+    linear-gradient(90deg, #000 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.bg-grid-white {
+  background-image: linear-gradient(#fff 1px, transparent 1px),
+    linear-gradient(90deg, #fff 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 /* Frosted glass button variants */
