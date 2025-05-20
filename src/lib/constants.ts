@@ -1,4 +1,3 @@
-
 // Constants for the application
 
 // Theme constants
@@ -47,20 +46,6 @@ export const ROLES = {
   ADMIN: 'admin',
   INTERPRETER: 'interpreter',
   CLIENT: 'client',
-};
-
-// Login page animations
-export const LOGIN_ANIMATIONS = {
-  FADE_IN: {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  },
-  SCALE_IN: {
-    initial: { opacity: 0, scale: 0.9 },
-    animate: { opacity: 1, scale: 1 },
-    transition: { duration: 0.4 }
-  }
 };
 
 // Language mapping (code to name)
@@ -213,22 +198,4 @@ export const ANIMATION = {
 export const COMPANY_TYPES = {
   AFTCOM: 'AFTcom',
   AFTRAD: 'AFTrad',
-};
-
-// UI colors for specific roles
-export const ROLE_COLORS = {
-  ADMIN: {
-    primary: '#f59e0b', // Yellow/Gold
-    secondary: '#d97706',
-    accent: '#fbbf24',
-    bg: 'from-yellow-500 to-amber-600',
-    icon: 'text-yellow-500'
-  },
-  INTERPRETER: {
-    primary: '#1EAEDB', // Blue
-    secondary: '#0ea5e9',
-    accent: '#38bdf8',
-    bg: 'from-blue-500 to-indigo-600',
-    icon: 'text-blue-500'
-  }
 };
