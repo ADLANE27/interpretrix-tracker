@@ -90,7 +90,7 @@ export const LANGUAGES = [
   "Bengali", "Bengali Indien",
 
   // Standard languages continued
-  "Araméen", "Assamais", "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Berbère", "Biélorusse",
+  "Araméen", "Assamais", "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse",
   "Bulgare", "Bihari", "Bichelamar", "Bambara", "Tibétain", "Breton", "Bosnien", "Catalan",
   "Tchétchène", "Chamorro", "Corse", "Cri", "Tchèque", "Vieux-slave", "Tchouvache", "Gallois",
   "Danois", "Allemand", "Maldivien", "Dzongkha", "Ewe", "Grec", "Espéranto", "Estonien", 

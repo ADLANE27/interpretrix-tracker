@@ -46,6 +46,7 @@ export const useRealtimeStatus = ({
   
   // Handle connection status changes
   const handleConnectionChange = useCallback((connected: boolean) => {
+    console.log(`[useRealtimeStatus] Connection status changed: ${connected}`);
     setIsConnected(connected);
     
     if (onConnectionStateChangeRef.current) {
@@ -59,6 +60,7 @@ export const useRealtimeStatus = ({
       
       // Only retry if pending update is recent (within last 2 minutes)
       if (now - timestamp < 120000) {
+        console.log(`[useRealtimeStatus] Connection restored, retrying pending update to ${pendingStatus}`);
         updateStatus(pendingStatus).then(() => {
           pendingUpdateRef.current = null;
         });
@@ -88,6 +90,7 @@ export const useRealtimeStatus = ({
     }
     
     if (data.status !== statusRef.current) {
+      console.log(`[useRealtimeStatus] Received status update for ${interpreterId}: ${data.status}`);
       setStatus(data.status);
       statusRef.current = data.status;
       setLastUpdateTime(new Date());
@@ -104,6 +107,7 @@ export const useRealtimeStatus = ({
     const isInitialized = realtimeService.isInitialized();
     
     if (!isInitialized) {
+      console.log('[useRealtimeStatus] Initializing realtime service');
       const cleanup = realtimeService.init();
       return cleanup;
     }
@@ -123,6 +127,8 @@ export const useRealtimeStatus = ({
   useEffect(() => {
     if (!interpreterId) return;
     
+    console.log(`[useRealtimeStatus] Setting up status listener for ${interpreterId}`);
+    
     // Subscribe to status update events
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
     
@@ -131,6 +137,7 @@ export const useRealtimeStatus = ({
     
     // Initial fetch of status
     if (isInitialLoadRef.current) {
+      console.log(`[useRealtimeStatus] Initial load for ${interpreterId}`);
       isInitialLoadRef.current = false;
       
       // Fetch current status
@@ -142,6 +149,7 @@ export const useRealtimeStatus = ({
         .then(({ data, error }) => {
           if (!error && data) {
             const fetchedStatus = data.status as Profile['status'];
+            console.log(`[useRealtimeStatus] Initial status fetch for ${interpreterId}: ${fetchedStatus}`);
             
             if (fetchedStatus !== statusRef.current) {
               setStatus(fetchedStatus);
@@ -157,6 +165,7 @@ export const useRealtimeStatus = ({
     }
     
     return () => {
+      console.log(`[useRealtimeStatus] Cleaning up status listener for ${interpreterId}`);
       eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
       cleanup();
     };
@@ -167,6 +176,8 @@ export const useRealtimeStatus = ({
     if (!interpreterId) return false;
     
     try {
+      console.log(`[useRealtimeStatus] Updating status to ${newStatus} for ${interpreterId}`);
+      
       // Optimistically update UI immediately
       setStatus(newStatus);
       statusRef.current = newStatus;
@@ -178,6 +189,7 @@ export const useRealtimeStatus = ({
       // If not connected, store the pending update
       if (!isConnected) {
         pendingUpdateRef.current = { status: newStatus, timestamp: Date.now() };
+        console.log(`[useRealtimeStatus] Connection down, storing pending update: ${newStatus}`);
         return false;
       }
       

@@ -1,5 +1,5 @@
 
-import React, { memo } from 'react';
+import React from 'react';
 import { Profile } from '@/types/profile';
 import { EmploymentStatus } from '@/utils/employmentStatus';
 import { WorkLocation } from '@/utils/workLocationStatus';
@@ -36,7 +36,7 @@ export interface InterpreterCardProps {
   onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
-const InterpreterCard: React.FC<InterpreterCardProps> = memo(({ interpreter, onStatusChange }) => {
+const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const { 
     status, 
     isFlipped, 
@@ -48,7 +48,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = memo(({ interpreter, onS
     locationConfig,
     showTarif5min,
     showTarif15min,
-    hasActiveMission
+    hasActiveMission // Changed from hasFutureMission to hasActiveMission
   } = useInterpreterCard(interpreter, onStatusChange);
 
   return (
@@ -63,7 +63,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = memo(({ interpreter, onS
         locationConfig={locationConfig}
         showTarif5min={showTarif5min}
         showTarif15min={showTarif15min}
-        hasActiveMission={hasActiveMission}
+        hasActiveMission={hasActiveMission} // Changed from hasFutureMission to hasActiveMission
         flipCard={flipCard}
       />
 
@@ -75,8 +75,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = memo(({ interpreter, onS
       />
     </div>
   );
-});
-
-InterpreterCard.displayName = 'InterpreterCard';
+};
 
 export default InterpreterCard;

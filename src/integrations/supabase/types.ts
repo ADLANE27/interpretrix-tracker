@@ -1248,7 +1248,7 @@ export type Database = {
         Returns: undefined
       }
       urlencode: {
-        Args: { data: Json } | { string: string } | { string: string }
+        Args: { string: string } | { string: string } | { data: Json }
         Returns: string
       }
     }

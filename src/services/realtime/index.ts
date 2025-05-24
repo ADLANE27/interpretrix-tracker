@@ -7,10 +7,6 @@ import { ConnectionMonitor } from './connectionMonitor';
 import { SubscriptionRegistry } from './registry/subscriptionRegistry';
 import { Profile } from '@/types/profile';
 import { v4 as uuidv4 } from 'uuid';
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-
-// Global registry to track active subscriptions to prevent duplicates
-const subscriptionsRegistry = new Map<string, { count: number, cleanup: () => void }>();
 
 class RealtimeService {
   private subscriptions: Map<string, () => void> = new Map();
@@ -90,8 +86,11 @@ class RealtimeService {
     
     // Check if we already have an active subscription
     if (this.interpreterSubscriptions.has(subscriptionKey)) {
+      console.log(`[RealtimeService] Reusing existing interpreter status subscription: ${interpreterId}`);
       return this.interpreterSubscriptions.get(subscriptionKey)!;
     }
+    
+    console.log(`[RealtimeService] Creating new subscription for interpreter status: ${interpreterId}`);
     
     // Create a new subscription
     const [cleanup, key, channel] = createInterpreterStatusSubscription(
@@ -99,6 +98,8 @@ class RealtimeService {
       this.eventDebouncer,
       // Pass callback to handle status changes
       (newStatus) => {
+        console.log(`[RealtimeService] Status changed to ${newStatus} for interpreter ${interpreterId}`);
+        
         // Global immediate broadcast for UI updates
         eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
           interpreterId, 
@@ -119,6 +120,8 @@ class RealtimeService {
    * Update an interpreter's status directly (optimistic update)
    */
   public broadcastStatusUpdate(interpreterId: string, status: Profile['status']): void {
+    console.log(`[RealtimeService] Broadcasting status update for ${interpreterId}: ${status}`);
+    
     // Generate a unique ID for this update to prevent duplicate processing
     const updateId = uuidv4();
     
@@ -131,10 +134,21 @@ class RealtimeService {
         uuid: updateId 
       });
     }, 0);
+    
+    // Send a second broadcast after a short delay to ensure it propagates
+    // This helps in cases where components might have missed the first event
+    setTimeout(() => {
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE, {
+        interpreterId,
+        status,
+        timestamp: Date.now(),
+        uuid: `${updateId}-followup`
+      });
+    }, 100);
   }
 
   /**
-   * Subscribe to table changes with shared subscription support
+   * Subscribe to table changes
    */
   public subscribeToTable(
     table: string,
@@ -142,25 +156,15 @@ class RealtimeService {
     filter: string | null,
     callback: (payload: any) => void
   ): () => void {
+    console.log(`[RealtimeService] Subscribing to table ${table} for ${event} events`);
+    
     const filterSuffix = filter ? `-${filter.replace(/[^a-z0-9]/gi, '')}` : '';
     const key = `table-${table}-${event}${filterSuffix}`;
     
-    // Check if we already have this subscription registered
-    if (subscriptionsRegistry.has(key)) {
-      const existing = subscriptionsRegistry.get(key)!;
-      existing.count++;
-      
-      // Return a cleanup function that decrements the reference count
-      return () => {
-        const current = subscriptionsRegistry.get(key);
-        if (current) {
-          current.count--;
-          if (current.count <= 0) {
-            current.cleanup();
-            subscriptionsRegistry.delete(key);
-          }
-        }
-      };
+    // Check if we already have this subscription
+    if (this.subscriptions.has(key)) {
+      console.log(`[RealtimeService] Reusing existing subscription for ${key}`);
+      return this.subscriptions.get(key) || (() => {});
     }
     
     try {
@@ -170,45 +174,30 @@ class RealtimeService {
           schema: 'public',
           table: table,
           filter: filter || undefined
-        }, (payload: RealtimePostgresChangesPayload<any>) => {
-          // Use the debouncer to prevent duplicate event processing
+        }, (payload) => {
           const now = Date.now();
-          
-          // Access the data based on the event type - payload may have different shapes
-          const recordId = payload.eventType === 'DELETE' 
-            ? (payload.old as any)?.id 
-            : (payload.new as any)?.id;
-            
-          const eventId = `${table}-${event}-${recordId || now}`;
+          const eventId = `${table}-${event}-${now}`;
           
           if (this.eventDebouncer.shouldProcessEvent(eventId, now)) {
+            console.log(`[RealtimeService] ${event} event on ${table}:`, payload);
             callback(payload);
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`[RealtimeService] Subscription status for ${key}: ${status}`);
+        });
       
       // Create cleanup function
       const cleanup = () => {
+        console.log(`[RealtimeService] Unsubscribing from ${key}`);
         supabase.removeChannel(channel);
         this.subscriptions.delete(key);
-        subscriptionsRegistry.delete(key);
       };
       
-      // Store in our registries
+      // Store in our subscriptions map
       this.subscriptions.set(key, cleanup);
-      subscriptionsRegistry.set(key, { count: 1, cleanup });
       
-      // Return a reference-counted cleanup function
-      return () => {
-        const current = subscriptionsRegistry.get(key);
-        if (current) {
-          current.count--;
-          if (current.count <= 0) {
-            current.cleanup();
-            subscriptionsRegistry.delete(key);
-          }
-        }
-      };
+      return cleanup;
     } catch (error) {
       console.error(`[RealtimeService] Error creating subscription: ${error}`);
       return () => {};
@@ -230,10 +219,6 @@ class RealtimeService {
     
     this.interpreterSubscriptions.forEach(cleanup => cleanup());
     this.interpreterSubscriptions.clear();
-    
-    // Clean up global registry
-    subscriptionsRegistry.forEach(subscription => subscription.cleanup());
-    subscriptionsRegistry.clear();
     
     this.initialized = false;
   }
